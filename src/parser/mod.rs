@@ -167,14 +167,22 @@ fn parse_return_stmt(pair: Pair<'_, Rule>) -> Statement {
 		return Statement::Return(None);
 	}
 
-	Statement::Return(Some(parse_expression(value.unwrap())))
+	let parsed_expression = parse_expression(value.unwrap());
+	
+	if matches!(parsed_expression, Expression::Empty) {
+		return Statement::Return(None);
+	}
+
+	Statement::Return(
+		Some(parsed_expression)
+	)
 }
 
 fn parse_function_call(pair: Pair<'_, Rule>) -> expressions::Call {
 	assert_rule!(pair == call in pair);
 
 	let mut pairs = pair.clone().into_inner();
-	let mut arguments: Vec<expressions::Expression> = vec![];
+	let mut arguments: Vec<Expression> = vec![];
 
 	let next_pair = get_pair_safe!(from pairs expect call_body_empty | call_body_nonempty in pair);
 
@@ -189,7 +197,7 @@ fn parse_function_call(pair: Pair<'_, Rule>) -> expressions::Call {
 	expressions::Call { arguments, function: Box::new(function) }
 }
 
-fn parse_function_call_args(pair: Pair<'_, Rule>) -> Vec<expressions::Expression> {
+fn parse_function_call_args(pair: Pair<'_, Rule>) -> Vec<Expression> {
 	assert_rule!(pair == call_body_nonempty in pair);
 	let pairs = pair.clone().into_inner();
 	let mut arguments = vec![];
@@ -268,7 +276,7 @@ fn parse_else_branch(pair: Pair<'_, Rule>) -> ConditionBranch {
 		get_pair_safe!(from pairs expect statements in pair).into_inner()
 	);
 
-	ConditionBranch { condition: expressions::Expression::Empty, statements }
+	ConditionBranch { condition: Expression::Empty, statements }
 }
 
 fn is_term(pair: Pair<'_, Rule>) -> bool {
@@ -284,7 +292,7 @@ fn get_bin_op_from_pair(pair: &Pair<'_, Rule>) -> expressions::operators::Binary
 	).unwrap()
 }
 
-fn parse_expression_with_precedence(pairs: &mut Peekable<Pairs<Rule>>, precedence: u8) -> expressions::Expression {
+fn parse_expression_with_precedence(pairs: &mut Peekable<Pairs<Rule>>, precedence: u8) -> Expression {
 	if pairs.len() < 1 {
 		unreachable!("Failed to parse expression: pairs are empty");
 	}
@@ -312,7 +320,7 @@ fn parse_expression_with_precedence(pairs: &mut Peekable<Pairs<Rule>>, precedenc
 
 		let right = parse_expression_with_precedence(pairs, operator_precedence + 1);
 
-		left = expressions::Expression::Binary(
+		left = Expression::Binary(
 			expressions::Binary {
 				lhs: left.clone(),
 				operator,
@@ -373,7 +381,7 @@ fn parse_function_def_args(pair: Pair<'_, Rule>) -> Vec<String> {
 	arguments
 }
 
-fn parse_expression(pair: Pair<'_, Rule>) -> expressions::Expression {
+fn parse_expression(pair: Pair<'_, Rule>) -> Expression {
 	let mut pairs = pair
 		.clone()
 		.into_inner()
@@ -381,7 +389,7 @@ fn parse_expression(pair: Pair<'_, Rule>) -> expressions::Expression {
 
 	if pairs.len() < 1 || is_term(pair.clone()) {
 		// TODO: perhaps rewrite that?
-		return expressions::Expression::Term(parse_term(pair));
+		return Expression::Term(parse_term(pair));
 	}
 
 	parse_expression_with_precedence(&mut pairs, 0)
@@ -422,7 +430,7 @@ fn parse_identifier(pair: Pair<Rule>) -> expressions::Term {
 	let as_str = pair_into_string(pair);
 
 	if as_str == "void" {
-		return expressions::Expression::Empty.into();
+		return Expression::Empty.into();
 	}
 
 	expressions::Term::Identifier(as_str)

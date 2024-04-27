@@ -29,7 +29,11 @@ impl Interpreter {
 
 	pub fn execute(&mut self, ast: ast::Program) -> Result<RuntimeValue> {
 		for statement in ast.statements {
-			self.execute_statement(statement)?;
+			let result = self.execute_statement(statement)?;
+
+			if !matches!(result, RuntimeValue::Empty) {
+				return Ok(result);
+			}
 		}
 
 		Ok(RuntimeValue::Empty)
@@ -38,24 +42,74 @@ impl Interpreter {
 	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<RuntimeValue> {
 		match statement {
 			ast::Statement::VariableDefine { name, value } => self.execute_variable_define(name, value),
+			ast::Statement::VariableAssign { name, value } => self.execute_variable_assign(name, value),
+			
+			ast::Statement::DoBlock(statements) => self.execute_do_block(statements),
+			ast::Statement::Return(expression) => match expression {
+				Some(expression) => self.evaluate_expression(expression),
+				None => Ok(RuntimeValue::Empty)
+			},
+			ast::Statement::Call(call) => self.evaluate_call(call),
+
+			ast::Statement::WhileLoop { condition, statements } => self.execute_while_loop(condition, statements),
 
 			_ => todo!()
 		}
 	}
 
-	fn execute_variable_define(&mut self, name: String, value: Option<ast::expressions::Expression>) -> Result<RuntimeValue> {
+	fn execute_variable_define(&mut self, name: String, value: Option<ast::Expression>) -> Result<RuntimeValue> {
 		let evaluated_value = match value {
 			None => RuntimeValue::Empty,
 			Some(expression) => self.evaluate_expression(expression)?
 		};
 
-		let evaluated_value = dbg!(evaluated_value);
-
 		self.context.insert_value(name, evaluated_value)?;
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn evaluate_expression(&self, expression: ast::expressions::Expression) -> Result<RuntimeValue> {
+	fn execute_variable_assign(&mut self, name: String, value: ast::Expression) -> Result<RuntimeValue> {
+		let evaluated_value = self.evaluate_expression(value)?;
+
+		self.context.update_value(name, evaluated_value)?;
+		Ok(RuntimeValue::Empty)
+	}
+
+	fn execute_do_block(&mut self, statements: Vec<ast::Statement>) -> Result<RuntimeValue> {
+		self.context.set_write_to_temp(true);
+		let result = self.execute(ast::Program { statements });
+		self.context.set_write_to_temp(false);
+
+		result
+	}
+
+	fn execute_while_loop(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>) -> Result<RuntimeValue> {
+		self.context.set_write_to_temp(true);
+		
+		let mut evaluated = self.evaluate_expression(condition.clone())?;
+
+		while self.is_value_truthy(&evaluated) {
+			self.execute(ast::Program { statements: statements.clone() })?;
+			evaluated = self.evaluate_expression(condition.clone())?;
+		}
+
+		self.context.set_write_to_temp(false);
+		Ok(RuntimeValue::Empty)
+	}
+
+	fn is_value_truthy(&self, rv: &RuntimeValue) -> bool {
+		use RuntimeValue as Rv;
+		
+		!match rv {
+			Rv::Boolean(value) => !value,
+			Rv::String(value) => value.is_empty(),
+			Rv::Number(value) => value == &0.0,
+			Rv::Function(_) => true,
+			Rv::IntrinsicFunction(_) => true,
+			Rv::Empty => false
+		}
+	}
+
+	fn evaluate_expression(&mut self, expression: ast::Expression) -> Result<RuntimeValue> {
 		use ast::expressions::*;
 		
 		match expression {
@@ -66,7 +120,7 @@ impl Interpreter {
 		}
 	}
 
-	fn evaluate_unary_expression(&self, operator: ast::expressions::operators::UnaryOperator, operand: ast::expressions::Term) -> Result<RuntimeValue> {
+	fn evaluate_unary_expression(&mut self, operator: ast::expressions::operators::UnaryOperator, operand: ast::expressions::Term) -> Result<RuntimeValue> {
 		use ast::expressions::operators::UnaryOperator as Op;
 		use RuntimeValue as Rv;
 
@@ -78,13 +132,15 @@ impl Interpreter {
 			(Op::Not, Rv::Boolean(value)) => Ok(Rv::Boolean(!value)),
 			(Op::Not, Rv::String(value)) => Ok(Rv::Boolean(value.is_empty())),
 			(Op::Not, Rv::Number(value)) => Ok(Rv::Boolean(value == 0.0)),
-			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(true)),
+			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(false)),
+			(Op::Not, Rv::IntrinsicFunction(_)) => Ok(Rv::Boolean(false)),
+			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(false)),
 
 		 	(operator, operand) => bail!("Cannot perform an unsupported unary operation '{}' on '{}'", operator, operand)
 		}
 	}
 
-	fn evaluate_binary_expression(&self, lhs: ast::expressions::Term, operator: ast::expressions::operators::BinaryOperator, rhs: ast::expressions::Term) -> Result<RuntimeValue> {
+	fn evaluate_binary_expression(&mut self, lhs: ast::expressions::Term, operator: ast::expressions::operators::BinaryOperator, rhs: ast::expressions::Term) -> Result<RuntimeValue> {
 		use ast::expressions::operators::BinaryOperator as Op;
 		use RuntimeValue as Rv;
 		
@@ -109,12 +165,14 @@ impl Interpreter {
 			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
+			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(true)),
 
 			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
+			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::NotEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(false)),
 
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
@@ -124,7 +182,7 @@ impl Interpreter {
 		}
 	}
 
-	fn evaluate_term(&self, term: ast::expressions::Term) -> Result<RuntimeValue> {
+	fn evaluate_term(&mut self, term: ast::expressions::Term) -> Result<RuntimeValue> {
 		use ast::expressions::*;
 
 		match term {
@@ -143,8 +201,10 @@ impl Interpreter {
 		}))
 	}
 
-	fn evaluate_call(&self, call: ast::expressions::Call) -> Result<RuntimeValue> {
-		let arguments = call
+	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<RuntimeValue> {
+		use std::iter::zip;
+
+		let call_arguments = call
 			.arguments
 			.into_iter()
 			.map(|arg| self.evaluate_expression(arg))
@@ -153,9 +213,36 @@ impl Interpreter {
 		let original_expression = *call.function.clone();
 		let expression = self.evaluate_expression(*call.function)?;
 
+		if let RuntimeValue::IntrinsicFunction(function) = expression {
+			self.context.set_write_to_temp(true);
+			let result = function(&mut self.context, call_arguments);
+			self.context.set_write_to_temp(false);
+
+			return result;
+		}
+
 		if let RuntimeValue::Function(function) = expression {
-			// TODO: call function
-			todo!()
+			let expected_str = format!("(expected {} arguments, got {})", function.arguments.len(), call_arguments.len());
+			
+			if call_arguments.len() != function.arguments.len() {
+				let word = if call_arguments.len() < function.arguments.len() { "few" } else { "many" };
+				bail!("Too {} arguments in function call {}", word, expected_str);
+			}
+
+			self.context.set_write_to_temp(true);
+			
+			for (index, (arg_name, arg_value)) in zip(function.arguments, call_arguments).enumerate() {
+				if self.context.key_real(&arg_name) {
+					bail!("Name of argument #{} conflicts with variable name '{}'", index + 1, arg_name);
+				}
+
+				self.context.insert_value(arg_name, arg_value)?;
+			}
+
+			let result = self.execute(ast::Program { statements: function.statements });
+			self.context.set_write_to_temp(false);
+
+			result
 		} else {
 			bail!("Expression '{:?}' is not callable", original_expression);
 		}

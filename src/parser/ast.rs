@@ -1,6 +1,8 @@
 use std::fmt::Display;
 use expressions::*;
 
+pub use expressions::Expression;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
 	pub statements: Vec<Statement>

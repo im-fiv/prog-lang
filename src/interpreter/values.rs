@@ -1,4 +1,7 @@
 use std::fmt::Display;
+use anyhow::Result;
+
+use super::RuntimeContext;
 use crate::parser::ast;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -7,10 +10,10 @@ pub enum RuntimeValue {
 	String(String),
 	Number(f64),
 	Function(RuntimeFunction),
+	IntrinsicFunction(fn(&mut RuntimeContext, Vec<RuntimeValue>) -> Result<RuntimeValue>),
 	Empty
 }
 
-// TODO
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeFunction {
 	pub arguments: Vec<String>,
@@ -33,9 +36,10 @@ impl Display for RuntimeValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Boolean(value) => write!(f, "{}", if value.to_owned() { "true" } else { "false" }),
-			Self::String(value) => write!(f, "\"{value}\""),
+			Self::String(value) => write!(f, "{value}"),
 			Self::Number(value) => write!(f, "{value}"),
 			Self::Function(_) => write!(f, "RuntimeFunction"),
+			Self::IntrinsicFunction(_) => write!(f, "IntrinsicFunction"),
 			Self::Empty => write!(f, "")
 		}
 	}
