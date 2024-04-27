@@ -1,11 +1,13 @@
+mod cli;
+use cli::Cli;
+
 mod parser;
 use parser::parse;
 
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
-
-const INPUT_FP: &str = "input.prog";
+use clap::Parser;
 
 fn read_file(path: &str) -> String {
 	let file = File::open(path)
@@ -22,7 +24,9 @@ fn read_file(path: &str) -> String {
 }
 
 fn main() {
-    let contents = read_file(INPUT_FP);
+	let args = Cli::parse();
+
+    let contents = read_file(&args.file_path);
     let ast = parse(&contents).expect("infallible");
 
 	dbg!(ast);
