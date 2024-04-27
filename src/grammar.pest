@@ -1,9 +1,10 @@
 // base grammar
-program = { SOI ~ statement* ~ EOI }
+program = { SOI ~ statements ~ EOI }
 identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* ~ !keywords }
-keywords = { "true" | "false" | "def" | "func" | "do" | "end" | "return" | "while" | "break" }
+keywords = { "true" | "false" | "def" | "func" | "do" | "end" | "return" | "while" | "break" | "if" | "then" | "void" }
 
 // statements
+statements = { statement* }
 statement = _{
 	var_define_stmt |
 	var_assign_stmt |
@@ -11,7 +12,8 @@ statement = _{
 	return_stmt |
 	call |
 	while_stmt |
-	break_stmt
+	break_stmt |
+	if_stmt
 }
 
 var_define_stmt = { "def" ~ identifier ~ ("=" ~ expression)? }
@@ -20,6 +22,10 @@ do_block = { "do" ~ statement* ~ "end" }
 return_stmt = { "return" ~ expression? }
 while_stmt = { "while" ~ expression ~ do_block }
 break_stmt = { "break" }
+
+if_stmt = { "if" ~ expression ~ "then" ~ statements ~ if_elseif* ~ if_else? ~ "end" }
+	if_elseif = { ("else" ~ "if" | "elseif") ~ expression ~ "then" ~ statements }
+	if_else = { "else" ~ statements }
 
 // operators
 unary_operator = { "-" | "!" }

@@ -83,6 +83,10 @@ fn parse_statements(pairs: Pairs<'_, Rule>) -> Vec<Statement> {
 			continue;
 		}
 
+		if pair.as_rule() == Rule::statements {
+			return parse_statements(pair.into_inner());
+		}
+
 		let statement = match pair.as_rule() {
 			Rule::var_define_stmt => parse_var_define_stmt(pair),
 			Rule::var_assign_stmt => parse_var_assign_stmt(pair),
@@ -90,6 +94,8 @@ fn parse_statements(pairs: Pairs<'_, Rule>) -> Vec<Statement> {
 			Rule::return_stmt => parse_return_stmt(pair),
 			Rule::call => parse_function_call(pair).into(),
 			Rule::while_stmt => parse_while_stmt(pair),
+			Rule::break_stmt => Statement::Break,
+			Rule::if_stmt => parse_if_stmt(pair),
 
 			rule => error!("statement of type '{:?}' is not yet implemented", pair.as_span(), rule)
 		};
@@ -101,6 +107,7 @@ fn parse_statements(pairs: Pairs<'_, Rule>) -> Vec<Statement> {
 }
 
 fn parse_var_define_stmt(pair: Pair<'_, Rule>) -> Statement {
+	assert_rule!(pair == var_define_stmt in pair);
 	let mut pairs = pair.clone().into_inner();
 
 	let name = pair_into_string(
@@ -125,6 +132,7 @@ fn parse_var_define_stmt(pair: Pair<'_, Rule>) -> Statement {
 }
 
 fn parse_var_assign_stmt(pair: Pair<'_, Rule>) -> Statement {
+	assert_rule!(pair == var_assign_stmt in pair);
 	let mut pairs = pair.clone().into_inner();
 
 	let name = pair_into_string(
@@ -142,11 +150,15 @@ fn parse_var_assign_stmt(pair: Pair<'_, Rule>) -> Statement {
 }
 
 fn parse_do_block(pair: Pair<'_, Rule>) -> Statement {
+	assert_rule!(pair == do_block in pair);
+
 	let statements = parse_statements(pair.into_inner());
 	Statement::DoBlock(statements)
 }
 
 fn parse_return_stmt(pair: Pair<'_, Rule>) -> Statement {
+	assert_rule!(pair == return_stmt in pair);
+
 	let value = pair
 		.into_inner()
 		.next();
@@ -159,6 +171,8 @@ fn parse_return_stmt(pair: Pair<'_, Rule>) -> Statement {
 }
 
 fn parse_function_call(pair: Pair<'_, Rule>) -> expressions::Call {
+	assert_rule!(pair == call in pair);
+
 	let mut pairs = pair.clone().into_inner();
 	let mut arguments: Vec<expressions::Expression> = vec![];
 
@@ -176,6 +190,7 @@ fn parse_function_call(pair: Pair<'_, Rule>) -> expressions::Call {
 }
 
 fn parse_function_call_args(pair: Pair<'_, Rule>) -> Vec<expressions::Expression> {
+	assert_rule!(pair == call_body_nonempty in pair);
 	let pairs = pair.clone().into_inner();
 	let mut arguments = vec![];
 
@@ -188,6 +203,7 @@ fn parse_function_call_args(pair: Pair<'_, Rule>) -> Vec<expressions::Expression
 }
 
 fn parse_while_stmt(pair: Pair<'_, Rule>) -> Statement {
+	assert_rule!(pair == while_stmt in pair);
 	let mut pairs = pair.clone().into_inner();
 
 	let condition = parse_expression(
@@ -199,6 +215,60 @@ fn parse_while_stmt(pair: Pair<'_, Rule>) -> Statement {
 	);
 
 	Statement::WhileLoop { condition, statements }
+}
+
+fn parse_if_stmt(pair: Pair<'_, Rule>) -> Statement {
+	assert_rule!(pair == if_stmt in pair);
+	let mut pairs = pair.clone().into_inner();
+
+	let condition = parse_expression(
+		get_pair_safe!(from pairs expect expression in pair)
+	);
+
+	let statements = parse_statements(
+		get_pair_safe!(from pairs expect statements in pair).into_inner()
+	);
+
+	let mut elseif_branches: Vec<ConditionBranch> = vec![];
+	let mut else_branch: Option<ConditionBranch> = None;
+
+	for pair in pairs {
+		assert_rule!(pair == if_elseif | if_else in pair);
+		
+		if pair.as_rule() == Rule::if_elseif {
+			elseif_branches.push(parse_elseif_branch(pair));
+		} else {
+			else_branch = Some(parse_else_branch(pair));
+		}
+	}
+
+	Statement::If { condition, statements, elseif_branches, else_branch }
+}
+
+fn parse_elseif_branch(pair: Pair<'_, Rule>) -> ConditionBranch {
+	assert_rule!(pair == if_elseif in pair);
+	let mut pairs = pair.clone().into_inner();
+
+	let condition = parse_expression(
+		get_pair_safe!(from pairs expect expression in pair)
+	);
+
+	let statements = parse_statements(
+		get_pair_safe!(from pairs expect statements in pair).into_inner()
+	);
+
+	ConditionBranch { condition, statements }
+}
+
+fn parse_else_branch(pair: Pair<'_, Rule>) -> ConditionBranch {
+	assert_rule!(pair == if_else in pair);
+	let mut pairs = pair.clone().into_inner();
+
+	let statements = parse_statements(
+		get_pair_safe!(from pairs expect statements in pair).into_inner()
+	);
+
+	ConditionBranch { condition: expressions::Expression::Empty, statements }
 }
 
 fn is_term(pair: Pair<'_, Rule>) -> bool {
@@ -226,29 +296,29 @@ fn parse_expression_with_precedence(pairs: &mut Peekable<Pairs<Rule>>, precedenc
 	let mut left = parse_term(left_pair);
 
 	while let Some(pair) = pairs.peek() {
-		if pair.as_rule() == Rule::binary_operator {
-			let operator = get_bin_op_from_pair(pair);
-			let operator_precedence = operator.get_precedence();
-			
-			if operator_precedence < precedence {
-				break;
-			}
-			
-			// Consume the operator
-			pairs.next();
-
-			let right = parse_expression_with_precedence(pairs, operator_precedence + 1);
-
-			left = expressions::Expression::Binary(
-				expressions::Binary {
-					lhs: left.clone(),
-					operator,
-					rhs: right.into()
-				}
-			).into()
-		} else {
+		if pair.as_rule() != Rule::binary_operator {
 			break;
 		}
+
+		let operator = get_bin_op_from_pair(pair);
+		let operator_precedence = operator.get_precedence();
+		
+		if operator_precedence < precedence {
+			break;
+		}
+		
+		// Consume the operator
+		pairs.next();
+
+		let right = parse_expression_with_precedence(pairs, operator_precedence + 1);
+
+		left = expressions::Expression::Binary(
+			expressions::Binary {
+				lhs: left.clone(),
+				operator,
+				rhs: right.into()
+			}
+		).into()
 	}
 
 	left.try_into().unwrap()
@@ -273,6 +343,7 @@ fn parse_term(pair: Pair<'_, Rule>) -> expressions::Term {
 }
 
 fn parse_function(pair: Pair<'_, Rule>) -> expressions::Function {
+	assert_rule!(pair == function in pair);
 	let mut pairs = pair.clone().into_inner();
 	let mut arguments = vec![];
 
@@ -290,6 +361,7 @@ fn parse_function(pair: Pair<'_, Rule>) -> expressions::Function {
 }
 
 fn parse_function_def_args(pair: Pair<'_, Rule>) -> Vec<String> {
+	assert_rule!(pair == function_def_args in pair);
 	let pairs = pair.clone().into_inner();
 	let mut arguments = vec![];
 
@@ -316,6 +388,7 @@ fn parse_expression(pair: Pair<'_, Rule>) -> expressions::Expression {
 }
 
 fn parse_unary_expression(pair: Pair<Rule>) -> expressions::Unary {
+	assert_rule!(pair == unary_expression in pair);
 	let mut pairs = pair.clone().into_inner();
 
 	let operator = expressions::operators::UnaryOperator::try_from(
@@ -346,10 +419,17 @@ fn parse_literal(pair: Pair<Rule>) -> expressions::Literal {
 
 fn parse_identifier(pair: Pair<Rule>) -> expressions::Term {
 	assert_rule!(pair == identifier in pair);
-	expressions::Term::Identifier(pair_into_string(pair))
+	let as_str = pair_into_string(pair);
+
+	if as_str == "void" {
+		return expressions::Expression::Empty.into();
+	}
+
+	expressions::Term::Identifier(as_str)
 }
 
 fn parse_number_literal(pair: Pair<Rule>) -> expressions::Literal {
+	assert_rule!(pair == number_literal in pair);
 	let string = pair.as_str().to_owned();
 
 	match string.parse::<f64>() {
@@ -359,6 +439,7 @@ fn parse_number_literal(pair: Pair<Rule>) -> expressions::Literal {
 }
 
 fn parse_string_literal(pair: Pair<Rule>) -> expressions::Literal {
+	assert_rule!(pair == string_literal in pair);
 	let literal = pair.as_str().to_owned();
 	let clean_literal = literal.trim_start_matches(&['\'', '\"'][..]).trim_end_matches(&['\'', '\"'][..]);
 
@@ -366,6 +447,7 @@ fn parse_string_literal(pair: Pair<Rule>) -> expressions::Literal {
 }
 
 fn parse_boolean_literal(pair: Pair<Rule>) -> expressions::Literal {
+	assert_rule!(pair == boolean_literal in pair);
 	let literal = pair.as_str();
 
 	match literal {

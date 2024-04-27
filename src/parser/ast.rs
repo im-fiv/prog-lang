@@ -1,52 +1,70 @@
-#[derive(Debug, Clone)]
+use expressions::*;
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Program {
 	pub statements: Vec<Statement>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
 	VariableDefine {
 		name: String,
-		value: Option<expressions::Expression>
+		value: Option<Expression>
 	},
 
 	VariableAssign {
 		name: String,
-		value: expressions::Expression
+		value: Expression
 	},
 
 	DoBlock(Vec<Statement>),
-	Return(Option<expressions::Expression>),
-	Call(expressions::Call),
+	Return(Option<Expression>),
+	Call(Call),
 
 	WhileLoop {
-		condition: expressions::Expression,
+		condition: Expression,
 		statements: Vec<Statement>
+	},
+
+	Break,
+
+	If {
+		condition: Expression,
+		statements: Vec<Statement>,
+		elseif_branches: Vec<ConditionBranch>,
+		else_branch: Option<ConditionBranch>
 	}
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConditionBranch {
+	pub condition: Expression,
+	pub statements: Vec<Statement>
+}
+
 pub mod expressions {
-	#[derive(Debug, Clone)]
+	#[derive(Debug, Clone, PartialEq)]
 	pub enum Expression {
 		Unary(Unary),
 		Binary(Binary),
-		Term(Term)
+		Term(Term),
+		Empty
 	}
 
-	#[derive(Debug, Clone)]
+	#[derive(Debug, Clone, PartialEq)]
 	pub struct Unary {
 		pub operator: operators::UnaryOperator,
 		pub operand: Term
 	}
 
-	#[derive(Debug, Clone)]
+	#[derive(Debug, Clone, PartialEq)]
 	pub struct Binary {
 		pub lhs: Term,
 		pub operator: operators::BinaryOperator,
 		pub rhs: Term
 	}
 
-	#[derive(Debug, Clone)]
+	#[derive(Debug, Clone, PartialEq)]
 	pub enum Term {
 		Call(Call),
 		Function(Function),
@@ -55,19 +73,19 @@ pub mod expressions {
 		Expression(Box<Expression>)
 	}
 
-	#[derive(Debug, Clone)]
+	#[derive(Debug, Clone, PartialEq)]
 	pub struct Call {
 		pub arguments: Vec<Expression>,
 		pub function: Box<Expression>
 	}
 
-	#[derive(Debug, Clone)]
+	#[derive(Debug, Clone, PartialEq)]
 	pub struct Function {
 		pub arguments: Vec<String>,
 		pub statements: Vec<super::Statement>
 	}
 
-	#[derive(Debug, Clone)]
+	#[derive(Debug, Clone, PartialEq)]
 	pub enum Literal {
 		Boolean(bool),
 		String(String),
@@ -75,7 +93,7 @@ pub mod expressions {
 	}
 
 	pub mod operators {
-		#[derive(Debug, Clone, Copy)]
+		#[derive(Debug, Clone, Copy, PartialEq)]
 		pub enum BinaryOperator {
 			Plus,
 			Minus,
@@ -92,7 +110,7 @@ pub mod expressions {
 			Lte
 		}
 
-		#[derive(Debug, Clone, Copy)]
+		#[derive(Debug, Clone, Copy, PartialEq)]
 		pub enum UnaryOperator {
 			Minus,
 			Not
