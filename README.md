@@ -58,7 +58,7 @@ def main = func() do
 		counter -> print
 	end
 
-	text_to_print -> print
+	(text_to_print) -> print
 	(calculated_stuff, "+", counter, "=", calculated_stuff + counter) -> print
 end
 ```

@@ -27,7 +27,7 @@ fn main() {
 	let args = Cli::parse();
 
 	let contents = read_file(&args.file_path);
-	let ast = parse(&contents).expect("infallible");
+	let ast = parse(&contents).unwrap();
 
 	dbg!(ast);
 }

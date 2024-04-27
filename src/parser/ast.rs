@@ -13,7 +13,11 @@ pub enum Statement {
 	VariableAssign {
 		name: String,
 		value: expressions::Expression
-	}
+	},
+
+	DoBlock(Vec<Statement>),
+	Return(Option<expressions::Expression>),
+	Call(expressions::Call)
 }
 
 pub mod expressions {
@@ -39,9 +43,23 @@ pub mod expressions {
 
 	#[derive(Debug, Clone)]
 	pub enum Term {
+		Call(Call),
+		Function(Function),
 		Literal(Literal),
 		Identifier(String),
 		Expression(Box<Expression>)
+	}
+
+	#[derive(Debug, Clone)]
+	pub struct Call {
+		pub arguments: Vec<Expression>,
+		pub function: Box<Expression>
+	}
+
+	#[derive(Debug, Clone)]
+	pub struct Function {
+		pub arguments: Vec<String>,
+		pub statements: Vec<super::Statement>
 	}
 
 	#[derive(Debug, Clone)]
@@ -78,35 +96,23 @@ pub mod expressions {
 }
 
 // implementations
-impl From<expressions::Literal> for expressions::Term {
-	fn from(value: expressions::Literal) -> Self {
-		Self::Literal(value)
-	}
+macro_rules! impl_basic_conv {
+	(from $from:ty => $for:ty as $variant:ident $({ $preproc:path })?) => {
+		impl From<$from> for $for {
+			fn from(value: $from) -> Self {
+				Self::$variant(
+					$( $preproc )? (value)
+				)
+			}
+		}
+	};
 }
 
-impl From<expressions::Expression> for expressions::Term {
-	fn from(value: expressions::Expression) -> Self {
-		Self::Expression(
-			Box::new(value)
-		)
-	}
-}
-
-impl From<expressions::Unary> for expressions::Term {
-	fn from(value: expressions::Unary) -> Self {
-		Self::from(
-			expressions::Expression::Unary(value)
-		)
-	}
-}
-
-impl From<expressions::Binary> for expressions::Term {
-	fn from(value: expressions::Binary) -> Self {
-		Self::from(
-			expressions::Expression::Binary(value)
-		)
-	}
-}
+impl_basic_conv!(from expressions::Function => expressions::Term as Function);
+impl_basic_conv!(from expressions::Literal => expressions::Term as Literal);
+impl_basic_conv!(from expressions::Expression => expressions::Term as Expression { Box::new });
+impl_basic_conv!(from expressions::Unary => expressions::Term as from { expressions::Expression::Unary });
+impl_basic_conv!(from expressions::Binary => expressions::Term as from { expressions::Expression::Binary });
 
 impl Into<expressions::Expression> for expressions::Term {
 	fn into(self) -> expressions::Expression {
@@ -116,6 +122,9 @@ impl Into<expressions::Expression> for expressions::Term {
 		}
 	}
 }
+
+impl_basic_conv!(from expressions::Call => Statement as Call);
+impl_basic_conv!(from expressions::Call => expressions::Term as Call);
 
 impl expressions::operators::BinaryOperator {
 	pub fn get_precedence(&self) -> u8 {
