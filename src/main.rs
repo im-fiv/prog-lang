@@ -26,8 +26,8 @@ fn read_file(path: &str) -> String {
 fn main() {
 	let args = Cli::parse();
 
-    let contents = read_file(&args.file_path);
-    let ast = parse(&contents).expect("infallible");
+	let contents = read_file(&args.file_path);
+	let ast = parse(&contents).expect("infallible");
 
 	dbg!(ast);
 }
