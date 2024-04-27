@@ -43,17 +43,18 @@ impl Interpreter {
 		match statement {
 			ast::Statement::VariableDefine { name, value } => self.execute_variable_define(name, value),
 			ast::Statement::VariableAssign { name, value } => self.execute_variable_assign(name, value),
-			
 			ast::Statement::DoBlock(statements) => self.execute_do_block(statements),
+
 			ast::Statement::Return(expression) => match expression {
 				Some(expression) => self.evaluate_expression(expression),
 				None => Ok(RuntimeValue::Empty)
 			},
+
 			ast::Statement::Call(call) => self.evaluate_call(call),
-
 			ast::Statement::WhileLoop { condition, statements } => self.execute_while_loop(condition, statements),
+			ast::Statement::Break => self.execute_break(),
 
-			_ => todo!()
+			ast::Statement::If { condition, statements, elseif_branches, else_branch } => self.execute_if(condition, statements, elseif_branches, else_branch)
 		}
 	}
 
@@ -75,25 +76,67 @@ impl Interpreter {
 	}
 
 	fn execute_do_block(&mut self, statements: Vec<ast::Statement>) -> Result<RuntimeValue> {
-		self.context.set_write_to_temp(true);
+		self.context.deeper();
 		let result = self.execute(ast::Program { statements });
-		self.context.set_write_to_temp(false);
+		self.context.shallower();
 
 		result
 	}
 
 	fn execute_while_loop(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>) -> Result<RuntimeValue> {
-		self.context.set_write_to_temp(true);
-		
 		let mut evaluated = self.evaluate_expression(condition.clone())?;
 
 		while self.is_value_truthy(&evaluated) {
+			self.context.deeper();
 			self.execute(ast::Program { statements: statements.clone() })?;
+			self.context.shallower();
+
 			evaluated = self.evaluate_expression(condition.clone())?;
 		}
 
-		self.context.set_write_to_temp(false);
 		Ok(RuntimeValue::Empty)
+	}
+
+	fn execute_if(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>, elseif_branches: Vec<ast::ConditionBranch>, else_branch: Option<ast::ConditionBranch>) -> Result<RuntimeValue> {
+		let evaluated = self.evaluate_expression(condition)?;
+
+		if self.is_value_truthy(&evaluated) {
+			self.context.deeper();
+			self.execute(ast::Program { statements })?;
+			self.context.shallower();
+
+			return Ok(RuntimeValue::Empty);
+		}
+
+		for branch in elseif_branches {
+			let evaluated = self.evaluate_expression(branch.condition)?; 
+
+			if self.is_value_truthy(&evaluated) {
+				self.context.deeper();
+				self.execute(ast::Program { statements: branch.statements })?;
+				self.context.shallower();
+
+				return Ok(RuntimeValue::Empty);
+			}
+		}
+
+		if let Some(branch) = else_branch {
+			let evaluated = self.evaluate_expression(branch.condition)?; 
+
+			if self.is_value_truthy(&evaluated) {
+				self.context.deeper();
+				self.execute(ast::Program { statements: branch.statements })?;
+				self.context.shallower();
+
+				return Ok(RuntimeValue::Empty);
+			}
+		}
+
+		Ok(RuntimeValue::Empty)
+	}
+
+	fn execute_break(&self) -> Result<RuntimeValue> {
+		todo!();
 	}
 
 	fn is_value_truthy(&self, rv: &RuntimeValue) -> bool {
@@ -214,9 +257,9 @@ impl Interpreter {
 		let expression = self.evaluate_expression(*call.function)?;
 
 		if let RuntimeValue::IntrinsicFunction(function) = expression {
-			self.context.set_write_to_temp(true);
+			self.context.deeper();
 			let result = function(&mut self.context, call_arguments);
-			self.context.set_write_to_temp(false);
+			self.context.shallower();
 
 			return result;
 		}
@@ -228,9 +271,8 @@ impl Interpreter {
 				let word = if call_arguments.len() < function.arguments.len() { "few" } else { "many" };
 				bail!("Too {} arguments in function call {}", word, expected_str);
 			}
-
-			self.context.set_write_to_temp(true);
 			
+			self.context.deeper();
 			for (index, (arg_name, arg_value)) in zip(function.arguments, call_arguments).enumerate() {
 				if self.context.key_real(&arg_name) {
 					bail!("Name of argument #{} conflicts with variable name '{}'", index + 1, arg_name);
@@ -240,7 +282,7 @@ impl Interpreter {
 			}
 
 			let result = self.execute(ast::Program { statements: function.statements });
-			self.context.set_write_to_temp(false);
+			self.context.shallower();
 
 			result
 		} else {
