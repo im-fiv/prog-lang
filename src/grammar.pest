@@ -1,7 +1,7 @@
 // base grammar
 program = { SOI ~ statement* ~ EOI }
 identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* ~ !keywords }
-keywords = { "true" | "false" | "def" | "func" | "do" | "end" | "return" }
+keywords = { "true" | "false" | "def" | "func" | "do" | "end" | "return" | "while" | "break" }
 
 // statements
 statement = _{
@@ -9,13 +9,17 @@ statement = _{
 	var_assign_stmt |
 	do_block |
 	return_stmt |
-	call
+	call |
+	while_stmt |
+	break_stmt
 }
 
 var_define_stmt = { "def" ~ identifier ~ ("=" ~ expression)? }
 var_assign_stmt = { identifier ~ "=" ~ expression }
 do_block = { "do" ~ statement* ~ "end" }
 return_stmt = { "return" ~ expression? }
+while_stmt = { "while" ~ expression ~ do_block }
+break_stmt = { "break" }
 
 // operators
 unary_operator = { "-" | "!" }

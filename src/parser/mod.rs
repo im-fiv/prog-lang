@@ -13,6 +13,47 @@ use pest::Parser;
 #[grammar = "grammar.pest"]
 struct PestParser;
 
+macro_rules! assert_rule {
+	($var:ident == $rule:ident $(| $rest:ident)* in $main_pair:expr) => {
+		if !matches!($var.as_rule(), Rule::$rule $(| Rule::$rest)*) {
+			let expected_str = assert_rule!(format_expected $rule $(, $rest)*);
+
+			error!(
+				"invalid pair of type '{:?}' in '{:?}' (expected {})", $var.as_span(),
+				$var.as_rule(),
+				$main_pair.as_rule(),
+				expected_str
+			);
+		}
+	};
+
+	(format_expected $rule:ident $(, $rest:ident)*) => {
+		[
+			format!("'{:?}'", Rule::$rule)
+			$(, format!(", '{:?}'", Rule::$rest))*
+		].concat()
+	};
+}
+
+macro_rules! get_pair_safe {
+	(from $pairs:ident expect $rule:ident $(| $rest:ident)* in $main_pair:expr) => {
+		{
+			let expected_str = assert_rule!(format_expected $rule $(, $rest)*);
+
+			let next_pair = $pairs
+				.next()
+				.unwrap_or_else(|| error!(
+					"pair of type {} is missing in '{:?}'",
+					$main_pair.as_span(),
+					expected_str,
+					$main_pair.as_rule()
+				));
+
+			next_pair
+		}
+	};
+}
+
 fn pair_into_string(pair: Pair<'_, Rule>) -> String {
 	String::from(pair.as_span().as_str())
 }
@@ -48,6 +89,7 @@ fn parse_statements(pairs: Pairs<'_, Rule>) -> Vec<Statement> {
 			Rule::do_block => parse_do_block(pair),
 			Rule::return_stmt => parse_return_stmt(pair),
 			Rule::call => parse_function_call(pair).into(),
+			Rule::while_stmt => parse_while_stmt(pair),
 
 			rule => error!("statement of type '{:?}' is not yet implemented", pair.as_span(), rule)
 		};
@@ -61,15 +103,15 @@ fn parse_statements(pairs: Pairs<'_, Rule>) -> Vec<Statement> {
 fn parse_var_define_stmt(pair: Pair<'_, Rule>) -> Statement {
 	let mut pairs = pair.clone().into_inner();
 
-	let name = pairs
-		.next()
-		.unwrap_or_else(|| error!("pair of type '{:?}' is missing in '{:?}'", pair.as_span(), Rule::identifier, pair.as_rule()));
+	let name = pair_into_string(
+		get_pair_safe!(from pairs expect identifier in pair)
+	);
 
 	let value = pairs.next();
 
 	if value.is_none() {
 		return Statement::VariableDefine {
-			name: pair_into_string(name),
+			name,
 			value: None
 		};
 	}
@@ -77,7 +119,7 @@ fn parse_var_define_stmt(pair: Pair<'_, Rule>) -> Statement {
 	let value = parse_expression(value.unwrap());
 
 	Statement::VariableDefine {
-		name: pair_into_string(name),
+		name,
 		value: Some(value)
 	}
 }
@@ -85,18 +127,16 @@ fn parse_var_define_stmt(pair: Pair<'_, Rule>) -> Statement {
 fn parse_var_assign_stmt(pair: Pair<'_, Rule>) -> Statement {
 	let mut pairs = pair.clone().into_inner();
 
-	let name = pairs
-		.next()
-		.unwrap_or_else(|| error!("pair of type '{:?}' is missing in '{:?}'", pair.as_span(), Rule::identifier, pair.as_rule()));
+	let name = pair_into_string(
+		get_pair_safe!(from pairs expect identifier in pair)
+	);
 
-	let value = pairs
-		.next()
-		.unwrap_or_else(|| error!("pair of type '{:?}' is missing in '{:?}'", pair.as_span(), Rule::expression, pair.as_rule()));
-
-	let value = parse_expression(value);
+	let value = parse_expression(
+		get_pair_safe!(from pairs expect expression in pair)
+	);
 
 	Statement::VariableAssign {
-		name: pair_into_string(name),
+		name,
 		value
 	}
 }
@@ -122,27 +162,16 @@ fn parse_function_call(pair: Pair<'_, Rule>) -> expressions::Call {
 	let mut pairs = pair.clone().into_inner();
 	let mut arguments: Vec<expressions::Expression> = vec![];
 
-	let next_pair = pairs
-		.next()
-		.unwrap_or_else(|| error!("pair of type '{:?}' or '{:?}' is missing from '{:?}'", pair.as_span(), Rule::call_body_empty, Rule::call_body_nonempty, pair.as_rule()));
-
-	if !matches!(next_pair.as_rule(), Rule::call_body_empty | Rule::call_body_nonempty) {
-		error!("invalid pair of type '{:?}' in '{:?}' (expected '{:?}' or '{:?}')", pair.as_span(), next_pair.as_rule(), pair.as_rule(), Rule::call_body_empty, Rule::call_body_nonempty)
-	}
+	let next_pair = get_pair_safe!(from pairs expect call_body_empty | call_body_nonempty in pair);
 
 	if next_pair.as_rule() == Rule::call_body_nonempty {
 		arguments = parse_function_call_args(next_pair);
 	}
 
-	let function_pair = pairs
-		.next()
-		.unwrap_or_else(|| error!("pair of type '{:?}' is missing from '{:?}'", pair.as_span(), Rule::expression, pair.as_rule()));
+	let function = parse_expression(
+		get_pair_safe!(from pairs expect expression in pair)
+	);
 
-	if function_pair.as_rule() != Rule::expression {
-		error!("invalid pair of type '{:?}' in '{:?}' (expected '{:?}')", function_pair.as_span(), function_pair.as_rule(), pair.as_rule(), Rule::expression);
-	}
-
-	let function = parse_expression(function_pair);
 	expressions::Call { arguments, function: Box::new(function) }
 }
 
@@ -151,14 +180,25 @@ fn parse_function_call_args(pair: Pair<'_, Rule>) -> Vec<expressions::Expression
 	let mut arguments = vec![];
 
 	for arg_pair in pairs {
-		if arg_pair.as_rule() != Rule::expression {
-			error!("invalid pair of type '{:?}' in '{:?}' (expected '{:?}')", arg_pair.as_span(), arg_pair.as_rule(), pair.as_rule(), Rule::expression);
-		}
-
+		assert_rule!(arg_pair == expression in pair);
 		arguments.push(parse_expression(arg_pair));
 	}
 
 	arguments
+}
+
+fn parse_while_stmt(pair: Pair<'_, Rule>) -> Statement {
+	let mut pairs = pair.clone().into_inner();
+
+	let condition = parse_expression(
+		get_pair_safe!(from pairs expect expression in pair)
+	);
+
+	let statements = parse_statements(
+		get_pair_safe!(from pairs expect do_block in pair).into_inner()
+	);
+
+	Statement::WhileLoop { condition, statements }
 }
 
 fn is_term(pair: Pair<'_, Rule>) -> bool {
@@ -234,23 +274,13 @@ fn parse_term(pair: Pair<'_, Rule>) -> expressions::Term {
 
 fn parse_function(pair: Pair<'_, Rule>) -> expressions::Function {
 	let mut pairs = pair.clone().into_inner();
-
-	let mut next_pair = pairs
-		.next()
-		.unwrap_or_else(|| error!("pair of type '{:?}' or '{:?}' is missing in '{:?}'", pair.as_span(), Rule::function_def_args, Rule::do_block, pair.as_rule()));
-
 	let mut arguments = vec![];
+
+	let mut next_pair = get_pair_safe!(from pairs expect function_def_args | do_block in pair);
 
 	if next_pair.as_rule() == Rule::function_def_args {
 		arguments = parse_function_def_args(next_pair);
-
-		next_pair = pairs
-			.next()
-			.unwrap_or_else(|| error!("pair of type '{:?}' is missing in '{:?}'", pair.as_span(), Rule::do_block, pair.as_rule()));
-	}
-
-	if next_pair.as_rule() != Rule::do_block {
-		error!("invalid pair of type '{:?}' in '{:?}' (expected '{:?}')", next_pair.as_span(), next_pair.as_rule(), pair.as_rule(), Rule::do_block)
+		next_pair = get_pair_safe!(from pairs expect do_block in pair);
 	}
 
 	// we don't call `parse_do_block` because it's a pain in the ass to extract the statements from there
@@ -264,10 +294,7 @@ fn parse_function_def_args(pair: Pair<'_, Rule>) -> Vec<String> {
 	let mut arguments = vec![];
 
 	for arg_pair in pairs {
-		if arg_pair.as_rule() != Rule::identifier {
-			error!("invalid pair of type '{:?}' in '{:?}' (expected '{:?}')", pair.as_span(), arg_pair.as_rule(), pair.as_rule(), Rule::identifier)
-		}
-
+		assert_rule!(arg_pair == identifier in pair);
 		arguments.push(pair_into_string(arg_pair));
 	}
 
@@ -291,19 +318,13 @@ fn parse_expression(pair: Pair<'_, Rule>) -> expressions::Expression {
 fn parse_unary_expression(pair: Pair<Rule>) -> expressions::Unary {
 	let mut pairs = pair.clone().into_inner();
 
-	let operator_pair = pairs
-		.next()
-		.unwrap_or_else(|| error!("pair of type '{:?}' is missing in '{:?}'", pair.as_span(), Rule::unary_operator, pair.as_rule()));
-
 	let operator = expressions::operators::UnaryOperator::try_from(
-		pair_into_string(operator_pair)
+		pair_into_string(get_pair_safe!(from pairs expect unary_operator in pair))
 	).unwrap();
 
-	let operand_pair = pairs
-		.next()
-		.unwrap_or_else(|| error!("pair of type '{:?}' is missing in '{:?}'", pair.as_span(), Rule::term, pair.as_rule()));
-
-	let operand = parse_term(operand_pair);
+	let operand = parse_term(
+		get_pair_safe!(from pairs expect term in pair)
+	);
 
 	expressions::Unary {
 		operator,
@@ -312,20 +333,19 @@ fn parse_unary_expression(pair: Pair<Rule>) -> expressions::Unary {
 }
 
 fn parse_literal(pair: Pair<Rule>) -> expressions::Literal {
+	assert_rule!(pair == number_literal | string_literal | boolean_literal in pair);
+
 	match pair.as_rule() {
 		Rule::number_literal => parse_number_literal(pair),
 		Rule::string_literal => parse_string_literal(pair),
 		Rule::boolean_literal => parse_boolean_literal(pair),
 
-		rule => error!("expected number or string literal, got '{:?}'", pair.as_span(), rule)
+		_ => unreachable!()
 	}
 }
 
 fn parse_identifier(pair: Pair<Rule>) -> expressions::Term {
-	if pair.as_rule() != Rule::identifier {
-		error!("expected '{:?}', got '{:?}'", pair.as_span(), Rule::identifier, pair.as_rule());
-	}
-
+	assert_rule!(pair == identifier in pair);
 	expressions::Term::Identifier(pair_into_string(pair))
 }
 

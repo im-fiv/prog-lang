@@ -54,8 +54,8 @@ def main = func() do
 	def counter = 0
 
 	while calculated_stuff + counter < 15 do
-		counter += 1
-		counter -> print
+		counter = counter + 1
+		(counter) -> print
 	end
 
 	(text_to_print) -> print

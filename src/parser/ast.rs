@@ -17,7 +17,12 @@ pub enum Statement {
 
 	DoBlock(Vec<Statement>),
 	Return(Option<expressions::Expression>),
-	Call(expressions::Call)
+	Call(expressions::Call),
+
+	WhileLoop {
+		condition: expressions::Expression,
+		statements: Vec<Statement>
+	}
 }
 
 pub mod expressions {
