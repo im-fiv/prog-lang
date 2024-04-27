@@ -1,2 +1,2 @@
-def a = "hello, world!"
-a = "bye, world!"
+def a = 2 + 2 * 2
+a = 69

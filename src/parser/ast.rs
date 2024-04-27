@@ -1,59 +1,50 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Program {
-	pub statements: Vec<statements::Statement>
+	pub statements: Vec<Statement>
 }
 
-pub mod statements {
-    use super::expressions;
+#[derive(Debug, Clone)]
+pub enum Statement {
+	VariableDefine {
+		name: String,
+		value: Option<expressions::Expression>
+	},
 
-	#[derive(Debug)]
-	pub enum Statement {
-		VariableDefine(VariableDefine),
-		VariableAssign(VariableAssign)
-	}
-
-	#[derive(Debug)]
-	pub struct VariableDefine {
-		pub name: String,
-		pub value: Option<expressions::Expression>
-	}
-
-	#[derive(Debug)]
-	pub struct VariableAssign {
-		pub name: String,
-		pub value: expressions::Expression
+	VariableAssign {
+		name: String,
+		value: expressions::Expression
 	}
 }
 
 pub mod expressions {
-	#[derive(Debug)]
+	#[derive(Debug, Clone)]
 	pub enum Expression {
 		Unary(Unary),
 		Binary(Binary),
 		Term(Term)
 	}
 
-	#[derive(Debug)]
+	#[derive(Debug, Clone)]
 	pub struct Unary {
 		pub operator: operators::UnaryOperator,
-		pub operand: Box<Expression>
+		pub operand: Term
 	}
 
-	#[derive(Debug)]
+	#[derive(Debug, Clone)]
 	pub struct Binary {
-		pub lhs: Box<Expression>,
+		pub lhs: Term,
 		pub operator: operators::BinaryOperator,
-		pub rhs: Box<Expression>
+		pub rhs: Term
 	}
 
-	#[derive(Debug)]
+	#[derive(Debug, Clone)]
 	pub enum Term {
 		Literal(Literal),
 		Identifier(String),
 		Expression(Box<Expression>)
 	}
 
-	#[derive(Debug)]
+	#[derive(Debug, Clone)]
 	pub enum Literal {
 		Boolean(bool),
 		String(String),
@@ -61,7 +52,7 @@ pub mod expressions {
 	}
 
 	pub mod operators {
-		#[derive(Debug)]
+		#[derive(Debug, Clone, Copy)]
 		pub enum BinaryOperator {
 			Plus,
 			Minus,
@@ -78,7 +69,7 @@ pub mod expressions {
 			Lte
 		}
 
-		#[derive(Debug)]
+		#[derive(Debug, Clone, Copy)]
 		pub enum UnaryOperator {
 			Minus,
 			Not
@@ -87,6 +78,45 @@ pub mod expressions {
 }
 
 // implementations
+impl From<expressions::Literal> for expressions::Term {
+	fn from(value: expressions::Literal) -> Self {
+		Self::Literal(value)
+	}
+}
+
+impl From<expressions::Expression> for expressions::Term {
+	fn from(value: expressions::Expression) -> Self {
+		Self::Expression(
+			Box::new(value)
+		)
+	}
+}
+
+impl From<expressions::Unary> for expressions::Term {
+	fn from(value: expressions::Unary) -> Self {
+		Self::from(
+			expressions::Expression::Unary(value)
+		)
+	}
+}
+
+impl From<expressions::Binary> for expressions::Term {
+	fn from(value: expressions::Binary) -> Self {
+		Self::from(
+			expressions::Expression::Binary(value)
+		)
+	}
+}
+
+impl Into<expressions::Expression> for expressions::Term {
+	fn into(self) -> expressions::Expression {
+		match self {
+			Self::Expression(expression) => *expression,
+			_ => expressions::Expression::Term(self)
+		}
+	}
+}
+
 impl expressions::operators::BinaryOperator {
 	pub fn get_precedence(&self) -> u8 {
 		match self {

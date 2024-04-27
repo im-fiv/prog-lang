@@ -34,7 +34,7 @@ fn transform_ast(pairs: Pairs<'_, Rule>) -> Program {
 	unreachable!("AST does not have a Program rule")
 }
 
-fn parse_statements(pairs: Pairs<'_, Rule>) -> Vec<statements::Statement> {
+fn parse_statements(pairs: Pairs<'_, Rule>) -> Vec<Statement> {
 	let mut statements = vec![];
 
 	for pair in pairs {
@@ -55,7 +55,7 @@ fn parse_statements(pairs: Pairs<'_, Rule>) -> Vec<statements::Statement> {
 	statements
 }
 
-fn parse_var_define_stmt(pair: Pair<'_, Rule>) -> statements::Statement {
+fn parse_var_define_stmt(pair: Pair<'_, Rule>) -> Statement {
 	let mut pairs = pair.clone().into_inner();
 
 	let name = pairs
@@ -65,25 +65,21 @@ fn parse_var_define_stmt(pair: Pair<'_, Rule>) -> statements::Statement {
 	let value = pairs.next();
 
 	if value.is_none() {
-		return statements::Statement::VariableDefine(
-			statements::VariableDefine {
-				name: pair_into_string(name),
-				value: None
-			}
-		);
+		return Statement::VariableDefine {
+			name: pair_into_string(name),
+			value: None
+		};
 	}
 
 	let value = parse_expression(value.unwrap());
 
-	statements::Statement::VariableDefine(
-		statements::VariableDefine {
-			name: pair_into_string(name),
-			value: Some(value)
-		}
-	)
+	Statement::VariableDefine {
+		name: pair_into_string(name),
+		value: Some(value)
+	}
 }
 
-fn parse_var_assign_stmt(pair: Pair<'_, Rule>) -> statements::Statement {
+fn parse_var_assign_stmt(pair: Pair<'_, Rule>) -> Statement {
 	let mut pairs = pair.clone().into_inner();
 
 	let name = pairs
@@ -96,12 +92,10 @@ fn parse_var_assign_stmt(pair: Pair<'_, Rule>) -> statements::Statement {
 
 	let value = parse_expression(value);
 
-	statements::Statement::VariableAssign(
-		statements::VariableAssign {
-			name: pair_into_string(name),
-			value
-		}
-	)
+	Statement::VariableAssign {
+		name: pair_into_string(name),
+		value
+	}
 }
 
 fn is_term(pair: Pair<'_, Rule>) -> bool {
@@ -124,40 +118,83 @@ fn parse_expression(pair: Pair<'_, Rule>) -> expressions::Expression {
 	parse_expression_with_precedence(&mut pairs, 0)
 }
 
-fn get_operator_precedence(pair: &Pair<Rule>) -> u8 {
+fn get_bin_op_from_pair(pair: &Pair<'_, Rule>) -> expressions::operators::BinaryOperator {
 	expressions::operators::BinaryOperator::try_from(
 		pair.as_str().to_owned()
-	).unwrap().get_precedence()
+	).unwrap()
 }
 
 fn parse_expression_with_precedence(pairs: &mut Peekable<Pairs<Rule>>, precedence: u8) -> expressions::Expression {
-	todo!()
+	if pairs.len() < 1 {
+		unreachable!("Failed to parse expression: pairs are empty");
+	}
+
+	let left_pair = pairs
+		.next()
+		.unwrap();
+
+	let mut left = parse_term(left_pair);
+
+	while let Some(pair) = pairs.peek() {
+		if pair.as_rule() == Rule::binary_operator {
+			let operator = get_bin_op_from_pair(pair);
+			let operator_precedence = operator.get_precedence();
+			
+			if operator_precedence < precedence {
+				break;
+			}
+			
+			// Consume the operator
+			pairs.next();
+
+			let right = parse_expression_with_precedence(pairs, operator_precedence + 1);
+
+			left = expressions::Expression::Binary(
+				expressions::Binary {
+					lhs: left.clone(),
+					operator,
+					rhs: right.into()
+				}
+			).into()
+		} else {
+			break;
+		}
+	}
+
+	left.try_into().unwrap()
 }
 
 fn parse_unary_expression(pair: Pair<Rule>) -> expressions::Unary {
-	let mut pairs = pair.into_inner();
+	let mut pairs = pair.clone().into_inner();
 
-	// let operator = parse_unary_operator(&pairs.next().expect("Failed to parse unary expression: no operator is present"));
-	// let operand = parse_expression(pairs.next().expect("Failed to parse unary expression: no operand is present"));
-
-	let operator = pairs
+	let operator_pair = pairs
 		.next()
 		.unwrap_or_else(|| error!("pair of type '{:?}' is missing in '{:?}'", pair.as_span(), Rule::unary_operator, pair.as_rule()));
 
+	let operator = expressions::operators::UnaryOperator::try_from(
+		pair_into_string(operator_pair)
+	).unwrap();
+
+	let operand_pair = pairs
+		.next()
+		.unwrap_or_else(|| error!("pair of type '{:?}' is missing in '{:?}'", pair.as_span(), Rule::term, pair.as_rule()));
+
+	let operand = parse_term(operand_pair);
+
 	expressions::Unary {
 		operator,
-		operand: Box::new(operand)
+		operand
 	}
 }
 
 fn parse_term(pair: Pair<'_, Rule>) -> expressions::Term {
 	match pair.as_rule() {
-		Rule::unary_expression => parse_unary_expression(pair),
-		Rule::binary_expression | Rule::expression => parse_expression(pair),
+		Rule::unary_expression => parse_unary_expression(pair).into(),
+		Rule::binary_expression | Rule::expression => parse_expression(pair).into(),
 
 		Rule::number_literal |
 		Rule::string_literal |
-		Rule::boolean_literal => parse_literal(pair),
+		Rule::boolean_literal => parse_literal(pair).into(),
 
 		Rule::identifier => parse_identifier(pair),
 
