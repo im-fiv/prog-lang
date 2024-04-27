@@ -1,7 +1,10 @@
-mod cli;
+pub mod interpreter;
+pub mod cli;
+
+use interpreter::Interpreter;
 use cli::Cli;
 
-mod parser;
+pub mod parser;
 use parser::parse;
 
 use std::fs::File;
@@ -28,6 +31,8 @@ fn main() {
 
 	let contents = read_file(&args.file_path);
 	let ast = parse(&contents).unwrap();
+	let mut interpreter = Interpreter::new();
+	let result = interpreter.execute(ast).unwrap();
 
-	dbg!(ast);
+	dbg!(result);
 }

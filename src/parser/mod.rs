@@ -1,4 +1,4 @@
-mod ast;
+pub mod ast;
 mod errors;
 
 use ast::*;
@@ -321,7 +321,7 @@ fn parse_expression_with_precedence(pairs: &mut Peekable<Pairs<Rule>>, precedenc
 		).into()
 	}
 
-	left.try_into().unwrap()
+	left.into()
 }
 
 fn parse_term(pair: Pair<'_, Rule>) -> expressions::Term {
@@ -459,7 +459,7 @@ fn parse_boolean_literal(pair: Pair<Rule>) -> expressions::Literal {
 }
 
 pub fn parse(source: &str) -> Result<Program> {
-	let tt = PestParser::parse(Rule::program, &source)?;
+	let tt = PestParser::parse(Rule::program, source)?;
 	let ast = transform_ast(tt);
 
 	Ok(ast)

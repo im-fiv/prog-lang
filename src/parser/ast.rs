@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use expressions::*;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -131,25 +132,25 @@ macro_rules! impl_basic_conv {
 	};
 }
 
-impl_basic_conv!(from expressions::Function => expressions::Term as Function);
-impl_basic_conv!(from expressions::Literal => expressions::Term as Literal);
-impl_basic_conv!(from expressions::Expression => expressions::Term as Expression { Box::new });
-impl_basic_conv!(from expressions::Unary => expressions::Term as from { expressions::Expression::Unary });
-impl_basic_conv!(from expressions::Binary => expressions::Term as from { expressions::Expression::Binary });
+impl_basic_conv!(from Function => Term as Function);
+impl_basic_conv!(from Literal => Term as Literal);
+impl_basic_conv!(from Expression => Term as Expression { Box::new });
+impl_basic_conv!(from Unary => Term as from { Expression::Unary });
+impl_basic_conv!(from Binary => Term as from { Expression::Binary });
 
-impl Into<expressions::Expression> for expressions::Term {
-	fn into(self) -> expressions::Expression {
-		match self {
-			Self::Expression(expression) => *expression,
-			_ => expressions::Expression::Term(self)
+impl From<Term> for Expression {
+	fn from(value: Term) -> Self {
+		match value {
+			Term::Expression(expression) => *expression,
+			_ => Expression::Term(value)
 		}
 	}
 }
 
-impl_basic_conv!(from expressions::Call => Statement as Call);
-impl_basic_conv!(from expressions::Call => expressions::Term as Call);
+impl_basic_conv!(from Call => Statement as Call);
+impl_basic_conv!(from Call => Term as Call);
 
-impl expressions::operators::BinaryOperator {
+impl operators::BinaryOperator {
 	pub fn get_precedence(&self) -> u8 {
 		match self {
 			Self::EqEq | Self::NotEq | Self::And | Self::Or | Self::Gt | Self::Lt | Self::Gte | Self::Lte => 1,
@@ -159,7 +160,7 @@ impl expressions::operators::BinaryOperator {
 	}
 }
 
-impl TryFrom<String> for expressions::operators::BinaryOperator {
+impl TryFrom<String> for operators::BinaryOperator {
 	type Error = String;
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -183,7 +184,7 @@ impl TryFrom<String> for expressions::operators::BinaryOperator {
 	}
 }
 
-impl TryFrom<String> for expressions::operators::UnaryOperator {
+impl TryFrom<String> for operators::UnaryOperator {
 	type Error = String;
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -192,6 +193,35 @@ impl TryFrom<String> for expressions::operators::UnaryOperator {
 			"!" => Ok(Self::Not),
 
 			op => Err(format!("Invalid unary operator '{op}'"))
+		}
+	}
+}
+
+impl Display for operators::BinaryOperator {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Plus => write!(f, "+"),
+			Self::Minus => write!(f, "-"),
+			Self::Divide => write!(f, "/"),
+			Self::Multiply => write!(f, "*"),
+			Self::Modulo => write!(f, "%"),
+			Self::EqEq => write!(f, "=="),
+			Self::NotEq => write!(f, "!="),
+			Self::And => write!(f, "&&"),
+			Self::Or => write!(f, "||"),
+			Self::Gt => write!(f, ">"),
+			Self::Lt => write!(f, "<"),
+			Self::Gte => write!(f, ">="),
+			Self::Lte => write!(f, "<="),
+		}
+	}
+}
+
+impl Display for operators::UnaryOperator {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Minus => write!(f, "-"),
+			Self::Not => write!(f, "!")
 		}
 	}
 }

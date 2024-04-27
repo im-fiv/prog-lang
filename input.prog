@@ -1,27 +1,3 @@
-def text_to_print = "hello, world!"
+def hello = func() do
 
-// all functions are first-class functions and can be treated as values
-def some_calculation = func(a, b, c) do
-	return a + b * c
-end
-
-def do_nothing = func() do
-	return void
-end
-
-def main = func() do
-	def calculated_stuff = (2, 2, 2) -> some_calculation
-	def counter = 0
-
-	while true do
-		counter = counter + 1
-		(counter) -> print
-
-		if calculated_stuff + counter < 15 then
-			break
-		end
-	end
-
-	(text_to_print) -> print
-	(calculated_stuff, "+", counter, "=", calculated_stuff + counter) -> print
 end

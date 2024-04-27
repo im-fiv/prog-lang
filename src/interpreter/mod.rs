@@ -1,0 +1,163 @@
+pub mod context;
+pub mod values;
+
+use context::RuntimeContext;
+use values::RuntimeValue;
+
+use crate::parser::ast;
+use anyhow::{Result, bail};
+
+use self::values::RuntimeFunction;
+
+#[derive(Debug)]
+pub struct Interpreter {
+	pub context: RuntimeContext
+}
+
+impl Default for Interpreter {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+impl Interpreter {
+	pub fn new() -> Self {
+		Self {
+			context: RuntimeContext::new()
+		}
+	}
+
+	pub fn execute(&mut self, ast: ast::Program) -> Result<RuntimeValue> {
+		for statement in ast.statements {
+			self.execute_statement(statement)?;
+		}
+
+		Ok(RuntimeValue::Empty)
+	}
+
+	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<RuntimeValue> {
+		match statement {
+			ast::Statement::VariableDefine { name, value } => self.execute_variable_define(name, value),
+
+			_ => todo!()
+		}
+	}
+
+	fn execute_variable_define(&mut self, name: String, value: Option<ast::expressions::Expression>) -> Result<RuntimeValue> {
+		let evaluated_value = match value {
+			None => RuntimeValue::Empty,
+			Some(expression) => self.evaluate_expression(expression)?
+		};
+
+		let evaluated_value = dbg!(evaluated_value);
+
+		self.context.insert_value(name, evaluated_value)?;
+		Ok(RuntimeValue::Empty)
+	}
+
+	fn evaluate_expression(&self, expression: ast::expressions::Expression) -> Result<RuntimeValue> {
+		use ast::expressions::*;
+		
+		match expression {
+			Expression::Unary(expression) => self.evaluate_unary_expression(expression.operator, expression.operand),
+			Expression::Binary(expression) => self.evaluate_binary_expression(expression.lhs, expression.operator, expression.rhs),
+			Expression::Term(term) => self.evaluate_term(term),
+			Expression::Empty => Ok(RuntimeValue::Empty)
+		}
+	}
+
+	fn evaluate_unary_expression(&self, operator: ast::expressions::operators::UnaryOperator, operand: ast::expressions::Term) -> Result<RuntimeValue> {
+		use ast::expressions::operators::UnaryOperator as Op;
+		use RuntimeValue as Rv;
+
+		let evaluated_operand = self.evaluate_term(operand)?;
+
+		match (operator, evaluated_operand) {
+			(Op::Minus, Rv::Number(value)) => Ok(Rv::Number(-value)),
+
+			(Op::Not, Rv::Boolean(value)) => Ok(Rv::Boolean(!value)),
+			(Op::Not, Rv::String(value)) => Ok(Rv::Boolean(value.is_empty())),
+			(Op::Not, Rv::Number(value)) => Ok(Rv::Boolean(value == 0.0)),
+			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(true)),
+
+		 	(operator, operand) => bail!("Cannot perform an unsupported unary operation '{}' on '{}'", operator, operand)
+		}
+	}
+
+	fn evaluate_binary_expression(&self, lhs: ast::expressions::Term, operator: ast::expressions::operators::BinaryOperator, rhs: ast::expressions::Term) -> Result<RuntimeValue> {
+		use ast::expressions::operators::BinaryOperator as Op;
+		use RuntimeValue as Rv;
+		
+		let evaluated_lhs = self.evaluate_term(lhs)?;
+		let evaluated_rhs = self.evaluate_term(rhs)?;
+
+		match (operator, evaluated_lhs, evaluated_rhs) {
+			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs + rhs)),
+			(Op::Minus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs - rhs)),
+			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs / rhs)),
+			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs * rhs)),
+			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs % rhs)),
+			(Op::Gt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs > rhs)),
+			(Op::Lt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs < rhs)),
+			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs >= rhs)),
+			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs <= rhs)),
+
+			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs && rhs)),
+			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs || rhs)),
+
+			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
+			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
+			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
+			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
+			(Op::EqEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(true)),
+
+			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
+			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
+			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
+			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
+			(Op::NotEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(false)),
+
+			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
+			(Op::NotEq, _, _) => Ok(Rv::Boolean(true)),
+
+			(operator, lhs, rhs) => bail!("Cannot perform an unsupported binary operation '{}' on '{}' and '{}'", operator, lhs, rhs)
+		}
+	}
+
+	fn evaluate_term(&self, term: ast::expressions::Term) -> Result<RuntimeValue> {
+		use ast::expressions::*;
+
+		match term {
+			Term::Call(value) => self.evaluate_call(value),
+			Term::Function(value) => self.evaluate_function(value),
+			Term::Literal(value) => Ok(value.into()),
+			Term::Identifier(value) => self.context.get_value(&value),
+			Term::Expression(value) => self.evaluate_expression(*value)
+		}
+	}
+
+	fn evaluate_function(&self, function: ast::expressions::Function) -> Result<RuntimeValue> {
+		Ok(RuntimeValue::Function(RuntimeFunction {
+			arguments: function.arguments,
+			statements: function.statements
+		}))
+	}
+
+	fn evaluate_call(&self, call: ast::expressions::Call) -> Result<RuntimeValue> {
+		let arguments = call
+			.arguments
+			.into_iter()
+			.map(|arg| self.evaluate_expression(arg))
+			.collect::<Result<Vec<RuntimeValue>>>()?;
+
+		let original_expression = *call.function.clone();
+		let expression = self.evaluate_expression(*call.function)?;
+
+		if let RuntimeValue::Function(function) = expression {
+			// TODO: call function
+			todo!()
+		} else {
+			bail!("Expression '{:?}' is not callable", original_expression);
+		}
+	}
+}

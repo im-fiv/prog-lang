@@ -29,7 +29,7 @@ if_stmt = { "if" ~ expression ~ "then" ~ statements ~ if_elseif* ~ if_else? ~ "e
 
 // operators
 unary_operator = { "-" | "!" }
-binary_operator = { "+" | "-" | "/" | "*" | "%" | "==" | "!=" | "&&" | "||" | ">" | "<" | ">=" | "<=" }
+binary_operator = { "+" | "-" | "/" | "*" | "%" | "==" | "!=" | "&&" | "||" | ">=" | "<=" | ">" | "<" }
 
 // expressions
 expression = { unary_expression | binary_expression | term }
@@ -49,9 +49,9 @@ function = { "func" ~ "(" ~ function_def_args? ~ ")" ~ do_block }
 // literals
 literal = _{ boolean_literal | string_literal | number_literal }
 
+boolean_literal = { "true" | "false" }
 string_literal = { "\"" ~ (!("\"") ~ ANY)* ~ "\"" }
 number_literal = @{ ("-"? ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* ~ ("." ~ ASCII_DIGIT+)?) | "0" }
-boolean_literal = { "true" | "false" }
 
 // ignored list
 line_comment = _{ "//" ~ (!"\n" ~ ANY)* ~ ("\n" | EOI) }
