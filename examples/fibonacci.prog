@@ -1,0 +1,30 @@
+def fibonacci = func(n) do
+	def a = 0
+	def b = 1
+	def c
+
+	if n == 0 then
+		return a
+	end
+
+	def i = 2
+
+	while i <= n do
+		c = a + b
+		a = b
+		b = c
+
+		i = i + 1
+	end
+
+	return b
+end
+
+def main = func(n) do
+	def number = (n) -> fibonacci
+	(n, "fibonacci number is", number) -> print
+
+	return number
+end
+
+return (25) -> main
