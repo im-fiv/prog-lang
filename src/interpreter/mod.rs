@@ -52,7 +52,7 @@ impl Interpreter {
 
 			ast::Statement::Call(call) => self.evaluate_call(call),
 			ast::Statement::WhileLoop { condition, statements } => self.execute_while_loop(condition, statements),
-			ast::Statement::Break => self.execute_break(),
+			ast::Statement::Break => unimplemented!("break"),
 
 			ast::Statement::If { condition, statements, elseif_branches, else_branch } => self.execute_if(condition, statements, elseif_branches, else_branch)
 		}
@@ -133,10 +133,6 @@ impl Interpreter {
 		}
 
 		Ok(RuntimeValue::Empty)
-	}
-
-	fn execute_break(&self) -> Result<RuntimeValue> {
-		todo!();
 	}
 
 	fn is_value_truthy(&self, rv: &RuntimeValue) -> bool {

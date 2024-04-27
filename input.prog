@@ -1,22 +1,25 @@
-def fibonacci = func(n) do
-	def a = 0
-	def b = 1
-	def c
-	def i = 2
+def text_to_print = "hello, world!"
 
-	if n == 0 then
-		return a
-	end
-
-	while i <= n do
-		c = a + b
-		a = b
-		b = c
-
-		i = i + 1
-	end
-
-	return b
+// all functions are first-class functions and can be treated as values
+def some_calculation = func(a, b, c) do
+	return a + b * c
 end
 
-(10) -> fibonacci
+def do_nothing = func() do
+	return void
+end
+
+def main = func() do
+	def calculated_stuff = (2, 2, 2) -> some_calculation
+	def counter = 0
+
+	while calculated_stuff + counter < 15 do
+		counter = counter + 1
+		(counter) -> print
+	end
+
+	(text_to_print) -> print
+	(calculated_stuff, "+", counter, "=", calculated_stuff + counter) -> print
+end
+
+() -> main

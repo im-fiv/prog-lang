@@ -57,16 +57,14 @@ def main = func() do
 	def calculated_stuff = (2, 2, 2) -> some_calculation
 	def counter = 0
 
-	while true do
+	while calculated_stuff + counter < 15 do
 		counter = counter + 1
 		(counter) -> print
-
-		if calculated_stuff + counter < 15 then
-			break
-		end
 	end
 
 	(text_to_print) -> print
 	(calculated_stuff, "+", counter, "=", calculated_stuff + counter) -> print
 end
+
+() -> main
 ```
