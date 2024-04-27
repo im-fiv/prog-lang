@@ -1,0 +1,38 @@
+// base grammar
+program = { SOI ~ statement* ~ EOI }
+identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* ~ !keywords }
+keywords = { "true" | "false" | "def" }
+
+// statements
+statement = _{
+	var_define_stmt |
+	var_assign_stmt
+}
+
+var_define_stmt = { "def" ~ identifier ~ ("=" ~ expression)? }
+var_assign_stmt = { identifier ~ "=" ~ expression }
+
+// operators
+unary_operator = { "-" | "!" }
+binary_operator = { "+" | "-" | "/" | "*" | "%" | "==" | "!=" | "&&" | "||" | ">" | "<" | ">=" | "<=" }
+
+// expressions
+expression = { unary_expression | binary_expression | term }
+	unary_expression = { unary_operator ~ term }
+	binary_expression = { term ~ (binary_operator ~ term)+ }
+
+term = _{ literal | identifier | "(" ~ expression ~ ")" }
+
+// literals
+literal = _{ boolean_literal | string_literal | number_literal }
+
+string_literal = { "\"" ~ (!("\"") ~ ANY)* ~ "\"" }
+number_literal = @{ ("-"? ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* ~ ("." ~ ASCII_DIGIT+)?) | "0" }
+boolean_literal = { "true" | "false" }
+
+// ignored list
+line_comment = _{ "//" ~ (!"\n" ~ ANY)* ~ ("\n" | EOI) }
+block_comment = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+
+COMMENT = _{ line_comment | block_comment }
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
