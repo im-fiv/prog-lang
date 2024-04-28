@@ -20,6 +20,8 @@ macro_rules! expect_type {
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeContext {
 	pub level: usize,
+	pub stdout: String,
+	pub no_con_stdout: bool,
 
 	pub value_table: HashMap<String, RuntimeValue>,
 	pub temp_table: Vec<HashMap<String, RuntimeValue>>
@@ -35,6 +37,8 @@ impl RuntimeContext {
 	pub fn new() -> Self {
 		Self {
 			level: 0,
+			stdout: String::new(),
+			no_con_stdout: false,
 
 			value_table: Self::create_value_table(),
 			temp_table: vec![HashMap::new()]
@@ -46,14 +50,19 @@ impl RuntimeContext {
 		let mut map = HashMap::new();
 
 		map.insert(String::from("print"), RuntimeValue::IntrinsicFunction(print_function, -1));
-		fn print_function(_context: &mut RuntimeContext, args: Vec<RuntimeValue>) -> Result<RuntimeValue> {
+		fn print_function(context: &mut RuntimeContext, args: Vec<RuntimeValue>) -> Result<RuntimeValue> {
 			let to_print = args
 				.into_iter()
 				.map(|arg| format!("{}", arg))
 				.collect::<Vec<String>>()
 				.join(" ");
 
-			println!("{to_print}");
+			context.stdout.push_str(&format!("{}\n", to_print)[..]);
+
+			if !context.no_con_stdout {
+				println!("{to_print}");
+			}
+
 			Ok(RuntimeValue::Empty)
 		}
 

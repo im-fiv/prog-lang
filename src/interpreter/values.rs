@@ -1,18 +1,24 @@
 use std::fmt::Display;
 use anyhow::Result;
+use serde::Serialize;
 
 use super::RuntimeContext;
 use crate::parser::ast;
 
 pub type IntrinsicFunctionPtr = fn(&mut RuntimeContext, Vec<RuntimeValue>) -> Result<RuntimeValue>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub enum RuntimeValue {
 	Boolean(bool),
 	String(String),
 	Number(f64),
+
+	#[serde(skip)]
 	Function(RuntimeFunction),
+	
+	#[serde(skip)]
 	IntrinsicFunction(IntrinsicFunctionPtr, i32),
+	
 	Empty
 }
 
