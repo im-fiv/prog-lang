@@ -3,6 +3,20 @@ use std::collections::HashMap;
 
 use super::RuntimeValue;
 
+macro_rules! expect_type {
+	(from $args:ident at $index:expr => $kind:ident) => {
+		{
+			let value = $args.get($index).unwrap().to_owned();
+
+			match value {
+				// this limitation can be later fixed if we want to be able to accept intrinsic functions
+				RuntimeValue::$kind(inner) => inner,
+				_ => bail!("Invalid argument #{} in a function call (expected {}, got {})", $index, stringify!($kind), value.kind())
+			}
+		}
+	};
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeContext {
 	pub level: usize,
@@ -31,7 +45,7 @@ impl RuntimeContext {
 	pub fn create_value_table() -> HashMap<String, RuntimeValue> {
 		let mut map = HashMap::new();
 
-		map.insert(String::from("print"), RuntimeValue::IntrinsicFunction(print_function));
+		map.insert(String::from("print"), RuntimeValue::IntrinsicFunction(print_function, -1));
 		fn print_function(_context: &mut RuntimeContext, args: Vec<RuntimeValue>) -> Result<RuntimeValue> {
 			let to_print = args
 				.into_iter()
@@ -41,6 +55,30 @@ impl RuntimeContext {
 
 			println!("{to_print}");
 			Ok(RuntimeValue::Empty)
+		}
+
+		// Note: there is no safeguard against cycle imports so the thread's stack will simply overflow
+		map.insert(String::from("import"), RuntimeValue::IntrinsicFunction(import_function, 1));
+		fn import_function(context: &mut RuntimeContext, args: Vec<RuntimeValue>) -> Result<RuntimeValue> {
+			let path_str = expect_type!(from args at 0 => String);
+			let mut path = std::path::Path::new(&path_str).to_path_buf();
+
+			if path.extension().is_none() {
+				path.set_extension("prog");
+			}
+
+			if !path.exists() {
+				bail!("Cannot find the specified file at path '{path_str}'");
+			}
+
+			let contents = crate::read_file(path.to_str().unwrap());
+			let ast = crate::parse(&contents)?;
+			let mut interpreter = crate::Interpreter::new();
+			interpreter.context = context.to_owned();
+			let result = interpreter.execute(ast)?;
+			*context = interpreter.context;
+
+			Ok(result)
 		}
 
 		map

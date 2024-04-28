@@ -1,0 +1,11 @@
+("[sqrt.prog] hello from sqrt.prog!") -> print
+
+def sqrt = func(num) do
+	def result = num * num
+	("[sqrt.prog] the squared value of", num, "is", result) -> print
+	
+	return result
+end
+
+("[sqrt.prog] returning exported function") -> print
+return sqrt

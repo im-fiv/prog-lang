@@ -143,7 +143,7 @@ impl Interpreter {
 			Rv::String(value) => value.is_empty(),
 			Rv::Number(value) => value == &0.0,
 			Rv::Function(_) => true,
-			Rv::IntrinsicFunction(_) => true,
+			Rv::IntrinsicFunction(..) => true,
 			Rv::Empty => false
 		}
 	}
@@ -172,7 +172,7 @@ impl Interpreter {
 			(Op::Not, Rv::String(value)) => Ok(Rv::Boolean(value.is_empty())),
 			(Op::Not, Rv::Number(value)) => Ok(Rv::Boolean(value == 0.0)),
 			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(false)),
-			(Op::Not, Rv::IntrinsicFunction(_)) => Ok(Rv::Boolean(false)),
+			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(false)),
 			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(false)),
 
 		 	(operator, operand) => bail!("Cannot perform an unsupported unary operation '{}' on '{}'", operator, operand)
@@ -204,14 +204,14 @@ impl Interpreter {
 			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
-			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
+			(Op::EqEq, Rv::IntrinsicFunction(lhs_a, lhs_b), Rv::IntrinsicFunction(rhs_a, rhs_b)) => Ok(Rv::Boolean((lhs_a == rhs_a) && (lhs_b == rhs_b))),
 			(Op::EqEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(true)),
 
 			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
-			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
+			(Op::NotEq, Rv::IntrinsicFunction(lhs_a, lhs_b), Rv::IntrinsicFunction(rhs_a, rhs_b)) => Ok(Rv::Boolean((lhs_a == rhs_a) && (lhs_b == rhs_b))),
 			(Op::NotEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(false)),
 
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
@@ -252,7 +252,17 @@ impl Interpreter {
 		let original_expression = *call.function.clone();
 		let expression = self.evaluate_expression(*call.function)?;
 
-		if let RuntimeValue::IntrinsicFunction(function) = expression {
+		if let RuntimeValue::IntrinsicFunction(function, num_args) = expression {
+			let expected_str = format!("(expected {} arguments, got {})", num_args, call_arguments.len());
+			
+			let got_len = call_arguments.len() as i32;
+			let expected_len = num_args;
+
+			if (expected_len != -1) && (got_len != expected_len) {
+				let word = if got_len < expected_len { "few" } else { "many" };
+				bail!("Too {} arguments in function call {}", word, expected_str);
+			}
+			
 			self.context.deeper();
 			let result = function(&mut self.context, call_arguments);
 			self.context.shallower();
@@ -262,9 +272,12 @@ impl Interpreter {
 
 		if let RuntimeValue::Function(function) = expression {
 			let expected_str = format!("(expected {} arguments, got {})", function.arguments.len(), call_arguments.len());
+
+			let got_len = call_arguments.len();
+			let expected_len = function.arguments.len();
 			
-			if call_arguments.len() != function.arguments.len() {
-				let word = if call_arguments.len() < function.arguments.len() { "few" } else { "many" };
+			if got_len != expected_len {
+				let word = if got_len < expected_len { "few" } else { "many" };
 				bail!("Too {} arguments in function call {}", word, expected_str);
 			}
 			

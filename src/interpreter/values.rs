@@ -4,13 +4,15 @@ use anyhow::Result;
 use super::RuntimeContext;
 use crate::parser::ast;
 
+pub type IntrinsicFunctionPtr = fn(&mut RuntimeContext, Vec<RuntimeValue>) -> Result<RuntimeValue>;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum RuntimeValue {
 	Boolean(bool),
 	String(String),
 	Number(f64),
 	Function(RuntimeFunction),
-	IntrinsicFunction(fn(&mut RuntimeContext, Vec<RuntimeValue>) -> Result<RuntimeValue>),
+	IntrinsicFunction(IntrinsicFunctionPtr, i32),
 	Empty
 }
 
@@ -18,6 +20,19 @@ pub enum RuntimeValue {
 pub struct RuntimeFunction {
 	pub arguments: Vec<String>,
 	pub statements: Vec<ast::Statement>
+}
+
+impl RuntimeValue {
+	pub fn kind(&self) -> String {
+		match self {
+			Self::Boolean(_) => "Boolean",
+			Self::String(_) => "String",
+			Self::Number(_) => "Number",
+			Self::Function(_) => "Function",
+			Self::IntrinsicFunction(..) => "IntrinsicFunction",
+			Self::Empty => "Void"
+		}.to_owned()
+	}
 }
 
 impl From<ast::expressions::Literal> for RuntimeValue {
@@ -38,8 +53,8 @@ impl Display for RuntimeValue {
 			Self::Boolean(value) => write!(f, "{}", if value.to_owned() { "true" } else { "false" }),
 			Self::String(value) => write!(f, "{value}"),
 			Self::Number(value) => write!(f, "{value}"),
-			Self::Function(_) => write!(f, "RuntimeFunction"),
-			Self::IntrinsicFunction(_) => write!(f, "IntrinsicFunction"),
+			Self::Function(_) => write!(f, "Function"),
+			Self::IntrinsicFunction(_, num_args) => write!(f, "IntrinsicFunction({num_args})"),
 			Self::Empty => write!(f, "")
 		}
 	}
