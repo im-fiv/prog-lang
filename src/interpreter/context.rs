@@ -21,7 +21,9 @@ macro_rules! expect_type {
 pub struct RuntimeContext {
 	pub level: usize,
 	pub stdout: String,
-	pub no_con_stdout: bool,
+
+	pub con_stdout_allowed: bool,
+	pub imports_allowed: bool,
 
 	pub value_table: HashMap<String, RuntimeValue>,
 	pub temp_table: Vec<HashMap<String, RuntimeValue>>
@@ -38,7 +40,9 @@ impl RuntimeContext {
 		Self {
 			level: 0,
 			stdout: String::new(),
-			no_con_stdout: false,
+
+			con_stdout_allowed: true,
+			imports_allowed: true,
 
 			value_table: Self::create_value_table(),
 			temp_table: vec![HashMap::new()]
@@ -59,7 +63,7 @@ impl RuntimeContext {
 
 			context.stdout.push_str(&format!("{}\n", to_print)[..]);
 
-			if !context.no_con_stdout {
+			if context.con_stdout_allowed {
 				println!("{to_print}");
 			}
 
@@ -69,6 +73,10 @@ impl RuntimeContext {
 		// Note: there is no safeguard against cycle imports so the thread's stack will simply overflow
 		map.insert(String::from("import"), RuntimeValue::IntrinsicFunction(import_function, 1));
 		fn import_function(context: &mut RuntimeContext, args: Vec<RuntimeValue>) -> Result<RuntimeValue> {
+			if !context.imports_allowed {
+				bail!("Imports in this context are not allowed");
+			}
+
 			let path_str = expect_type!(from args at 0 => String);
 			let mut path = std::path::Path::new(&path_str).to_path_buf();
 

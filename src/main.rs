@@ -58,7 +58,8 @@ fn execute_serve_command(args: cli::ServeCommand) {
 		};
 
 		let mut interpreter = Interpreter::new();
-		interpreter.context.no_con_stdout = true;
+		interpreter.context.con_stdout_allowed = false;
+		interpreter.context.imports_allowed = false;
 
 		let result = match interpreter.execute(ast) {
 			Ok(result) => result,
