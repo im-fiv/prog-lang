@@ -1,7 +1,7 @@
 macro_rules! error {
 	($msg:expr, $span:expr) => {
 		panic!("{}",
-			Error::new_from_span(
+			::pest::error::Error::new_from_span(
 				::pest::error::ErrorVariant::CustomError { message: $msg.to_owned() },
 				$span
 			)
