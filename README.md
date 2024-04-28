@@ -1,11 +1,11 @@
-# Prog-Lang
+# Prog Lang
 ![Build Status](https://github.com/PrintHiEgProg/prog-lang/actions/workflows/build.yml/badge.svg)
 ![Language](https://img.shields.io/badge/Language-Rust-orange)
 ![Contributions](https://img.shields.io/badge/Contributions-Closed-red)
 ![Lines of Code](https://raw.githubusercontent.com/PrintHiEgProg/prog-lang/image-data/badge.svg)
 [![Hits-of-Code](https://hitsofcode.com/github/PrintHiEgProg/prog-lang?branch=main)](https://hitsofcode.com/github/PrintHiEgProg/prog-lang/view?branch=main)
 
-Prog-Lang is an interpreted programming language written in Rust, developed during the Spring 2024 Hackathon. It is designed to be as simple and as lightweight as possible.
+Prog Lang is an interpreted programming language written in Rust, developed during the Spring 2024 Hackathon. It is designed to be as simple and as lightweight as possible.
 
 ## Notable Features
 
@@ -15,7 +15,7 @@ Prog-Lang is an interpreted programming language written in Rust, developed duri
   
 ## Getting Started
 
-You can follow these simple steps to get started with Prog-Lang:
+You can follow these simple steps to get started with Prog Lang:
 
 
 1. **Clone the Repository**:
@@ -39,7 +39,7 @@ cargo run -- file_name.prog
 
 ## Syntax
 
-The specifications of Prog-Lang are still being considered, but here's the currently accepted syntax:
+The specifications of Prog Lang are still being considered, but here's the currently accepted syntax:
 
 ```proglang
 def text_to_print = "hello, world!"
@@ -68,3 +68,8 @@ end
 
 () -> main
 ```
+
+Alternatively, the grammar file can be found at [src/grammar.pest](https://github.com/PrintHiEgProg/prog-lang/blob/main/src/grammar.pest)
+
+## License
+Prog Lang is [MIT licensed](https://en.wikipedia.org/wiki/MIT_License).
