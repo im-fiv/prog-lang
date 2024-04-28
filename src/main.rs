@@ -8,11 +8,14 @@ pub mod parser;
 use parser::parse;
 
 use actix_web::{post, App, HttpResponse, HttpServer, Responder};
+use actix_cors::Cors;
+
 use serde::Serialize;
+use clap::Parser;
+
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
-use clap::Parser;
 
 pub fn read_file(path: &str) -> String {
 	let file = File::open(path)
@@ -88,10 +91,13 @@ fn execute_serve_command(args: cli::ServeCommand) {
 	#[actix_web::main]
 	async fn run_server(port: u16) -> std::io::Result<()> {
 		HttpServer::new(|| {
+			let cors = Cors::permissive();
+
 			App::new()
+				.wrap(cors)
 				.service(execute_str)
 		})
-		.bind(("127.0.0.1", port))?
+		.bind(("0.0.0.0", port))?
 		.run()
 		.await
 	}
