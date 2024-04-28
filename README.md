@@ -34,7 +34,7 @@ cargo build --release
 3. **Run**:
 
 ```bash
-cargo run -- file_name.prog
+cargo run -- run file_name.prog
 ```
 
 ## Syntax
