@@ -71,7 +71,7 @@ while function_call < 15 do
 end
 ```
 
-Alternatively, the grammar file can be found at [src/grammar.pest](../main/src/grammar.pest)
+Alternatively, the grammar file can be found at [crates/prog-parser/src/grammar.pest](../main/crates/prog-parser/src/grammar.pest)
 
 ## License
 Prog Lang is [MIT licensed](https://en.wikipedia.org/wiki/MIT_License).
