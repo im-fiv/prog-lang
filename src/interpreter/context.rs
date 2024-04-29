@@ -196,10 +196,7 @@ impl RuntimeContext {
 
 			for (index, mut map) in reversed_temp_table.into_iter().enumerate() {
 				if let Entry::Occupied(mut e) = map.entry(key.clone()) {
-					let result = Ok(
-						Some(e.insert(value))
-							.unwrap_or(RuntimeValue::Empty)
-					);
+					let result = Ok(e.insert(value));
 
 					let target_index = self.temp_table.len() - 1 - index;
 					self.temp_table[target_index] = map;
