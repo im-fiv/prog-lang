@@ -1,11 +1,11 @@
 # Prog Lang
-![Build Status](https://github.com/PrintHiEgProg/prog-lang/actions/workflows/build.yml/badge.svg)
+![Build Status](../actions/workflows/build.yml/badge.svg)
 ![Language](https://img.shields.io/badge/Language-Rust-orange)
-![Contributions](https://img.shields.io/badge/Contributions-Closed-red)
-![Lines of Code](https://raw.githubusercontent.com/PrintHiEgProg/prog-lang/image-data/badge.svg)
-[![Hits-of-Code](https://hitsofcode.com/github/PrintHiEgProg/prog-lang?branch=main)](https://hitsofcode.com/github/PrintHiEgProg/prog-lang/view?branch=main)
+![Contributions](https://img.shields.io/badge/Contributions-Open-brightgreen)
+![Lines of Code](../image-data/badge.svg)
+[![Hits-of-Code](https://hitsofcode.com/github/im-fiv/prog-lang?branch=main)](https://hitsofcode.com/github/im-fiv/prog-lang/view?branch=main)
 
-Prog Lang is an interpreted programming language written in Rust, developed during the Spring 2024 Hackathon. It is designed to be as simple and as lightweight as possible.
+Prog Lang is an interpreted programming language written in Rust, developed during the TulaHack 2024. It is designed to be as simple and as lightweight as possible. I have forked the original repository in order to preserve the exact version that we presented.
 
 ## Notable Features
 
@@ -21,7 +21,7 @@ You can follow these simple steps to get started with Prog Lang:
 1. **Clone the Repository**:
 
 ```bash
-git clone https://github.com/yourusername/prog-lang.git
+git clone https://github.com/im-fiv/prog-lang.git
 ```
 
 2. **Build the project**:
@@ -69,7 +69,7 @@ end
 () -> main
 ```
 
-Alternatively, the grammar file can be found at [src/grammar.pest](https://github.com/PrintHiEgProg/prog-lang/blob/main/src/grammar.pest)
+Alternatively, the grammar file can be found at [src/grammar.pest](../blob/main/src/grammar.pest)
 
 ## License
 Prog Lang is [MIT licensed](https://en.wikipedia.org/wiki/MIT_License).
