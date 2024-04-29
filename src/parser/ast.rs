@@ -30,6 +30,7 @@ pub enum Statement {
 	},
 
 	Break,
+	Continue,
 
 	If {
 		condition: Expression,
@@ -121,7 +122,7 @@ pub mod expressions {
 	}
 }
 
-// implementations
+// Implementations
 macro_rules! impl_basic_conv {
 	(from $from:ty => $for:ty as $variant:ident $({ $preproc:path })?) => {
 		impl From<$from> for $for {

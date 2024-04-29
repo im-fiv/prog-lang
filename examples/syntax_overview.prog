@@ -1,6 +1,6 @@
 def text_to_print = "hello, world!"
 
-// all functions are first-class functions and can be treated as values
+// All functions are first-class functions and can be treated as values
 def some_calculation = func(a, b, c) do
 	return a + b * c
 end

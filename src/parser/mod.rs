@@ -16,7 +16,7 @@ struct PestParser;
 macro_rules! assert_rule {
 	($var:ident == $rule:ident $(| $rest:ident)* in $main_pair:expr) => {
 		if !matches!($var.as_rule(), Rule::$rule $(| Rule::$rest)*) {
-			let expected_str = assert_rule!(format_expected $rule $(, $rest)*);
+			let expected_str = assert_rule!(format_expected $rule $($rest),*);
 
 			error!(
 				"invalid pair of type '{:?}' in '{:?}' (expected {})", $var.as_span(),
@@ -27,7 +27,7 @@ macro_rules! assert_rule {
 		}
 	};
 
-	(format_expected $rule:ident $(, $rest:ident)*) => {
+	(format_expected $rule:ident $($rest:ident),*) => {
 		[
 			format!("'{:?}'", Rule::$rule)
 			$(, format!(", '{:?}'", Rule::$rest))*
@@ -38,7 +38,7 @@ macro_rules! assert_rule {
 macro_rules! get_pair_safe {
 	(from $pairs:ident expect $rule:ident $(| $rest:ident)* in $main_pair:expr) => {
 		{
-			let expected_str = assert_rule!(format_expected $rule $(, $rest)*);
+			let expected_str = assert_rule!(format_expected $rule $($rest),*);
 
 			let next_pair = $pairs
 				.next()
@@ -94,7 +94,10 @@ fn parse_statements(pairs: Pairs<'_, Rule>) -> Vec<Statement> {
 			Rule::return_stmt => parse_return_stmt(pair),
 			Rule::call => parse_function_call(pair).into(),
 			Rule::while_stmt => parse_while_stmt(pair),
+			
 			Rule::break_stmt => Statement::Break,
+			Rule::continue_stmt => Statement::Continue,
+
 			Rule::if_stmt => parse_if_stmt(pair),
 
 			rule => error!("statement of type '{:?}' is not yet implemented", pair.as_span(), rule)
@@ -362,7 +365,7 @@ fn parse_function(pair: Pair<'_, Rule>) -> expressions::Function {
 		next_pair = get_pair_safe!(from pairs expect do_block in pair);
 	}
 
-	// we don't call `parse_do_block` because it's a pain in the ass to extract the statements from there
+	// We don't call `parse_do_block` because it's a pain in the ass to extract the statements from there
 	let statements = parse_statements(next_pair.into_inner());
 
 	expressions::Function { arguments, statements }

@@ -71,8 +71,8 @@ fn execute_serve_command(args: cli::ServeCommand) {
 
 		#[derive(Debug, Serialize)]
 		struct Result {
-			pub value: interpreter::values::RuntimeValue,
-			pub stdout: String
+			value: interpreter::values::RuntimeValue,
+			stdout: String
 		}
 
 		let result_struct = Result {

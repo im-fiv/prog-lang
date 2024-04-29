@@ -1,5 +1,5 @@
 # Prog Lang
-![Build Status](../actions/workflows/build.yml/badge.svg)
+![Build Status](https://github.com/im-fiv/prog-lang/actions/workflows/build.yml/badge.svg)
 ![Language](https://img.shields.io/badge/Language-Rust-orange)
 ![Contributions](https://img.shields.io/badge/Contributions-Open-brightgreen)
 ![Lines of Code](../image-data/badge.svg)
@@ -42,34 +42,36 @@ cargo run -- run file_name.prog
 The specifications of Prog Lang are still being considered, but here's the currently accepted syntax:
 
 ```proglang
-def text_to_print = "hello, world!"
+// this is a comment!
+/* and so is this */
 
-// all functions are first-class functions and can be treated as values
-def some_calculation = func(a, b, c) do
-	return a + b * c
+def variable_definition = "hello, world!"
+def module_import = ("path goes here") -> import
+def user_input = ("what is your favorite food?: ") -> input
+
+variable_definition = "variable reassign!"
+
+def function_definition = func(arg1, arg2) do
+	return arg1 + arg2
 end
 
-def do_nothing = func() do
+def returning_void = func() do
 	return void
 end
 
-def main = func() do
-	def calculated_stuff = (2, 2, 2) -> some_calculation
-	def counter = 0
+def function_call = (2, 2) -> function_definition
 
-	while calculated_stuff + counter < 15 do
-		counter = counter + 1
-		(counter) -> print
-	end
-
-	(text_to_print) -> print
-	(calculated_stuff, "+", counter, "=", calculated_stuff + counter) -> print
+if function_call == 4 then
+	("math works!") -> print
 end
 
-() -> main
+while function_call < 15 do
+	("while loop: ", function_call) -> print
+	function_call = function_call + 1
+end
 ```
 
-Alternatively, the grammar file can be found at [src/grammar.pest](../blob/main/src/grammar.pest)
+Alternatively, the grammar file can be found at [src/grammar.pest](../main/src/grammar.pest)
 
 ## License
 Prog Lang is [MIT licensed](https://en.wikipedia.org/wiki/MIT_License).

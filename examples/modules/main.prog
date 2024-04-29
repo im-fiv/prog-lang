@@ -1,6 +1,6 @@
 ("[main.prog] hello from main.prog") -> print
 
-// we will now import the module and print its value
+// We will now import the module and print its value
 def calculate_sqrt = ("examples/modules/sqrt") -> import
 
 ("[main.prog] value of imported file is", calculate_sqrt) -> print

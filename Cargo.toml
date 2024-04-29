@@ -3,6 +3,9 @@ name = "prog-lang"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+members = ["crates/*"]
+
 [dependencies]
 anyhow = "1.0.82"
 clap = { version = "4.5.4", features = ["derive"] }
@@ -13,3 +16,5 @@ serde = "1.0.199"
 serde-error = "0.1.2"
 serde_json = "1.0.116"
 actix-cors = "0.7.0"
+prog-macros = { path = "./crates/prog-macros" }
+text_io = "0.1.12"

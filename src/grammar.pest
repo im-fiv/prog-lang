@@ -1,9 +1,9 @@
-// base grammar
+// Base grammar
 program = { SOI ~ statements ~ EOI }
 identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* ~ !keywords }
-keywords = { "true" | "false" | "def" | "func" | "do" | "end" | "return" | "while" | "break" | "if" | "then" | "void" }
+keywords = { "true" | "false" | "def" | "func" | "do" | "end" | "return" | "while" | "break" | "continue" | "if" | "then" | "void" }
 
-// statements
+// Statements
 statements = { statement* }
 statement = _{
 	var_define_stmt |
@@ -13,6 +13,7 @@ statement = _{
 	call |
 	while_stmt |
 	break_stmt |
+	continue_stmt |
 	if_stmt
 }
 
@@ -22,16 +23,17 @@ do_block = { "do" ~ statement* ~ "end" }
 return_stmt = { "return" ~ expression? }
 while_stmt = { "while" ~ expression ~ do_block }
 break_stmt = { "break" }
+continue_stmt = { "continue" }
 
 if_stmt = { "if" ~ expression ~ "then" ~ statements ~ if_elseif* ~ if_else? ~ "end" }
 	if_elseif = { ("else" ~ "if" | "elseif") ~ expression ~ "then" ~ statements }
 	if_else = { "else" ~ statements }
 
-// operators
+// Operators
 unary_operator = { "-" | "!" }
 binary_operator = { "+" | "-" | "/" | "*" | "%" | "==" | "!=" | "&&" | "||" | ">=" | "<=" | ">" | "<" }
 
-// expressions
+// Expressions
 expression = { unary_expression | binary_expression | term }
 	unary_expression = { unary_operator ~ term }
 	binary_expression = { term ~ (binary_operator ~ term)+ }
@@ -46,14 +48,14 @@ call = { (call_body_empty | call_body_nonempty) ~ "->" ~ expression }
 function = { "func" ~ "(" ~ function_def_args? ~ ")" ~ do_block }
 	function_def_args = { identifier ~ ("," ~ identifier)* }
 
-// literals
+// Literals
 literal = _{ boolean_literal | string_literal | number_literal }
 
 boolean_literal = { "true" | "false" }
 string_literal = { "\"" ~ (!("\"") ~ ANY)* ~ "\"" }
 number_literal = @{ ("-"? ~ ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* ~ ("." ~ ASCII_DIGIT+)?) | "0" }
 
-// ignored list
+// Ignored list
 line_comment = _{ "//" ~ (!"\n" ~ ANY)* ~ ("\n" | EOI) }
 block_comment = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
 

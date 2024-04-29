@@ -1,13 +1,15 @@
 use std::fmt::Display;
+use std::collections::HashMap;
 use anyhow::Result;
 use serde::Serialize;
 
-use super::RuntimeContext;
 use crate::parser::ast;
 
-pub type IntrinsicFunctionPtr = fn(&mut RuntimeContext, Vec<RuntimeValue>) -> Result<RuntimeValue>;
+use prog_macros::Conversion;
+use super::arg_parser::{ArgList, ParsedArg};
+use super::context::RuntimeContext;
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Conversion)]
 pub enum RuntimeValue {
 	Boolean(bool),
 	String(String),
@@ -17,8 +19,18 @@ pub enum RuntimeValue {
 	Function(RuntimeFunction),
 	
 	#[serde(skip)]
-	IntrinsicFunction(IntrinsicFunctionPtr, i32),
+	IntrinsicFunction(IntrinsicFunction),
 	
+	Empty
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum RuntimeValueKind {
+	Boolean,
+	String,
+	Number,
+	Function,
+	IntrinsicFunction,
 	Empty
 }
 
@@ -28,15 +40,25 @@ pub struct RuntimeFunction {
 	pub statements: Vec<ast::Statement>
 }
 
+pub type IntrinsicFunctionPtr = fn(&mut RuntimeContext, HashMap<String, ParsedArg>) -> Result<RuntimeValue>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IntrinsicFunction {
+	pub pointer: IntrinsicFunctionPtr,
+	pub arguments: ArgList
+}
+
 impl RuntimeValue {
-	pub fn kind(&self) -> String {
+	pub fn kind(&self) -> RuntimeValueKind {
+		use RuntimeValueKind as Kind;
+
 		match self {
-			Self::Boolean(_) => "Boolean",
-			Self::String(_) => "String",
-			Self::Number(_) => "Number",
-			Self::Function(_) => "Function",
-			Self::IntrinsicFunction(..) => "IntrinsicFunction",
-			Self::Empty => "Void"
+			Self::Boolean(_) => Kind::Boolean,
+			Self::String(_) => Kind::String,
+			Self::Number(_) => Kind::Number,
+			Self::Function(_) => Kind::Function,
+			Self::IntrinsicFunction(_) => Kind::IntrinsicFunction,
+			Self::Empty => Kind::Empty
 		}.to_owned()
 	}
 }
@@ -60,8 +82,21 @@ impl Display for RuntimeValue {
 			Self::String(value) => write!(f, "{value}"),
 			Self::Number(value) => write!(f, "{value}"),
 			Self::Function(_) => write!(f, "Function"),
-			Self::IntrinsicFunction(_, num_args) => write!(f, "IntrinsicFunction({num_args})"),
+			Self::IntrinsicFunction(_) => write!(f, "IntrinsicFunction"),
 			Self::Empty => write!(f, "")
+		}
+	}
+}
+
+impl Display for RuntimeValueKind {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Boolean => write!(f, "Boolean"),
+			Self::String => write!(f, "String"),
+			Self::Number => write!(f, "Number"),
+			Self::Function => write!(f, "Function"),
+			Self::IntrinsicFunction => write!(f, "IntrinsicFunction"),
+			Self::Empty => write!(f, "Nothing")
 		}
 	}
 }

@@ -1,22 +1,8 @@
 use anyhow::{Result, bail};
-use super::RuntimeValue;
+use super::values::RuntimeValue;
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-
-macro_rules! expect_type {
-	(from $args:ident at $index:expr => $kind:ident) => {
-		{
-			let value = $args.get($index).unwrap().to_owned();
-
-			match value {
-				// this limitation can be later fixed if we want to be able to accept intrinsic functions
-				RuntimeValue::$kind(inner) => inner,
-				_ => bail!("Invalid argument #{} in a function call (expected {}, got {})", $index, stringify!($kind), value.kind())
-			}
-		}
-	};
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeContext {
@@ -27,7 +13,7 @@ pub struct RuntimeContext {
 	pub imports_allowed: bool,
 
 	pub value_table: HashMap<String, RuntimeValue>,
-	pub temp_table: Vec<HashMap<String, RuntimeValue>>
+	temp_table: Vec<HashMap<String, RuntimeValue>>
 }
 
 impl Default for RuntimeContext {
@@ -45,61 +31,9 @@ impl RuntimeContext {
 			con_stdout_allowed: true,
 			imports_allowed: true,
 
-			value_table: Self::create_value_table(),
+			value_table: super::intrinsics::create_value_table(),
 			temp_table: vec![HashMap::new()]
 		}
-	}
-
-	// define intrinsics here, can be encapsulated into another file later on
-	pub fn create_value_table() -> HashMap<String, RuntimeValue> {
-		let mut map = HashMap::new();
-
-		map.insert(String::from("print"), RuntimeValue::IntrinsicFunction(print_function, -1));
-		fn print_function(context: &mut RuntimeContext, args: Vec<RuntimeValue>) -> Result<RuntimeValue> {
-			let to_print = args
-				.into_iter()
-				.map(|arg| format!("{}", arg))
-				.collect::<Vec<String>>()
-				.join(" ");
-
-			context.stdout.push_str(&format!("{}\n", to_print)[..]);
-
-			if context.con_stdout_allowed {
-				println!("{to_print}");
-			}
-
-			Ok(RuntimeValue::Empty)
-		}
-
-		// Note: there is no safeguard against cycle imports so the thread's stack will simply overflow
-		map.insert(String::from("import"), RuntimeValue::IntrinsicFunction(import_function, 1));
-		fn import_function(context: &mut RuntimeContext, args: Vec<RuntimeValue>) -> Result<RuntimeValue> {
-			if !context.imports_allowed {
-				bail!("Imports in this context are not allowed");
-			}
-
-			let path_str = expect_type!(from args at 0 => String);
-			let mut path = std::path::Path::new(&path_str).to_path_buf();
-
-			if path.extension().is_none() {
-				path.set_extension("prog");
-			}
-
-			if !path.exists() {
-				bail!("Cannot find the specified file at path '{path_str}'");
-			}
-
-			let contents = crate::read_file(path.to_str().unwrap());
-			let ast = crate::parse(&contents)?;
-			let mut interpreter = crate::Interpreter::new();
-			context.clone_into(&mut interpreter.context);
-			let result = interpreter.execute(ast)?;
-			*context = interpreter.context;
-
-			Ok(result)
-		}
-
-		map
 	}
 
 	pub fn deeper(&mut self) -> usize {

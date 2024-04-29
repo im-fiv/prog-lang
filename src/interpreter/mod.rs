@@ -1,4 +1,6 @@
+pub mod arg_parser;
 pub mod context;
+pub mod intrinsics;
 pub mod values;
 
 use context::RuntimeContext;
@@ -52,7 +54,9 @@ impl Interpreter {
 
 			ast::Statement::Call(call) => self.evaluate_call(call),
 			ast::Statement::WhileLoop { condition, statements } => self.execute_while_loop(condition, statements),
+
 			ast::Statement::Break => unimplemented!("break"),
+			ast::Statement::Continue => unimplemented!("continue"),
 
 			ast::Statement::If { condition, statements, elseif_branches, else_branch } => self.execute_if(condition, statements, elseif_branches, else_branch)
 		}
@@ -204,14 +208,14 @@ impl Interpreter {
 			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
-			(Op::EqEq, Rv::IntrinsicFunction(lhs_a, lhs_b), Rv::IntrinsicFunction(rhs_a, rhs_b)) => Ok(Rv::Boolean((lhs_a == rhs_a) && (lhs_b == rhs_b))),
+			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(true)),
 
 			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
-			(Op::NotEq, Rv::IntrinsicFunction(lhs_a, lhs_b), Rv::IntrinsicFunction(rhs_a, rhs_b)) => Ok(Rv::Boolean((lhs_a == rhs_a) && (lhs_b == rhs_b))),
+			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::NotEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(false)),
 
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
@@ -252,19 +256,11 @@ impl Interpreter {
 		let original_expression = *call.function.clone();
 		let expression = self.evaluate_expression(*call.function)?;
 
-		if let RuntimeValue::IntrinsicFunction(function, num_args) = expression {
-			let expected_str = format!("(expected {} arguments, got {})", num_args, call_arguments.len());
-			
-			let got_len = call_arguments.len() as i32;
-			let expected_len = num_args;
-
-			if (expected_len != -1) && (got_len != expected_len) {
-				let word = if got_len < expected_len { "few" } else { "many" };
-				bail!("Too {} arguments in function call {}", word, expected_str);
-			}
+		if let RuntimeValue::IntrinsicFunction(function) = expression {
+			let call_arguments = function.arguments.verify(&call_arguments)?;
 			
 			self.context.deeper();
-			let result = function(&mut self.context, call_arguments);
+			let result = (function.pointer)(&mut self.context, call_arguments);
 			self.context.shallower();
 
 			return result;
