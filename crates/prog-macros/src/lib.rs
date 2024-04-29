@@ -27,19 +27,19 @@ fn get_enum_data(item_data: syn::Data) -> syn::Result<syn::DataEnum> {
 /// Implements `TryInto` for all variants into their unnamed fields type. **Only compatible with enums**
 #[proc_macro_derive(Conversion)]
 pub fn conversion(item: pm::TokenStream) -> pm::TokenStream {
-    let item = parse_macro_input!(item as DeriveInput);
-    let enum_name = item.ident;
+	let item = parse_macro_input!(item as DeriveInput);
+	let enum_name = item.ident;
 
-    // Unwrapping enum data
+	// Unwrapping enum data
 	let data = match get_enum_data(item.data) {
 		Ok(data) => data,
 		Err(err) => return err.to_compile_error().into()
 	};
 
-    // Expanding variants
+	// Expanding variants
 	let mut expanded_variants = vec![];
 
-    for variant in data.variants {
+	for variant in data.variants {
 		let expanded = conversion_inner::expand_variant(
 			variant,
 			&enum_name,
@@ -52,7 +52,7 @@ pub fn conversion(item: pm::TokenStream) -> pm::TokenStream {
 		});
 	}
 
-    // Concatenating and returning
+	// Concatenating and returning
 	let expanded = quote! { #(#expanded_variants)* };
 	expanded.into()
 }
