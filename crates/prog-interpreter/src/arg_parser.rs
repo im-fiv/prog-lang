@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use core::iter::zip;
 use anyhow::{Result, bail};
 
-use super::values::{RuntimeValue, RuntimeValueKind};
+use crate::values::{RuntimeValue, RuntimeValueKind};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArgList {

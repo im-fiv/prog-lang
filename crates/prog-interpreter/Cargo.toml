@@ -1,0 +1,12 @@
+[package]
+name = "prog-interpreter"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+serde = "1.0.199"
+text_io = "0.1.12"
+prog-parser = { workspace = true }
+prog-utils = { workspace = true }
+prog-macros = { workspace = true }
+anyhow = { workspace = true }

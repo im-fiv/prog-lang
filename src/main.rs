@@ -1,35 +1,15 @@
-pub mod interpreter;
 pub mod cli;
 
-use interpreter::Interpreter;
 use cli::Cli;
+use prog_parser::parse;
+use prog_interpreter::Interpreter;
+use prog_utils::read_file;
 
-pub mod parser;
-use parser::parse;
-
-use actix_web::{post, App, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpResponse, HttpServer, Responder, post};
 use actix_cors::Cors;
 
 use serde::Serialize;
 use clap::Parser;
-
-use std::fs::File;
-use std::io::BufReader;
-use std::io::prelude::*;
-
-pub fn read_file(path: &str) -> String {
-	let file = File::open(path)
-		.unwrap_or_else(|_| panic!("Failed to open file `{}` (read)", path));
-	
-	let mut reader = BufReader::new(file);
-	let mut contents = String::new();
-	
-	reader
-		.read_to_string(&mut contents)
-		.unwrap_or_else(|_| panic!("Failed to read from file `{}`", path));
-
-	contents.replace("\r\n", "\n")
-}
 
 fn execute_run_command(args: cli::RunCommand) {
 	let contents = read_file(&args.file_path);
@@ -71,7 +51,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 
 		#[derive(Debug, Serialize)]
 		struct Result {
-			value: interpreter::values::RuntimeValue,
+			value: prog_interpreter::values::RuntimeValue,
 			stdout: String
 		}
 

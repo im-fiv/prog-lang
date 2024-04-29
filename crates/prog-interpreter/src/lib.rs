@@ -4,12 +4,10 @@ pub mod intrinsics;
 pub mod values;
 
 use context::RuntimeContext;
-use values::RuntimeValue;
+use values::{RuntimeValue, RuntimeFunction};
 
-use crate::parser::ast;
+use prog_parser::ast;
 use anyhow::{Result, bail};
-
-use self::values::RuntimeFunction;
 
 #[derive(Debug)]
 pub struct Interpreter {

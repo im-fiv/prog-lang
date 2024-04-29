@@ -1,8 +1,9 @@
 use anyhow::{Result, bail};
-use super::values::RuntimeValue;
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+
+use crate::values::RuntimeValue;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeContext {

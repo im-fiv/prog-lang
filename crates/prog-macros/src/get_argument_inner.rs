@@ -43,7 +43,7 @@ pub(crate) fn expand_optional(input: GetArgumentInput) -> pm2::TokenStream {
 
 	// Note: double curly braces are extremely important
 	quote! {{
-		use crate::interpreter::arg_parser::ParsedArg;
+		use crate::arg_parser::ParsedArg;
 
 		let arg_name = ::std::stringify!(#arg_name);
 		let parsed_arg = #list_name.get(arg_name);
@@ -76,7 +76,7 @@ pub(crate) fn expand_variadic(input: GetArgumentInput) -> pm2::TokenStream {
 	
 	// Note: double curly braces are extremely important
 	quote! {{
-		use crate::interpreter::arg_parser::ParsedArg;
+		use crate::arg_parser::ParsedArg;
 
 		let arg_name = ::std::stringify!(#arg_name);
 		let parsed_arg = #list_name.get(arg_name);

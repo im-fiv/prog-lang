@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use anyhow::{Result, bail};
 
 use prog_macros::get_argument;
-use super::arg_parser::{ArgList, Arg, ParsedArg};
-use super::context::RuntimeContext;
-use super::values::{RuntimeValue, RuntimeValueKind, IntrinsicFunction};
+use crate::arg_parser::{ArgList, Arg, ParsedArg};
+use crate::context::RuntimeContext;
+use crate::values::{RuntimeValue, RuntimeValueKind, IntrinsicFunction};
 
 fn print_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>) -> Result<RuntimeValue> {
 	let to_print = get_argument!(args => varargs: ...)
@@ -47,8 +47,8 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 		bail!("Cannot find the specified file at path '{path_str}'");
 	}
 
-	let contents = crate::read_file(path.to_str().unwrap());
-	let ast = crate::parse(&contents)?;
+	let contents = prog_utils::read_file(path.to_str().unwrap());
+	let ast = prog_parser::parse(&contents)?;
 	let mut interpreter = crate::Interpreter::new();
 	context.clone_into(&mut interpreter.context);
 	let result = interpreter.execute(ast)?;
