@@ -1,7 +1,8 @@
 use anyhow::{Result, bail};
-use std::collections::HashMap;
-
 use super::RuntimeValue;
+
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 
 macro_rules! expect_type {
 	(from $args:ident at $index:expr => $kind:ident) => {
@@ -91,7 +92,7 @@ impl RuntimeContext {
 			let contents = crate::read_file(path.to_str().unwrap());
 			let ast = crate::parse(&contents)?;
 			let mut interpreter = crate::Interpreter::new();
-			interpreter.context = context.to_owned();
+			context.clone_into(&mut interpreter.context);
 			let result = interpreter.execute(ast)?;
 			*context = interpreter.context;
 
@@ -194,10 +195,13 @@ impl RuntimeContext {
 			reversed_temp_table.reverse();
 
 			for (index, mut map) in reversed_temp_table.into_iter().enumerate() {
-				if map.contains_key(&key) {
-					let result = Ok(map.insert(key, value).unwrap_or(RuntimeValue::Empty));
+				if let Entry::Occupied(mut e) = map.entry(key.clone()) {
+					let result = Ok(
+						Some(e.insert(value))
+							.unwrap_or(RuntimeValue::Empty)
+					);
+
 					let target_index = self.temp_table.len() - 1 - index;
-					
 					self.temp_table[target_index] = map;
 
 					return result;
