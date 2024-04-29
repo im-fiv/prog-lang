@@ -1,5 +1,5 @@
 # Prog Lang
-![Build Status](../actions/workflows/build.yml/badge.svg)
+![Build Status](https://github.com/im-fiv/prog-lang/actions/workflows/build.yml/badge.svg)
 ![Language](https://img.shields.io/badge/Language-Rust-orange)
 ![Contributions](https://img.shields.io/badge/Contributions-Open-brightgreen)
 ![Lines of Code](../image-data/badge.svg)
