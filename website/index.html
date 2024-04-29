@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная страница</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <script>
+        function GoToDownload() {
+            window.location.href = 'https://github.com/im-fiv/prog-lang/archive/refs/heads/main.zip';
+        }
+
+        function GoToGithub() {
+            window.location.href = 'https://github.com/im-fiv/prog-lang';
+        }
+    </script>
+</head>
+<body>
+    <div class="header-pc">
+        <header>
+            <a class="logo-href" href="index.html">
+                <img class="logo" src="images/logo.webp" alt="logo.webp">
+            </a>
+
+            <div class="menu">
+                <ul class="pass">
+                    <li><a class="color-black" href="index.html">Главная</a>
+                    <li><a class="color-black" href="https://t.me/deanon_team_bot">ТГ Бот</a>
+                    <li><a class="color-black" href="https://github.com/PrintHiEgProg/prog-lang">Github</a>
+                    <li><a class="color-black" href="https://deanon-team.github.io">О нас</a>
+                </ul>
+            </div>
+        </header>
+    </div>
+
+	<div class="header-mobile">
+        <input type="checkbox" id="nav-toggle" hidden>
+    
+        <nav class="nav">
+            <label for="nav-toggle" class="nav-toggle" onclick />
+
+            <h2 class="logo-text"> 
+                <a href="index.html">Prog lang</a> 
+            </h2>
+
+            <div class="center"></div>
+
+            <ul id="swim-window">
+                <li><a href="index.html">Главная</a></li>
+                <li><a class="color-black" href="https://t.me/deanon_team_bot">ТГ Бот</a>
+                <li><a class="color-black" href="https://github.com/im-fiv/prog-lang">Github</a>
+                <li><a class="color-black" href="https://deanon-team.github.io">О нас</a>
+            </ul>
+        </nav>
+
+        <mobile-header>
+            <h2 class="name-website">Prog lang</h2>
+        </mobile-header>
+    </div>
+    
+    <main>
+        <br/><br/><br/><br/><br/><br/><br/>
+
+        <h2 class="first-display">Deanon team представляет Prog lang!</h2>
+        <br/>
+
+        <img src="images/code-int.png" alt="фото синтаксиса" style="width:35%; height:auto; text-align: center;">
+        <br><br>
+        
+        <button class="gradient-btn download-size" onclick="GoToDownload()">Скачать</button>
+
+        <br/><br/><br/><br/><br/><br/>
+
+        <h2 class="first-display" align="right" style="padding-right: 5% ;">
+            У нас есть всё что вам нужно:
+        </h2>
+
+        <img src="images/code.png" alt="фото возможностей языка" align="right" style="width:35%; height:auto; padding-right: 5% ;">
+        <br>
+
+        <br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+        <h2 class="first-display" align="left">
+            Вывод текста? Переменные? функции?<br/>Импорт библиотеки? Всё это есть в Prog lang
+        </h2>
+
+        <h4 class="first-display1" align="left">
+            Посмотрите наш Github и сами убедитесь в этом
+        <h4>
+        
+        <button class="gradient-btn download-size" onclick="GoToGithub()">Github</button> 
+    </main>
+</body>
+</html>
