@@ -43,6 +43,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 		let mut interpreter = Interpreter::new();
 		interpreter.context.con_stdout_allowed = false;
 		interpreter.context.imports_allowed = false;
+		interpreter.context.input_allowed = false;
 
 		let result = match interpreter.execute(ast) {
 			Ok(result) => result,
@@ -52,11 +53,13 @@ fn execute_serve_command(args: cli::ServeCommand) {
 		#[derive(Debug, Serialize)]
 		struct Result {
 			value: prog_interpreter::values::RuntimeValue,
+			stdin: String,
 			stdout: String
 		}
 
 		let result_struct = Result {
 			value: result,
+			stdin: interpreter.context.stdin,
 			stdout: interpreter.context.stdout
 		};
 

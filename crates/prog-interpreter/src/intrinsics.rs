@@ -57,8 +57,12 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 	Ok(result)
 }
 
-fn input_function(_context: &mut RuntimeContext, args: HashMap<String, ParsedArg>) -> Result<RuntimeValue> {
+fn input_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>) -> Result<RuntimeValue> {
 	use text_io::read;
+
+	if !context.input_allowed {
+		bail!("Input in this context is not allowed");
+	}
 
 	let message = get_argument!(args => message: String?);
 	if let Some(message) = message {
@@ -70,6 +74,8 @@ fn input_function(_context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 	// Sanitize the string (just in case)
 	result = result.replace('\r', "");
 	result = result.replace('\n', "");
+
+	context.stdin.push_str(&format!("{result}\n")[..]);
 
 	Ok(RuntimeValue::String(result))
 }

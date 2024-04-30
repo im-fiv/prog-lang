@@ -8,10 +8,13 @@ use crate::values::RuntimeValue;
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeContext {
 	pub level: usize,
+
+	pub stdin: String,
 	pub stdout: String,
 
 	pub con_stdout_allowed: bool,
 	pub imports_allowed: bool,
+	pub input_allowed: bool,
 
 	pub value_table: HashMap<String, RuntimeValue>,
 	temp_table: Vec<HashMap<String, RuntimeValue>>
@@ -27,10 +30,13 @@ impl RuntimeContext {
 	pub fn new() -> Self {
 		Self {
 			level: 0,
+
+			stdin: String::new(),
 			stdout: String::new(),
 
 			con_stdout_allowed: true,
 			imports_allowed: true,
+			input_allowed: true,
 
 			value_table: super::intrinsics::create_value_table(),
 			temp_table: vec![HashMap::new()]
