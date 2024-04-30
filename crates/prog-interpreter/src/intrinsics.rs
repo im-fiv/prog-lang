@@ -35,12 +35,12 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 		path.push("mod.prog");
 	}
 
-	if !path.is_file() {
-		bail!("'{path_str}' is not a valid file");
-	}
-
 	if path.extension().is_none() {
 		path.set_extension("prog");
+	}
+
+	if !path.is_file() {
+		bail!("'{path_str}' is not a valid file");
 	}
 
 	if !path.exists() {
