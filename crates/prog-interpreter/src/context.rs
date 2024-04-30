@@ -90,10 +90,6 @@ impl RuntimeContext {
 			bail!("Value with name '{key}' does not exist");
 		}
 
-		if let Some(value) = self.value_table.get(key) {
-			return Ok(value.to_owned());
-		}
-
 		let mut reversed_temp_table = self.temp_table.clone();
 		reversed_temp_table.reverse();
 
@@ -101,6 +97,10 @@ impl RuntimeContext {
 			if let Some(value) = map.get(key) {
 				return Ok(value.to_owned());
 			}
+		}
+
+		if let Some(value) = self.value_table.get(key) {
+			return Ok(value.to_owned());
 		}
 
 		unreachable!()
