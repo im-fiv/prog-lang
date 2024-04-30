@@ -1,0 +1,91 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Prog Lang",
+	"patterns": [
+		{
+            "include": "#comments"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#numbers"
+        },
+		{
+            "match": "\\bdef\\b",
+            "name": "keyword.other.definition.prog-lang"
+        },
+		{
+            "match": "\\breturn\\b",
+            "name": "keyword.control.return.prog-lang"
+        },
+		{
+            "match": "\\b(func|do|end)\\b",
+            "name": "keyword.control.function.prog-lang"
+        },
+		{
+            "match": "\\b(if|then|elseif|else)\\b",
+            "name": "keyword.control.conditional.prog-lang"
+        },
+		{
+            "match": "\\b(while|break|continue)\\b",
+            "name": "keyword.control.loop.prog-lang"
+        },
+		{
+            "match": "->",
+            "name": "keyword.operator.arrow.prog-lang"
+        },
+		{
+            "match": "\\bvoid\\b",
+            "name": "constant.language.void.prog-lang"
+        },
+		{
+            "match": "\\b(print|import|input)\\b",
+            "name": "support.function.intrinsic.prog-lang"
+        },
+        {
+            "match": "\\bdef\\b\\s+([^\\s]+)\\s+=",
+            "captures": {
+                "1": {
+                    "name": "variable.other.definition.prog-lang"
+                }
+            }
+        }
+	],
+	"repository": {
+		"comments": {
+            "patterns": [
+                {
+                    "begin": "//",
+                    "end": "$",
+                    "name": "comment.line.double-slash.prog-lang"
+                },
+                {
+                    "begin": "/\\*",
+                    "end": "\\*/",
+                    "name": "comment.block.prog-lang"
+                }
+            ]
+        },
+        "strings": {
+			"name": "string.quoted.double.prog-lang",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.prog-lang",
+					"match": "\\\\."
+				}
+			]
+		},
+        "numbers": {
+			"patterns": [
+				{
+					"name": "constant.numeric.prog-lang",
+					"match": "\\b\\d+(\\.\\d+)?\\b"
+				}
+			]
+		}
+	},
+	"scopeName": "source.prog"
+}

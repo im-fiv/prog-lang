@@ -1,0 +1,41 @@
+{
+  "name": "prog-lang",
+  "displayName": "Prog Lang Syntax Extension",
+  "description": "Syntax highlighting for Prog Lang",
+  "version": "0.0.3",
+  "repository": {
+    "url": "https://github.com/im-fiv/prog-lang"
+  },
+  "engines": {
+    "vscode": "^1.87.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "prog-lang",
+        "aliases": [
+          "Prog Lang",
+          "prog-lang"
+        ],
+        "extensions": [
+          ".prog",
+          ".proglang"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "prog-lang",
+        "scopeName": "source.prog",
+        "path": "./syntaxes/prog-lang.tmLanguage.json"
+      }
+    ]
+  },
+  "dependencies": {
+    "@vscode/vsce": "^2.26.0"
+  }
+}

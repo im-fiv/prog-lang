@@ -4,8 +4,8 @@
 	<meta charset="UTF-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Главная страница</title>
 	<link rel="stylesheet" href="styles.css">
+	<title>Главная страница</title>
 </head>
 <body>
 	<div class="header-pc">
@@ -82,7 +82,7 @@
 
 		<button class="gradient-btn download-size" onclick="Execute()">Execute</button>
 		<br>
-		<div id="container" style="width:800px;height:250px;border:1px solid grey"></div>
+		<div id="container" style="width:800px;height:350px;border:1px solid grey"></div>
 
 		<br><br><br>
 		
@@ -90,46 +90,7 @@
 	</main>
 
 	<script src="monaco-editor/min/vs/loader.js"></script>
-	<script>
-		require.config({ paths: { vs: 'monaco-editor/min/vs' } });
-		require(['vs/editor/editor.main'], function () {
-			window.editor = monaco.editor.create(document.getElementById('container'), {
-				value: '("Hello, World!") -> print',
-				language: 'proglang'
-			});
-		});
-	</script>
-
-	<script>
-		function GoToDownload() {
-			window.location.href = 'https://github.com/im-fiv/prog-lang/archive/refs/heads/main.zip';
-		}
-
-		function GoToGithub() {
-			window.location.href = 'https://github.com/im-fiv/prog-lang';
-		}
-
-		async function Execute() {
-			let code = window.editor.getValue();
-			let endpoint = `${window.origin}/execute`;
-
-			let data
-
-			try {
-				data = await fetch(endpoint, {
-					body: code,
-					method: "POST",
-					
-				});
-			} catch (error) {
-				console.error(error);
-				return;
-			}
-
-			let output = await data.text();
-			window.editor.setValue(output);
-		}
-	</script>
-</body>
+	<script src="js/init-monaco.js" type="module"></script>
+	<script src="js/functional.js"></script>
 </body>
 </html>
