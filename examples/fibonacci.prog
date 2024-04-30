@@ -22,7 +22,7 @@ end
 
 def main = func(n) do
 	def number = (n) -> fibonacci
-	(n, "fibonacci number is", number) -> print
+	(n, " fibonacci number is ", number) -> print
 
 	return number
 end

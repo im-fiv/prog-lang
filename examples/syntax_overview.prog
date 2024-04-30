@@ -19,7 +19,7 @@ def main = func() do
 	end
 
 	(text_to_print) -> print
-	(calculated_stuff, "+", counter, "=", calculated_stuff + counter) -> print
+	(calculated_stuff, " + ", counter, " = ", calculated_stuff + counter) -> print
 end
 
 () -> main

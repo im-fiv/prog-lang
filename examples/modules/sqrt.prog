@@ -2,7 +2,7 @@
 
 def sqrt = func(num) do
 	def result = num * num
-	("[sqrt.prog] the squared value of", num, "is", result) -> print
+	("[sqrt.prog] the squared value of ", num, " is ", result) -> print
 	
 	return result
 end
