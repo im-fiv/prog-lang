@@ -15,7 +15,7 @@ jobs:
           directory: ./
           badge: ./output/badge.svg
           patterns: '**/*'  # Patterns in the format of a '.gitignore' file, separated by pipes.
-          ignore: 'node_modules|**/*.png|**/*.jpg|**/*.jpeg|**/*.webp'
+          ignore: 'node_modules|**/*.png|**/*.jpg|**/*.jpeg|**/*.webp|**/package-lock.json'
       
       - name: Deploy to image-data branch
         uses: peaceiris/actions-gh-pages@v3
