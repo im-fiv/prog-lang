@@ -25,8 +25,8 @@ fn get_enum_data(item_data: syn::Data) -> syn::Result<syn::DataEnum> {
 }
 
 /// Implements `TryInto` for all variants into their unnamed fields type. **Only compatible with enums**
-#[proc_macro_derive(Conversion)]
-pub fn conversion(item: pm::TokenStream) -> pm::TokenStream {
+#[proc_macro_derive(VariantUnwrap)]
+pub fn variant_unwrap(item: pm::TokenStream) -> pm::TokenStream {
 	let item = parse_macro_input!(item as DeriveInput);
 	let enum_name = item.ident;
 
