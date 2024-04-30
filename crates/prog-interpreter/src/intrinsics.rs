@@ -4,7 +4,7 @@ use anyhow::{Result, bail};
 use prog_macros::get_argument;
 use crate::arg_parser::{ArgList, Arg, ParsedArg};
 use crate::context::RuntimeContext;
-use crate::values::{RuntimeValue, RuntimeValueKind, IntrinsicFunction};
+use crate::values::{IntrinsicFunction, RuntimeValue, RuntimeValueKind};
 
 fn print_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>) -> Result<RuntimeValue> {
 	let to_print = get_argument!(args => varargs: ...)

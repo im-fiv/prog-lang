@@ -6,16 +6,6 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Главная страница</title>
 	<link rel="stylesheet" href="styles.css">
-
-	<script>
-		function GoToDownload() {
-			window.location.href = 'https://github.com/im-fiv/prog-lang/archive/refs/heads/main.zip';
-		}
-
-		function GoToGithub() {
-			window.location.href = 'https://github.com/im-fiv/prog-lang';
-		}
-	</script>
 </head>
 <body>
 	<div class="header-pc">
@@ -61,17 +51,17 @@
 	</div>
 	
 	<main>
-		<br/><br/><br/><br/><br/><br/><br/>
+		<br><br><br><br><br><br><br>
 
 		<h2 class="first-display">Deanon team представляет Prog lang!</h2>
-		<br/>
+		<br>
 
 		<img src="images/code-int.png" alt="фото синтаксиса" style="width:35%; height:auto; text-align: center;">
 		<br><br>
 		
 		<button class="gradient-btn download-size" onclick="GoToDownload()">Скачать</button>
 
-		<br/><br/><br/><br/><br/><br/>
+		<br><br><br><br><br><br>
 
 		<h2 class="first-display" align="right" style="padding-right: 5% ;">
 			У нас есть всё что вам нужно:
@@ -83,14 +73,63 @@
 		<br><br><br><br><br><br><br><br><br><br><br><br><br>
 
 		<h2 class="first-display" align="left">
-			Вывод текста? Переменные? функции?<br/>Импорт библиотеки? Всё это есть в Prog lang
+			Вывод текста? Переменные? Функции?<br/>Импорт библиотеки? Всё это есть в Prog Lang
 		</h2>
 
 		<h4 class="first-display1" align="left">
-			Посмотрите наш Github и сами убедитесь в этом
+			Убедитесь в этом, запустив Ваш код прямиком в браузере!
 		<h4>
+
+		<button class="gradient-btn download-size" onclick="Execute()">Execute</button>
+		<br>
+		<div id="container" style="width:800px;height:250px;border:1px solid grey"></div>
+
+		<br><br><br>
 		
 		<button class="gradient-btn download-size" onclick="GoToGithub()">Github</button> 
 	</main>
+
+	<script src="monaco-editor/min/vs/loader.js"></script>
+	<script>
+		require.config({ paths: { vs: 'monaco-editor/min/vs' } });
+		require(['vs/editor/editor.main'], function () {
+			window.editor = monaco.editor.create(document.getElementById('container'), {
+				value: '("Hello, World!") -> print',
+				language: 'proglang'
+			});
+		});
+	</script>
+
+	<script>
+		function GoToDownload() {
+			window.location.href = 'https://github.com/im-fiv/prog-lang/archive/refs/heads/main.zip';
+		}
+
+		function GoToGithub() {
+			window.location.href = 'https://github.com/im-fiv/prog-lang';
+		}
+
+		async function Execute() {
+			let code = window.editor.getValue();
+			let endpoint = `${window.origin}/execute`;
+
+			let data
+
+			try {
+				data = await fetch(endpoint, {
+					body: code,
+					method: "POST",
+					
+				});
+			} catch (error) {
+				console.error(error);
+				return;
+			}
+
+			let output = await data.text();
+			window.editor.setValue(output);
+		}
+	</script>
+</body>
 </body>
 </html>

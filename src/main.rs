@@ -78,8 +78,8 @@ fn execute_serve_command(args: cli::ServeCommand) {
 
 			App::new()
 				.wrap(cors)
-				.service(actix_files::Files::new("/", "./website").show_files_listing())
 				.service(execute_str)
+				.service(actix_files::Files::new("/", "./website").show_files_listing())
 		})
 		.bind(("0.0.0.0", port))?
 		.run()

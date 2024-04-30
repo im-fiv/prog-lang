@@ -15,10 +15,10 @@ pub enum RuntimeValue {
 	String(String),
 	Number(f64),
 
-	#[serde(skip)]
+	#[serde(serialize_with = "serialize_function")]
 	Function(RuntimeFunction),
 	
-	#[serde(skip)]
+	#[serde(serialize_with = "serialize_intrinsic_function")]
 	IntrinsicFunction(IntrinsicFunction),
 	
 	Empty
@@ -99,4 +99,16 @@ impl Display for RuntimeValueKind {
 			Self::Empty => write!(f, "Nothing")
 		}
 	}
+}
+
+fn serialize_function<S: serde::Serializer>(function: &RuntimeFunction, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+	let arguments_str = function.arguments.join(", ");
+	let formatted = format!("func({arguments_str})");
+
+	serializer.serialize_str(&formatted[..])
+}
+
+fn serialize_intrinsic_function<S: serde::Serializer>(function: &IntrinsicFunction, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+	let formatted = format!("func({:p})", function.pointer);
+	serializer.serialize_str(&formatted[..])
 }
