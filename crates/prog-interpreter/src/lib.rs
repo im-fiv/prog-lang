@@ -169,6 +169,11 @@ impl Interpreter {
 			}
 
 			let index: usize = index.try_into().unwrap();
+
+			if index >= inner_list.len() {
+				inner_list.resize(index + 1, RuntimeValue::Empty);
+			}
+
 			inner_list[index] = self.evaluate_expression(value, false)?;
 
 			self.context.update_value(
@@ -260,6 +265,8 @@ impl Interpreter {
 			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs >= rhs)),
 			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs <= rhs)),
 
+			(Op::Plus, Rv::String(lhs), rhs) => Ok(Rv::String(format!("{}{}", lhs, rhs.to_string()))),
+
 			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs && rhs)),
 			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs || rhs)),
 
@@ -289,7 +296,7 @@ impl Interpreter {
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
 			(Op::NotEq, _, _) => Ok(Rv::Boolean(true)),
 
-			(operator, lhs, rhs) => bail!("Cannot perform an unsupported binary operation `{}` on `{}` and `{}`", operator, lhs, rhs)
+			(operator, lhs, rhs) => bail!("Cannot perform an unsupported binary operation `{} {} {}`", lhs.kind(), operator, rhs.kind())
 		}
 	}
 
