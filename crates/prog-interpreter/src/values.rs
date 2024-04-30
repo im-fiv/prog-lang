@@ -4,7 +4,7 @@ use anyhow::Result;
 use serde::Serialize;
 
 use prog_parser::ast;
-use prog_macros::Conversion;
+use prog_macros::VariantUnwrap;
 
 use crate::arg_parser::{ArgList, ParsedArg};
 use crate::context::RuntimeContext;
@@ -23,7 +23,24 @@ pub enum RuntimeValueKind {
 	Empty
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Conversion)]
+impl Display for RuntimeValueKind {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Boolean => write!(f, "Boolean"),
+			Self::String => write!(f, "String"),
+			Self::Number => write!(f, "Number"),
+			Self::List => write!(f, "List"),
+
+			Self::Function => write!(f, "Function"),
+			Self::IntrinsicFunction => write!(f, "IntrinsicFunction"),
+
+			Self::Identifier => write!(f, "Identifier"),
+			Self::Empty => write!(f, "Nothing")
+		}
+	}
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, VariantUnwrap)]
 pub enum RuntimeValue {
 	Boolean(bool),
 	String(String),
@@ -98,29 +115,6 @@ impl Display for RuntimeValue {
 	}
 }
 
-impl Display for RuntimeValueKind {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Boolean => write!(f, "Boolean"),
-			Self::String => write!(f, "String"),
-			Self::Number => write!(f, "Number"),
-			Self::List => write!(f, "List"),
-
-			Self::Function => write!(f, "Function"),
-			Self::IntrinsicFunction => write!(f, "IntrinsicFunction"),
-
-			Self::Identifier => write!(f, "Identifier"),
-			Self::Empty => write!(f, "Nothing")
-		}
-	}
-}
-
-impl From<String> for Identifier {
-	fn from(value: String) -> Self {
-		Self(value)
-	}
-}
-
 fn serialize_function<S: serde::Serializer>(function: &RuntimeFunction, serializer: S) -> std::result::Result<S::Ok, S::Error> {
 	let arguments_str = function.arguments.join(", ");
 	let formatted = format!("func({arguments_str})");
@@ -149,3 +143,9 @@ pub struct IntrinsicFunction {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier(pub String);
+
+impl From<String> for Identifier {
+	fn from(value: String) -> Self {
+		Self(value)
+	}
+}
