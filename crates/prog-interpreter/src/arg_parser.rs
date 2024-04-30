@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use core::iter::zip;
 use anyhow::{Result, bail};
 
 use crate::values::{RuntimeValue, RuntimeValueKind};
@@ -46,6 +45,8 @@ impl ArgList {
 
 	/// Verifies the provided arguments according to the inner argument types list
 	pub fn verify(&self, arguments: &[RuntimeValue]) -> Result<HashMap<String, ParsedArg>> {
+		use core::iter::zip;
+
 		if let Some(result) = self.check_args_length(arguments)? {
 			return Ok(result);
 		}
