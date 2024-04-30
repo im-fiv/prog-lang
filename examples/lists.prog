@@ -12,4 +12,22 @@ def sum = func(list, len) do
 	return result
 end
 
-return ([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 10) -> sum
+def list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+def len = 10
+
+def resulting_sum = (list, len) -> sum
+def old_list = list
+
+// doubling 9th element
+(len - 1)=>list = (len - 1)=>list * 2
+def new_resulting_sum = (list, len) -> sum
+
+("old sum: ", resulting_sum) -> print
+("new sum: ", new_resulting_sum) -> print
+() -> print
+
+("difference: ", new_resulting_sum - resulting_sum) -> print
+() -> print
+
+("original list: ", old_list) -> print
+("modified list: ", list) -> print
