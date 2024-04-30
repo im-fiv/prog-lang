@@ -222,6 +222,13 @@ impl Interpreter {
 			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::NotEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(false)),
 
+			(Op::Access, Rv::Number(lhs), Rv::List(rhs)) => Ok(
+				rhs
+					.get(lhs as usize)
+					.unwrap_or(&RuntimeValue::Empty)
+					.to_owned()
+			),
+
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
 			(Op::NotEq, _, _) => Ok(Rv::Boolean(true)),
 

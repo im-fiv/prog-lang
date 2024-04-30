@@ -36,7 +36,7 @@ if_stmt = { "if" ~ expression ~ "then" ~ statements ~ if_elseif* ~ if_else? ~ "e
 
 // Operators
 unary_operator = { "-" | "not" }
-binary_operator = { "+" | "-" | "/" | "*" | "%" | "==" | "!=" | "and" | "or" | ">=" | "<=" | ">" | "<" }
+binary_operator = { "+" | "-" | "/" | "*" | "%" | "==" | "!=" | "and" | "or" | ">=" | "<=" | ">" | "<" | "=>" }
 
 // Expressions
 expression = { unary_expression | binary_expression | term }
