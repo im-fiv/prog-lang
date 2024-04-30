@@ -182,8 +182,8 @@ impl TryFrom<String> for operators::BinaryOperator {
 			"%" => Ok(Self::Modulo),
 			"==" => Ok(Self::EqEq),
 			"!=" => Ok(Self::NotEq),
-			"&&" => Ok(Self::And),
-			"||" => Ok(Self::Or),
+			"and" => Ok(Self::And),
+			"or" => Ok(Self::Or),
 			">" => Ok(Self::Gt),
 			"<" => Ok(Self::Lt),
 			">=" => Ok(Self::Gte),
@@ -200,7 +200,7 @@ impl TryFrom<String> for operators::UnaryOperator {
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		match &value[..] {
 			"-" => Ok(Self::Minus),
-			"!" => Ok(Self::Not),
+			"not" => Ok(Self::Not),
 
 			op => Err(format!("Invalid unary operator '{op}'"))
 		}
@@ -217,8 +217,8 @@ impl Display for operators::BinaryOperator {
 			Self::Modulo => write!(f, "%"),
 			Self::EqEq => write!(f, "=="),
 			Self::NotEq => write!(f, "!="),
-			Self::And => write!(f, "&&"),
-			Self::Or => write!(f, "||"),
+			Self::And => write!(f, "and"),
+			Self::Or => write!(f, "or"),
 			Self::Gt => write!(f, ">"),
 			Self::Lt => write!(f, "<"),
 			Self::Gte => write!(f, ">="),
@@ -231,7 +231,7 @@ impl Display for operators::UnaryOperator {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Minus => write!(f, "-"),
-			Self::Not => write!(f, "!")
+			Self::Not => write!(f, "not")
 		}
 	}
 }

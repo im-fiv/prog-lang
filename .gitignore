@@ -1,4 +1,7 @@
 /target
 /.vscode
+
 /website/monaco-editor
+
 /syntax-extension/node_modules
+/syntax-extension/*.vsix
