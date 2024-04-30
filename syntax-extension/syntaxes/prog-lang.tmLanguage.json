@@ -36,6 +36,10 @@
 			"name": "keyword.operator.arrow.prog-lang"
 		},
 		{
+			"match": "=>",
+			"name": "keyword.operator.fat-arrow.prog-lang"
+		},
+		{
 			"match": "\\bvoid\\b",
 			"name": "constant.language.void.prog-lang"
 		},

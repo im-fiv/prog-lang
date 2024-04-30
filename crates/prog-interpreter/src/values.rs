@@ -14,6 +14,7 @@ pub enum RuntimeValue {
 	Boolean(bool),
 	String(String),
 	Number(f64),
+	List(Vec<RuntimeValue>),
 
 	#[serde(serialize_with = "serialize_function")]
 	Function(RuntimeFunction),
@@ -29,8 +30,11 @@ pub enum RuntimeValueKind {
 	Boolean,
 	String,
 	Number,
+	List,
+
 	Function,
 	IntrinsicFunction,
+
 	Empty
 }
 
@@ -56,8 +60,11 @@ impl RuntimeValue {
 			Self::Boolean(_) => Kind::Boolean,
 			Self::String(_) => Kind::String,
 			Self::Number(_) => Kind::Number,
+			Self::List(_) => Kind::List,
+			
 			Self::Function(_) => Kind::Function,
 			Self::IntrinsicFunction(_) => Kind::IntrinsicFunction,
+
 			Self::Empty => Kind::Empty
 		}.to_owned()
 	}
@@ -81,8 +88,17 @@ impl Display for RuntimeValue {
 			Self::Boolean(value) => write!(f, "{}", if value.to_owned() { "true" } else { "false" }),
 			Self::String(value) => write!(f, "{value}"),
 			Self::Number(value) => write!(f, "{value}"),
+			Self::List(value) => write!(
+				f, "{}",
+				value
+					.iter()
+					.map(|entry| format!("{entry}"))
+					.collect::<String>()
+			),
+
 			Self::Function(_) => write!(f, "Function"),
 			Self::IntrinsicFunction(_) => write!(f, "IntrinsicFunction"),
+
 			Self::Empty => write!(f, "")
 		}
 	}
@@ -94,8 +110,11 @@ impl Display for RuntimeValueKind {
 			Self::Boolean => write!(f, "Boolean"),
 			Self::String => write!(f, "String"),
 			Self::Number => write!(f, "Number"),
+			Self::List => write!(f, "List"),
+
 			Self::Function => write!(f, "Function"),
 			Self::IntrinsicFunction => write!(f, "IntrinsicFunction"),
+
 			Self::Empty => write!(f, "Nothing")
 		}
 	}

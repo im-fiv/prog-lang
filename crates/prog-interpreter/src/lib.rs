@@ -140,12 +140,15 @@ impl Interpreter {
 	fn is_value_truthy(&self, rv: &RuntimeValue) -> bool {
 		use RuntimeValue as Rv;
 		
-		!match rv {
-			Rv::Boolean(value) => !value,
-			Rv::String(value) => value.is_empty(),
-			Rv::Number(value) => value == &0.0,
+		match rv {
+			Rv::Boolean(value) => *value,
+			Rv::String(value) => !value.is_empty(),
+			Rv::Number(value) => value != &0.0,
+			Rv::List(value) => !value.is_empty(),
+
 			Rv::Function(_) => true,
 			Rv::IntrinsicFunction(..) => true,
+
 			Rv::Empty => false
 		}
 	}
@@ -173,9 +176,10 @@ impl Interpreter {
 			(Op::Not, Rv::Boolean(value)) => Ok(Rv::Boolean(!value)),
 			(Op::Not, Rv::String(value)) => Ok(Rv::Boolean(value.is_empty())),
 			(Op::Not, Rv::Number(value)) => Ok(Rv::Boolean(value == 0.0)),
+			(Op::Not, Rv::List(value)) => Ok(Rv::Boolean(value.is_empty())),
 			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(false)),
 			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(false)),
-			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(false)),
+			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(true)),
 
 		 	(operator, operand) => bail!("Cannot perform an unsupported unary operation '{}' on '{}'", operator, operand)
 		}
@@ -205,6 +209,7 @@ impl Interpreter {
 			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
+			(Op::EqEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::EqEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(true)),
@@ -212,6 +217,7 @@ impl Interpreter {
 			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
+			(Op::NotEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
 			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
 			(Op::NotEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(false)),
@@ -227,6 +233,7 @@ impl Interpreter {
 		use ast::expressions::*;
 
 		match term {
+			Term::List(value) => self.evaluate_list(value),
 			Term::Call(value) => self.evaluate_call(value),
 			Term::Function(value) => self.evaluate_function(value),
 			Term::Literal(value) => Ok(value.into()),
@@ -240,6 +247,17 @@ impl Interpreter {
 			arguments: function.arguments,
 			statements: function.statements
 		}))
+	}
+
+	fn evaluate_list(&mut self, list: ast::expressions::List) -> Result<RuntimeValue> {
+		let mut values = vec![];
+
+		for expression in list.0 {
+			let value = self.evaluate_expression(expression)?;
+			values.push(value);
+		}
+
+		Ok(RuntimeValue::List(values))
 	}
 
 	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<RuntimeValue> {

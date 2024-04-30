@@ -181,6 +181,22 @@ fn parse_return_stmt(pair: Pair<'_, Rule>) -> Statement {
 	)
 }
 
+fn parse_list(pair: Pair<'_, Rule>) -> expressions::List {
+	assert_rule!(pair == list in pair);
+
+	let pairs = pair.clone().into_inner();
+	let mut expressions = vec![];
+
+	for expression_pair in pairs {
+		assert_rule!(expression_pair == expression in pair);
+
+		let parsed_pair = parse_expression(expression_pair);
+		expressions.push(parsed_pair);
+	}
+
+	expressions::List(expressions)
+}
+
 fn parse_function_call(pair: Pair<'_, Rule>) -> expressions::Call {
 	assert_rule!(pair == call in pair);
 
@@ -337,6 +353,7 @@ fn parse_expression_with_precedence(pairs: &mut Peekable<Pairs<Rule>>, precedenc
 
 fn parse_term(pair: Pair<'_, Rule>) -> expressions::Term {
 	match pair.as_rule() {
+		Rule::list => parse_list(pair).into(),
 		Rule::call => parse_function_call(pair).into(),
 		Rule::function => parse_function(pair).into(),
 

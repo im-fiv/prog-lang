@@ -70,12 +70,18 @@ pub mod expressions {
 
 	#[derive(Debug, Clone, PartialEq)]
 	pub enum Term {
+		List(List),
 		Call(Call),
 		Function(Function),
 		Literal(Literal),
 		Identifier(String),
 		Expression(Box<Expression>)
 	}
+
+	#[derive(Debug, Clone, PartialEq)]
+	pub struct List(
+		pub Vec<Expression>
+	);
 
 	#[derive(Debug, Clone, PartialEq)]
 	pub struct Call {
@@ -135,6 +141,7 @@ macro_rules! impl_basic_conv {
 	};
 }
 
+impl_basic_conv!(from List => Term as List);
 impl_basic_conv!(from Function => Term as Function);
 impl_basic_conv!(from Literal => Term as Literal);
 impl_basic_conv!(from Expression => Term as Expression { Box::new });
