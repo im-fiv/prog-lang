@@ -118,7 +118,7 @@ pub mod expressions {
 			Lt,
 			Gte,
 			Lte,
-			Access
+			ListAccess
 		}
 
 		#[derive(Debug, Clone, Copy, PartialEq)]
@@ -167,7 +167,7 @@ impl operators::BinaryOperator {
 			Self::EqEq | Self::NotEq | Self::And | Self::Or | Self::Gt | Self::Lt | Self::Gte | Self::Lte => 1,
 			Self::Plus | Self::Minus => 2,
 			Self::Multiply | Self::Divide | Self::Modulo => 3,
-			Self::Access => 4
+			Self::ListAccess => 4
 		}
 	}
 }
@@ -190,7 +190,7 @@ impl TryFrom<String> for operators::BinaryOperator {
 			"<" => Ok(Self::Lt),
 			">=" => Ok(Self::Gte),
 			"<=" => Ok(Self::Lte),
-			"=>" => Ok(Self::Access),
+			"=>" => Ok(Self::ListAccess),
 
 			op => Err(format!("Invalid binary operator '{op}'"))
 		}
@@ -226,7 +226,7 @@ impl Display for operators::BinaryOperator {
 			Self::Lt => write!(f, "<"),
 			Self::Gte => write!(f, ">="),
 			Self::Lte => write!(f, "<="),
-			Self::Access => write!(f, "=>")
+			Self::ListAccess => write!(f, "=>")
 		}
 	}
 }
