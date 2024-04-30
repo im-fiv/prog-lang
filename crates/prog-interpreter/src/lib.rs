@@ -4,7 +4,7 @@ pub mod intrinsics;
 pub mod values;
 
 use context::RuntimeContext;
-use values::{RuntimeValue, RuntimeFunction};
+use values::{RuntimeFunction, RuntimeValue, RuntimeValueKind};
 
 use prog_parser::ast;
 use anyhow::{Result, bail};
@@ -46,7 +46,7 @@ impl Interpreter {
 			ast::Statement::DoBlock(statements) => self.execute_do_block(statements),
 
 			ast::Statement::Return(expression) => match expression {
-				Some(expression) => self.evaluate_expression(expression),
+				Some(expression) => self.evaluate_expression(expression, false),
 				None => Ok(RuntimeValue::Empty)
 			},
 
@@ -56,14 +56,16 @@ impl Interpreter {
 			ast::Statement::Break => unimplemented!("break"),
 			ast::Statement::Continue => unimplemented!("continue"),
 
-			ast::Statement::If { condition, statements, elseif_branches, else_branch } => self.execute_if(condition, statements, elseif_branches, else_branch)
+			ast::Statement::If { condition, statements, elseif_branches, else_branch } => self.execute_if(condition, statements, elseif_branches, else_branch),
+		
+			ast::Statement::ExpressionAssign { expression, value } => self.execute_expression_assign(expression, value)
 		}
 	}
 
 	fn execute_variable_define(&mut self, name: String, value: Option<ast::Expression>) -> Result<RuntimeValue> {
 		let evaluated_value = match value {
 			None => RuntimeValue::Empty,
-			Some(expression) => self.evaluate_expression(expression)?
+			Some(expression) => self.evaluate_expression(expression, false)?
 		};
 
 		self.context.insert_value(name, evaluated_value)?;
@@ -71,7 +73,7 @@ impl Interpreter {
 	}
 
 	fn execute_variable_assign(&mut self, name: String, value: ast::Expression) -> Result<RuntimeValue> {
-		let evaluated_value = self.evaluate_expression(value)?;
+		let evaluated_value = self.evaluate_expression(value, false)?;
 
 		self.context.update_value(name, evaluated_value)?;
 		Ok(RuntimeValue::Empty)
@@ -86,21 +88,21 @@ impl Interpreter {
 	}
 
 	fn execute_while_loop(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>) -> Result<RuntimeValue> {
-		let mut evaluated = self.evaluate_expression(condition.clone())?;
+		let mut evaluated = self.evaluate_expression(condition.clone(), false)?;
 
 		while self.is_value_truthy(&evaluated) {
 			self.context.deeper();
 			self.execute(ast::Program { statements: statements.clone() })?;
 			self.context.shallower();
 
-			evaluated = self.evaluate_expression(condition.clone())?;
+			evaluated = self.evaluate_expression(condition.clone(), false)?;
 		}
 
 		Ok(RuntimeValue::Empty)
 	}
 
 	fn execute_if(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>, elseif_branches: Vec<ast::ConditionBranch>, else_branch: Option<ast::ConditionBranch>) -> Result<RuntimeValue> {
-		let evaluated = self.evaluate_expression(condition)?;
+		let evaluated = self.evaluate_expression(condition, false)?;
 
 		if self.is_value_truthy(&evaluated) {
 			self.context.deeper();
@@ -111,7 +113,7 @@ impl Interpreter {
 		}
 
 		for branch in elseif_branches {
-			let evaluated = self.evaluate_expression(branch.condition)?; 
+			let evaluated = self.evaluate_expression(branch.condition, false)?; 
 
 			if self.is_value_truthy(&evaluated) {
 				self.context.deeper();
@@ -123,7 +125,7 @@ impl Interpreter {
 		}
 
 		if let Some(branch) = else_branch {
-			let evaluated = self.evaluate_expression(branch.condition)?; 
+			let evaluated = self.evaluate_expression(branch.condition, false)?; 
 
 			if self.is_value_truthy(&evaluated) {
 				self.context.deeper();
@@ -132,6 +134,49 @@ impl Interpreter {
 
 				return Ok(RuntimeValue::Empty);
 			}
+		}
+
+		Ok(RuntimeValue::Empty)
+	}
+
+	fn execute_expression_assign(&mut self, expression: ast::Expression, value: ast::Expression) -> Result<RuntimeValue> {
+		let expression = match expression {
+			ast::Expression::Binary(expression) => expression,
+			_ => bail!("Expression `{:?}` is not assignable", expression)
+		};
+
+		if expression.operator != ast::expressions::operators::BinaryOperator::ListAccess {
+			bail!("Expression `{:?}` is not assignable", expression);
+		}
+
+		let list_name = match self.evaluate_term(expression.rhs.to_owned(), true)? {
+			RuntimeValue::Identifier(identifier) => identifier.0,
+			_ => bail!("Expression `{:?}` is not assignable", expression)
+		};
+
+		if let RuntimeValue::List(mut inner_list) = self.context.get_value(&list_name)? {
+			let index = match self.evaluate_term(expression.lhs, false)? {
+				RuntimeValue::Number(index) => index as i64,
+				value => bail!(
+					"Cannot index `{}` using `{}`",
+					RuntimeValueKind::List,
+					value.kind()
+				)
+			};
+
+			if index.is_negative() {
+				bail!("Value `{index}` cannot be used to index `{list_name}` as it is negative");
+			}
+
+			let index: usize = index.try_into().unwrap();
+			inner_list[index] = self.evaluate_expression(value, false)?;
+
+			self.context.update_value(
+				list_name,
+				RuntimeValue::List(inner_list)
+			)?;
+		} else {
+			bail!("Expression `{:?}` is not assignable", expression)
 		}
 
 		Ok(RuntimeValue::Empty)
@@ -149,26 +194,32 @@ impl Interpreter {
 			Rv::Function(_) => true,
 			Rv::IntrinsicFunction(..) => true,
 
+			Rv::Identifier(..) => unreachable!("RuntimeValue of kind Identifier"),
 			Rv::Empty => false
 		}
 	}
 
-	fn evaluate_expression(&mut self, expression: ast::Expression) -> Result<RuntimeValue> {
+	fn evaluate_expression(&mut self, expression: ast::Expression, stop_on_ident: bool) -> Result<RuntimeValue> {
 		use ast::expressions::*;
 		
 		match expression {
-			Expression::Unary(expression) => self.evaluate_unary_expression(expression.operator, expression.operand),
-			Expression::Binary(expression) => self.evaluate_binary_expression(expression.lhs, expression.operator, expression.rhs),
-			Expression::Term(term) => self.evaluate_term(term),
+			Expression::Unary(expression) => self.evaluate_unary_expression(expression.operator, expression.operand, stop_on_ident),
+			Expression::Binary(expression) => self.evaluate_binary_expression(expression.lhs, expression.operator, expression.rhs, stop_on_ident),
+			Expression::Term(term) => self.evaluate_term(term, stop_on_ident),
 			Expression::Empty => Ok(RuntimeValue::Empty)
 		}
 	}
 
-	fn evaluate_unary_expression(&mut self, operator: ast::expressions::operators::UnaryOperator, operand: ast::expressions::Term) -> Result<RuntimeValue> {
+	fn evaluate_unary_expression(
+		&mut self,
+		operator: ast::expressions::operators::UnaryOperator,
+		operand: ast::expressions::Term,
+		stop_on_ident: bool
+	) -> Result<RuntimeValue> {
 		use ast::expressions::operators::UnaryOperator as Op;
 		use RuntimeValue as Rv;
 
-		let evaluated_operand = self.evaluate_term(operand)?;
+		let evaluated_operand = self.evaluate_term(operand, stop_on_ident)?;
 
 		match (operator, evaluated_operand) {
 			(Op::Minus, Rv::Number(value)) => Ok(Rv::Number(-value)),
@@ -181,16 +232,22 @@ impl Interpreter {
 			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(false)),
 			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(true)),
 
-		 	(operator, operand) => bail!("Cannot perform an unsupported unary operation '{}' on '{}'", operator, operand)
+		 	(operator, operand) => bail!("Cannot perform an unsupported unary operation `{}` on `{}`", operator, operand)
 		}
 	}
 
-	fn evaluate_binary_expression(&mut self, lhs: ast::expressions::Term, operator: ast::expressions::operators::BinaryOperator, rhs: ast::expressions::Term) -> Result<RuntimeValue> {
+	fn evaluate_binary_expression(
+		&mut self,
+		lhs: ast::expressions::Term,
+		operator: ast::expressions::operators::BinaryOperator,
+		rhs: ast::expressions::Term,
+		stop_on_ident: bool
+	) -> Result<RuntimeValue> {
 		use ast::expressions::operators::BinaryOperator as Op;
 		use RuntimeValue as Rv;
 		
-		let evaluated_lhs = self.evaluate_term(lhs)?;
-		let evaluated_rhs = self.evaluate_term(rhs)?;
+		let evaluated_lhs = self.evaluate_term(lhs, stop_on_ident)?;
+		let evaluated_rhs = self.evaluate_term(rhs, stop_on_ident)?;
 
 		match (operator, evaluated_lhs, evaluated_rhs) {
 			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs + rhs)),
@@ -232,11 +289,11 @@ impl Interpreter {
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
 			(Op::NotEq, _, _) => Ok(Rv::Boolean(true)),
 
-			(operator, lhs, rhs) => bail!("Cannot perform an unsupported binary operation '{}' on '{}' and '{}'", operator, lhs, rhs)
+			(operator, lhs, rhs) => bail!("Cannot perform an unsupported binary operation `{}` on `{}` and `{}`", operator, lhs, rhs)
 		}
 	}
 
-	fn evaluate_term(&mut self, term: ast::expressions::Term) -> Result<RuntimeValue> {
+	fn evaluate_term(&mut self, term: ast::expressions::Term, stop_on_ident: bool) -> Result<RuntimeValue> {
 		use ast::expressions::*;
 
 		match term {
@@ -244,8 +301,11 @@ impl Interpreter {
 			Term::Call(value) => self.evaluate_call(value),
 			Term::Function(value) => self.evaluate_function(value),
 			Term::Literal(value) => Ok(value.into()),
-			Term::Identifier(value) => self.context.get_value(&value),
-			Term::Expression(value) => self.evaluate_expression(*value)
+			Term::Identifier(value) => match stop_on_ident {
+				true => Ok(RuntimeValue::Identifier(value.into())),
+				false => self.context.get_value(&value)
+			},
+			Term::Expression(value) => self.evaluate_expression(*value, stop_on_ident)
 		}
 	}
 
@@ -260,7 +320,7 @@ impl Interpreter {
 		let mut values = vec![];
 
 		for expression in list.0 {
-			let value = self.evaluate_expression(expression)?;
+			let value = self.evaluate_expression(expression, false)?;
 			values.push(value);
 		}
 
@@ -273,11 +333,11 @@ impl Interpreter {
 		let call_arguments = call
 			.arguments
 			.into_iter()
-			.map(|arg| self.evaluate_expression(arg))
+			.map(|arg| self.evaluate_expression(arg, false))
 			.collect::<Result<Vec<RuntimeValue>>>()?;
 
 		let original_expression = *call.function.clone();
-		let expression = self.evaluate_expression(*call.function)?;
+		let expression = self.evaluate_expression(*call.function, false)?;
 
 		if let RuntimeValue::IntrinsicFunction(function) = expression {
 			let call_arguments = function.arguments.verify(&call_arguments)?;
@@ -301,11 +361,7 @@ impl Interpreter {
 			}
 			
 			self.context.deeper();
-			for (index, (arg_name, arg_value)) in zip(function.arguments, call_arguments).enumerate() {
-				if self.context.key_real(&arg_name) {
-					bail!("Name of argument #{} conflicts with variable name '{}'", index + 1, arg_name);
-				}
-
+			for (arg_name, arg_value) in zip(function.arguments, call_arguments) {
 				self.context.insert_value(arg_name, arg_value)?;
 			}
 
@@ -314,7 +370,7 @@ impl Interpreter {
 
 			result
 		} else {
-			bail!("Expression '{:?}' is not callable", original_expression);
+			bail!("Expression `{:?}` is not callable", original_expression);
 		}
 	}
 }

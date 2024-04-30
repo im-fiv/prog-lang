@@ -37,6 +37,11 @@ pub enum Statement {
 		statements: Vec<Statement>,
 		elseif_branches: Vec<ConditionBranch>,
 		else_branch: Option<ConditionBranch>
+	},
+
+	ExpressionAssign {
+		expression: Expression,
+		value: Expression
 	}
 }
 

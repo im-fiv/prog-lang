@@ -19,7 +19,8 @@ statement = _{
 	while_stmt |
 	break_stmt |
 	continue_stmt |
-	if_stmt
+	if_stmt |
+	expr_assign_stmt
 }
 
 var_define_stmt = { "def" ~ identifier ~ ("=" ~ expression)? }
@@ -29,6 +30,7 @@ return_stmt = { "return" ~ expression? }
 while_stmt = { "while" ~ expression ~ do_block }
 break_stmt = { "break" }
 continue_stmt = { "continue" }
+expr_assign_stmt = { expression ~ "=" ~ expression } // This is an unusual one
 
 if_stmt = { "if" ~ expression ~ "then" ~ statements ~ if_elseif* ~ if_else? ~ "end" }
 	if_elseif = { ("else" ~ "if" | "elseif") ~ expression ~ "then" ~ statements }

@@ -100,6 +100,8 @@ fn parse_statements(pairs: Pairs<'_, Rule>) -> Vec<Statement> {
 
 			Rule::if_stmt => parse_if_stmt(pair),
 
+			Rule::expr_assign_stmt => parse_expr_assign_stmt(pair),
+
 			rule => error!("statement of type '{:?}' is not yet implemented", pair.as_span(), rule)
 		};
 
@@ -296,6 +298,21 @@ fn parse_else_branch(pair: Pair<'_, Rule>) -> ConditionBranch {
 	);
 
 	ConditionBranch { condition: Expression::Empty, statements }
+}
+
+fn parse_expr_assign_stmt(pair: Pair<'_, Rule>) -> Statement {
+	assert_rule!(pair == expr_assign_stmt in pair);
+	let mut pairs = pair.clone().into_inner();
+
+	let expression = parse_expression(
+		get_pair_safe!(from pairs expect expression in pair)
+	);
+
+	let value = parse_expression(
+		get_pair_safe!(from pairs expect expression in pair)
+	);
+
+	Statement::ExpressionAssign { expression, value }
 }
 
 fn is_term(pair: Pair<'_, Rule>) -> bool {
