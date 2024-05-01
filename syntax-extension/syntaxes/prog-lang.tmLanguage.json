@@ -93,7 +93,11 @@
 				},
 				{
 					"name": "keyword.operator.prog-lang",
-					"match": "==|!=|>=|<=|>|<|and|or|not"
+					"match": "==|!=|>=|<=|>|<"
+				},
+				{
+					"name": "keyword.operator.comparison.prog-lang",
+					"match": "\\b(and|or|not)\\b"
 				},
 				{
 					"name": "keyword.operator.prog-lang",
