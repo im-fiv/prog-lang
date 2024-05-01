@@ -171,7 +171,7 @@ impl Interpreter {
 			let index: usize = index.try_into().unwrap();
 
 			if index >= inner_list.len() {
-				inner_list.resize(index + 1, RuntimeValue::Empty);
+				inner_list.resize(index + 50, RuntimeValue::Empty);
 			}
 
 			inner_list[index] = self.evaluate_expression(value, false)?;
