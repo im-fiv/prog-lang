@@ -2,7 +2,7 @@ pub mod cli;
 
 use cli::Cli;
 use prog_parser::parse;
-use prog_interpreter::Interpreter;
+use prog_interpreter::{Interpreter, RuntimeValue};
 use prog_utils::read_file;
 
 use actix_web::{App, HttpResponse, HttpServer, Responder, post};
@@ -52,7 +52,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 
 		#[derive(Debug, Serialize)]
 		struct Result {
-			value: prog_interpreter::values::RuntimeValue,
+			value: RuntimeValue,
 			stdin: String,
 			stdout: String
 		}
