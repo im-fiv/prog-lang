@@ -185,7 +185,6 @@ fn parse_return_stmt(pair: Pair<'_, Rule>) -> Statement {
 
 fn parse_list(pair: Pair<'_, Rule>) -> expressions::List {
 	assert_rule!(pair == list in pair);
-
 	let pairs = pair.clone().into_inner();
 	let mut expressions = vec![];
 
@@ -197,6 +196,37 @@ fn parse_list(pair: Pair<'_, Rule>) -> expressions::List {
 	}
 
 	expressions::List(expressions)
+}
+
+fn parse_object(pair: Pair<'_, Rule>) -> expressions::Object {
+	assert_rule!(pair == object in pair);
+	let pairs = pair.clone().into_inner();
+	let mut entries = vec![];
+
+	for entry_pair in pairs {
+		assert_rule!(entry_pair == object_entry in pair);
+
+		entries.push(
+			parse_object_entry(entry_pair)
+		);
+	}
+
+	expressions::Object(entries)
+}
+
+fn parse_object_entry(pair: Pair<'_, Rule>) -> (String, expressions::Expression) {
+	assert_rule!(pair == object_entry in pair);
+	let mut pairs = pair.clone().into_inner();
+
+	let name = pair_into_string(
+		get_pair_safe!(from pairs expect identifier in pair)
+	);
+
+	let value = parse_expression(
+		get_pair_safe!(from pairs expect expression in pair)
+	);
+
+	(name, value)
 }
 
 fn parse_function_call(pair: Pair<'_, Rule>) -> expressions::Call {
@@ -322,7 +352,7 @@ fn is_term(pair: Pair<'_, Rule>) -> bool {
 	)
 }
 
-fn get_bin_op_from_pair(pair: &Pair<'_, Rule>) -> expressions::operators::BinaryOperator {
+fn get_bin_operator_from_pair(pair: &Pair<'_, Rule>) -> expressions::operators::BinaryOperator {
 	expressions::operators::BinaryOperator::try_from(
 		pair.as_str().to_owned()
 	).unwrap()
@@ -344,7 +374,7 @@ fn parse_expression_with_precedence(pairs: &mut Peekable<Pairs<Rule>>, precedenc
 			break;
 		}
 
-		let operator = get_bin_op_from_pair(pair);
+		let operator = get_bin_operator_from_pair(pair);
 		let operator_precedence = operator.get_precedence();
 		
 		if operator_precedence < precedence {
@@ -370,7 +400,9 @@ fn parse_expression_with_precedence(pairs: &mut Peekable<Pairs<Rule>>, precedenc
 
 fn parse_term(pair: Pair<'_, Rule>) -> expressions::Term {
 	match pair.as_rule() {
+		Rule::object => parse_object(pair).into(),
 		Rule::list => parse_list(pair).into(),
+
 		Rule::call => parse_function_call(pair).into(),
 		Rule::function => parse_function(pair).into(),
 

@@ -1,0 +1,12 @@
+def some_object = {
+	name = "value",
+	counter = 0,
+	text_to_print = "hello, world!"
+}
+
+some_object.name = "some other value"
+some_object.counter = some_object.counter + 1
+
+(some_object.text_to_print, " ", some_object.counter) -> print
+
+return some_object

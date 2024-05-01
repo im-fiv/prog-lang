@@ -140,49 +140,98 @@ impl Interpreter {
 	}
 
 	fn execute_expression_assign(&mut self, expression: ast::Expression, value: ast::Expression) -> Result<RuntimeValue> {
+		use ast::expressions::operators::BinaryOperator as Op;
+
 		let expression = match expression {
 			ast::Expression::Binary(expression) => expression,
 			_ => bail!("Expression `{:?}` is not assignable", expression)
 		};
 
-		if expression.operator != ast::expressions::operators::BinaryOperator::ListAccess {
+		if !matches!(expression.operator, Op::ListAccess | Op::ObjectAccess) {
 			bail!("Expression `{:?}` is not assignable", expression);
 		}
 
-		let list_name = match self.evaluate_term(expression.rhs.to_owned(), true)? {
+		let value = self.evaluate_expression(value, false)?;
+
+		if expression.operator == Op::ListAccess {
+			self.execute_expression_assign_list(expression, value)
+		} else {
+			self.execute_expression_assign_object(expression, value)
+		}
+	}
+
+	fn execute_expression_assign_list(&mut self, expression: ast::expressions::Binary, value: RuntimeValue) -> Result<RuntimeValue> {
+		let ast::expressions::Binary { lhs, rhs, operator: _ } = expression.clone();
+
+		let list_name = match self.evaluate_term(rhs, true)? {
 			RuntimeValue::Identifier(identifier) => identifier.0,
-			_ => bail!("Expression `{:?}` is not assignable", expression)
+			_ => bail!("Expression `{expression}` is not assignable")
 		};
 
-		if let RuntimeValue::List(mut inner_list) = self.context.get_value(&list_name)? {
-			let index = match self.evaluate_term(expression.lhs, false)? {
-				RuntimeValue::Number(index) => index as i64,
-				value => bail!(
-					"Cannot index `{}` using `{}`",
-					RuntimeValueKind::List,
-					value.kind()
-				)
-			};
+		let mut inner_list = match self.context.get_value(&list_name)? {
+			RuntimeValue::List(inner_list) => inner_list,
+			_ => bail!("Expression `{expression}` is not assignable")
+		};
 
-			if index.is_negative() {
-				bail!("Value `{index}` cannot be used to index `{list_name}` as it is negative");
-			}
+		let index = match self.evaluate_term(lhs, false)? {
+			RuntimeValue::Number(index) => index as i64,
+			value => bail!(
+				"Cannot index `{}` using `{}`",
+				RuntimeValueKind::List,
+				value.kind()
+			)
+		};
 
-			let index: usize = index.try_into().unwrap();
-
-			if index >= inner_list.len() {
-				inner_list.resize(index + 50, RuntimeValue::Empty);
-			}
-
-			inner_list[index] = self.evaluate_expression(value, false)?;
-
-			self.context.update_value(
-				list_name,
-				RuntimeValue::List(inner_list)
-			)?;
-		} else {
-			bail!("Expression `{:?}` is not assignable", expression)
+		if index.is_negative() {
+			bail!("Value `{index}` cannot be used to index `{list_name}` as it is negative");
 		}
+
+		let index: usize = index.try_into()?;
+
+		if index >= inner_list.len() {
+			inner_list.resize(index + 50, RuntimeValue::Empty);
+		}
+
+		inner_list[index] = value;
+
+		self.context.update_value(
+			list_name,
+			RuntimeValue::List(inner_list)
+		)?;
+
+		Ok(RuntimeValue::Empty)
+	}
+
+	fn execute_expression_assign_object(&mut self, expression: ast::expressions::Binary, value: RuntimeValue) -> Result<RuntimeValue> {
+		let ast::expressions::Binary { lhs, rhs, operator: _ } = expression.clone();
+
+		let object_name = match self.evaluate_term(lhs, true)? {
+			RuntimeValue::Identifier(identifier) => identifier.0,
+			_ => bail!("Expression `{expression}` is not assignable")
+		};
+
+		let mut inner_object = match self.context.get_value(&object_name)? {
+			RuntimeValue::Object(inner_object) => inner_object,
+			_ => bail!("Expression `{expression}` is not assignable")
+		};
+
+		let entry_name = match self.evaluate_term(rhs, true)? {
+			RuntimeValue::Identifier(value) => value.0,
+			RuntimeValue::String(value) => value,
+
+			value => bail!(
+				"Cannot index `{}` using `{}`",
+				RuntimeValueKind::Object,
+				value.kind()
+			)
+		};
+
+		inner_object.insert(entry_name, value);
+
+		self.context.update_value(
+			object_name,
+			RuntimeValue::Object(inner_object)
+		)?;
 
 		Ok(RuntimeValue::Empty)
 	}
@@ -195,12 +244,28 @@ impl Interpreter {
 			Rv::String(value) => !value.is_empty(),
 			Rv::Number(value) => value != &0.0,
 			Rv::List(value) => !value.is_empty(),
+			Rv::Object(value) => !value.is_empty(),
 
 			Rv::Function(_) => true,
 			Rv::IntrinsicFunction(..) => true,
 
 			Rv::Identifier(..) => unreachable!("RuntimeValue of kind Identifier"),
 			Rv::Empty => false
+		}
+	}
+
+	fn identifier_from_term(&self, term: &ast::expressions::Term) -> Option<String> {
+		match term {
+			ast::expressions::Term::Identifier(value) => Some(value.to_owned()),
+			ast::expressions::Term::Expression(value) => {
+				if let ast::expressions::Expression::Term(ref value) = value.as_ref() {
+					self.identifier_from_term(value)
+				} else {
+					None
+				}
+			},
+
+			_ => None
 		}
 	}
 
@@ -251,8 +316,22 @@ impl Interpreter {
 		use ast::expressions::operators::BinaryOperator as Op;
 		use RuntimeValue as Rv;
 		
-		let evaluated_lhs = self.evaluate_term(lhs, stop_on_ident)?;
-		let evaluated_rhs = self.evaluate_term(rhs, stop_on_ident)?;
+		let mut evaluated_lhs = self.evaluate_term(lhs.clone(), stop_on_ident)?;
+		let evaluated_lhs_forced = self.evaluate_term(lhs, false)?;
+
+		let is_object_access = match (&evaluated_lhs_forced, operator) {
+			(RuntimeValue::Object(_), Op::ObjectAccess) => true,
+			_ => false
+		};
+
+		let evaluated_rhs = match (is_object_access, self.identifier_from_term(&rhs)) {
+			(true, Some(value)) => RuntimeValue::Identifier(values::Identifier(value)),
+			_ => self.evaluate_term(rhs, false)?
+		};
+
+		if is_object_access {
+			evaluated_lhs = evaluated_lhs_forced;
+		}
 
 		match (operator, evaluated_lhs, evaluated_rhs) {
 			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs + rhs)),
@@ -293,6 +372,19 @@ impl Interpreter {
 					.to_owned()
 			),
 
+			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => Ok(
+				lhs
+					.get(&rhs.0)
+					.unwrap_or(&RuntimeValue::Empty)
+					.to_owned()
+			),
+			(Op::ObjectAccess, Rv::Object(lhs), Rv::String(rhs)) => Ok(
+				lhs
+					.get(&rhs)
+					.unwrap_or(&RuntimeValue::Empty)
+					.to_owned()
+			),
+
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
 			(Op::NotEq, _, _) => Ok(Rv::Boolean(true)),
 
@@ -304,6 +396,7 @@ impl Interpreter {
 		use ast::expressions::*;
 
 		match term {
+			Term::Object(value) => self.evaluate_object(value),
 			Term::List(value) => self.evaluate_list(value),
 			Term::Call(value) => self.evaluate_call(value),
 			Term::Function(value) => self.evaluate_function(value),
@@ -321,6 +414,21 @@ impl Interpreter {
 			arguments: function.arguments,
 			statements: function.statements
 		}))
+	}
+
+	fn evaluate_object(&mut self, object: ast::expressions::Object) -> Result<RuntimeValue> {
+		use std::collections::HashMap;
+		let mut new_map = HashMap::new();
+
+		for (name, value) in object.0 {
+			let value = self.evaluate_expression(value, false)?;
+			
+			if new_map.insert(name.clone(), value).is_some() {
+				bail!("Duplicate key `{name}` found in object");
+			}
+		}
+
+		Ok(RuntimeValue::Object(new_map))
 	}
 
 	fn evaluate_list(&mut self, list: ast::expressions::List) -> Result<RuntimeValue> {

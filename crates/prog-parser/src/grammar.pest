@@ -38,14 +38,17 @@ if_stmt = { "if" ~ expression ~ "then" ~ statements ~ if_elseif* ~ if_else? ~ "e
 
 // Operators
 unary_operator = { "-" | "not" }
-binary_operator = { "+" | "-" | "/" | "*" | "%" | "==" | "!=" | "and" | "or" | ">=" | "<=" | ">" | "<" | "=>" }
+binary_operator = { "+" | "-" | "/" | "*" | "%" | "==" | "!=" | "and" | "or" | ">=" | "<=" | ">" | "<" | "=>" | "." }
 
 // Expressions
 expression = { unary_expression | binary_expression | term }
 	unary_expression = { unary_operator ~ term }
 	binary_expression = { term ~ (binary_operator ~ term)+ }
 
-term = _{ list | call | function | literal | identifier | "(" ~ expression ~ ")" }
+term = _{ object | list | call | function | literal | identifier | "(" ~ expression ~ ")" }
+
+object = { "{" ~ (object_entry ~ ("," ~ object_entry)*)? ~ "}" }
+	object_entry = { identifier ~ "=" ~ expression }
 
 list = { "[" ~ (expression ~ ("," ~ expression)*)? ~ "]" }
 

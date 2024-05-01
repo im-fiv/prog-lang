@@ -15,6 +15,7 @@ pub enum RuntimeValueKind {
 	String,
 	Number,
 	List,
+	Object,
 
 	Function,
 	IntrinsicFunction,
@@ -30,6 +31,7 @@ impl Display for RuntimeValueKind {
 			Self::String => write!(f, "String"),
 			Self::Number => write!(f, "Number"),
 			Self::List => write!(f, "List"),
+			Self::Object => write!(f, "Object"),
 
 			Self::Function => write!(f, "Function"),
 			Self::IntrinsicFunction => write!(f, "IntrinsicFunction"),
@@ -46,11 +48,12 @@ pub enum RuntimeValue {
 	String(String),
 	Number(f64),
 	List(Vec<RuntimeValue>),
+	Object(HashMap<String, RuntimeValue>),
 
-	#[serde(serialize_with = "serialize_function")]
+	#[serde(serialize_with = "serde_use_display")]
 	Function(RuntimeFunction),
 	
-	#[serde(serialize_with = "serialize_intrinsic_function")]
+	#[serde(serialize_with = "serde_use_display")]
 	IntrinsicFunction(IntrinsicFunction),
 	
 	// It is of type `Identifier` mainly to avoid `TryInto<String>` conflicts with `String` variant in `Conversion` derive macro
@@ -69,6 +72,7 @@ impl RuntimeValue {
 			Self::String(_) => Kind::String,
 			Self::Number(_) => Kind::Number,
 			Self::List(_) => Kind::List,
+			Self::Object(_) => Kind::Object,
 			
 			Self::Function(_) => Kind::Function,
 			Self::IntrinsicFunction(_) => Kind::IntrinsicFunction,
@@ -93,21 +97,35 @@ impl From<ast::expressions::Literal> for RuntimeValue {
 
 impl Display for RuntimeValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let fmt_list = |f: &mut std::fmt::Formatter<'_>, value: &Vec<RuntimeValue>| {
+			let formatted = value
+				.iter()
+				.map(|entry| entry.to_string())
+				.collect::<Vec<String>>()
+				.join(", ");
+			
+			write!(f, "[{formatted}]")
+		};
+
+		let fmt_object = |f: &mut std::fmt::Formatter<'_>, value: &HashMap<String, RuntimeValue>| {
+			let formatted = value
+				.iter()
+				.map(|(name, value)| format!("{name} = {value}"))
+				.collect::<Vec<String>>()
+				.join(", ");
+			
+			write!(f, "{{ {formatted} }}")
+		};
+		
 		match self {
 			Self::Boolean(value) => write!(f, "{}", if value.to_owned() { "true" } else { "false" }),
 			Self::String(value) => write!(f, "{value}"),
 			Self::Number(value) => write!(f, "{value}"),
-			Self::List(value) => write!(
-				f, "[{}]",
-				value
-					.iter()
-					.map(|entry| entry.to_string())
-					.collect::<Vec<String>>()
-					.join(", ")
-			),
+			Self::List(value) => fmt_list(f, value),
+			Self::Object(value) => fmt_object(f, value),
 
-			Self::Function(_) => write!(f, "Function"),
-			Self::IntrinsicFunction(_) => write!(f, "IntrinsicFunction"),
+			Self::Function(value) => write!(f, "{value}"),
+			Self::IntrinsicFunction(value) => write!(f, "{value}"),
 
 			Self::Identifier(value) => write!(f, "{}", value.0),
 			Self::Empty => write!(f, "")
@@ -115,16 +133,8 @@ impl Display for RuntimeValue {
 	}
 }
 
-fn serialize_function<S: serde::Serializer>(function: &RuntimeFunction, serializer: S) -> std::result::Result<S::Ok, S::Error> {
-	let arguments_str = function.arguments.join(", ");
-	let formatted = format!("func({arguments_str})");
-
-	serializer.serialize_str(&formatted[..])
-}
-
-fn serialize_intrinsic_function<S: serde::Serializer>(function: &IntrinsicFunction, serializer: S) -> std::result::Result<S::Ok, S::Error> {
-	let formatted = format!("func({:p})", function.pointer);
-	serializer.serialize_str(&formatted[..])
+fn serde_use_display<T: Display, S: serde::Serializer>(value: &T, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+	serializer.collect_str(value)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -133,12 +143,27 @@ pub struct RuntimeFunction {
 	pub statements: Vec<ast::Statement>
 }
 
+impl Display for RuntimeFunction {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let arguments_str = self.arguments.join(", ");
+		let formatted = format!("func({arguments_str})");
+		
+		write!(f, "{{ {formatted} }}")
+	}
+}
+
 pub type IntrinsicFunctionPtr = fn(&mut RuntimeContext, HashMap<String, ParsedArg>) -> Result<RuntimeValue>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntrinsicFunction {
 	pub pointer: IntrinsicFunctionPtr,
 	pub arguments: ArgList
+}
+
+impl Display for IntrinsicFunction {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "func({:?})", self.pointer)
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]

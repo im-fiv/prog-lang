@@ -1,7 +1,7 @@
 use std::fmt::Display;
-use expressions::*;
 
 pub use expressions::Expression;
+use expressions::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
@@ -75,6 +75,7 @@ pub mod expressions {
 
 	#[derive(Debug, Clone, PartialEq)]
 	pub enum Term {
+		Object(Object),
 		List(List),
 		Call(Call),
 		Function(Function),
@@ -82,6 +83,11 @@ pub mod expressions {
 		Identifier(String),
 		Expression(Box<Expression>)
 	}
+
+	#[derive(Debug, Clone, PartialEq)]
+	pub struct Object(
+		pub Vec<(String, Expression)>
+	);
 
 	#[derive(Debug, Clone, PartialEq)]
 	pub struct List(
@@ -123,7 +129,8 @@ pub mod expressions {
 			Lt,
 			Gte,
 			Lte,
-			ListAccess
+			ListAccess,
+			ObjectAccess
 		}
 
 		#[derive(Debug, Clone, Copy, PartialEq)]
@@ -147,6 +154,7 @@ macro_rules! impl_basic_conv {
 	};
 }
 
+impl_basic_conv!(from Object => Term as Object);
 impl_basic_conv!(from List => Term as List);
 impl_basic_conv!(from Function => Term as Function);
 impl_basic_conv!(from Literal => Term as Literal);
@@ -172,7 +180,7 @@ impl operators::BinaryOperator {
 			Self::EqEq | Self::NotEq | Self::And | Self::Or | Self::Gt | Self::Lt | Self::Gte | Self::Lte => 1,
 			Self::Plus | Self::Minus => 2,
 			Self::Multiply | Self::Divide | Self::Modulo => 3,
-			Self::ListAccess => 4
+			Self::ListAccess | Self::ObjectAccess => 4
 		}
 	}
 }
@@ -196,6 +204,7 @@ impl TryFrom<String> for operators::BinaryOperator {
 			">=" => Ok(Self::Gte),
 			"<=" => Ok(Self::Lte),
 			"=>" => Ok(Self::ListAccess),
+			"." => Ok(Self::ObjectAccess),
 
 			op => Err(format!("Invalid binary operator '{op}'"))
 		}
@@ -231,7 +240,8 @@ impl Display for operators::BinaryOperator {
 			Self::Lt => write!(f, "<"),
 			Self::Gte => write!(f, ">="),
 			Self::Lte => write!(f, "<="),
-			Self::ListAccess => write!(f, "=>")
+			Self::ListAccess => write!(f, "=>"),
+			Self::ObjectAccess => write!(f, ".")
 		}
 	}
 }
@@ -241,6 +251,110 @@ impl Display for operators::UnaryOperator {
 		match self {
 			Self::Minus => write!(f, "-"),
 			Self::Not => write!(f, "not")
+		}
+	}
+}
+
+impl Display for Expression {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Unary(value) => write!(f, "{value}"),
+			Self::Binary(value) => write!(f, "{value}"),
+			Self::Term(value) => write!(f, "{value}"),
+			Self::Empty => write!(f, "")
+		}
+	}
+}
+
+impl Display for expressions::Unary {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self.operator {
+			operators::UnaryOperator::Minus => write!(f, "{}{}", self.operator, self.operand),
+			operators::UnaryOperator::Not => write!(f, "{} {}", self.operator, self.operand)
+		}
+	}
+}
+
+impl Display for expressions::Binary {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self.operator {
+			operators::BinaryOperator::ListAccess |
+			operators::BinaryOperator::ObjectAccess => write!(f, "{}{}{}", self.lhs, self.operator, self.rhs),
+
+			_ => write!(f, "{} {} {}", self.lhs, self.operator, self.rhs)
+		}
+	}
+}
+
+impl Display for expressions::Term {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Object(value) => write!(f, "{value}"),
+			Self::List(value) => write!(f, "{value}"),
+			Self::Call(value) => write!(f, "{value}"),
+			Self::Function(value) => write!(f, "{value}"),
+			Self::Literal(value) => write!(f, "{value}"),
+			Self::Identifier(value) => write!(f, "{value}"),
+			Self::Expression(value) => write!(f, "{value}"),
+		}
+	}
+}
+
+impl Display for expressions::Object {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let formatted = self
+			.0
+			.iter()
+			.map(|(name, value)| format!("{name} = {value}"))
+			.collect::<Vec<String>>()
+			.join(", ");
+
+		write!(f, "{{ {formatted} }}")
+	}
+}
+
+impl Display for expressions::List {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let formatted = self
+			.0
+			.iter()
+			.map(|entry| entry.to_string())
+			.collect::<Vec<String>>()
+			.join(", ");
+		
+		write!(f, "[{formatted}]")
+	}
+}
+
+impl Display for expressions::Call {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let function = self
+			.function
+			.to_string();
+
+		let arguments = self
+			.arguments
+			.iter()
+			.map(|argument| argument.to_string())
+			.collect::<Vec<String>>()
+			.join(", ");
+
+		write!(f, "{function}({arguments})")
+	}
+}
+
+impl Display for expressions::Function {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let arguments = self.arguments.join(", ");
+		write!(f, "func({arguments})")
+	}
+}
+impl Display for expressions::Literal {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Boolean(value) => write!(f, "{value}"),
+			Self::String(value) => write!(f, "{value}"),
+			Self::Number(value) => write!(f, "{value}")
 		}
 	}
 }
