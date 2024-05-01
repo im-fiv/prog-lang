@@ -3,8 +3,10 @@ pub mod context;
 pub mod intrinsics;
 pub mod values;
 
+pub use values::{RuntimeValue, RuntimeValueKind};
+
 use context::RuntimeContext;
-use values::{RuntimeFunction, RuntimeValue, RuntimeValueKind};
+use values::RuntimeFunction;
 
 use prog_parser::ast;
 use anyhow::{Result, bail};

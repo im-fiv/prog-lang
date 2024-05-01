@@ -1,147 +1,6 @@
 use std::fmt::Display;
+use super::*;
 
-pub use expressions::Expression;
-use expressions::*;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Program {
-	pub statements: Vec<Statement>
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Statement {
-	VariableDefine {
-		name: String,
-		value: Option<Expression>
-	},
-
-	VariableAssign {
-		name: String,
-		value: Expression
-	},
-
-	DoBlock(Vec<Statement>),
-	Return(Option<Expression>),
-	Call(Call),
-
-	WhileLoop {
-		condition: Expression,
-		statements: Vec<Statement>
-	},
-
-	Break,
-	Continue,
-
-	If {
-		condition: Expression,
-		statements: Vec<Statement>,
-		elseif_branches: Vec<ConditionBranch>,
-		else_branch: Option<ConditionBranch>
-	},
-
-	ExpressionAssign {
-		expression: Expression,
-		value: Expression
-	}
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ConditionBranch {
-	pub condition: Expression,
-	pub statements: Vec<Statement>
-}
-
-pub mod expressions {
-	#[derive(Debug, Clone, PartialEq)]
-	pub enum Expression {
-		Unary(Unary),
-		Binary(Binary),
-		Term(Term),
-		Empty
-	}
-
-	#[derive(Debug, Clone, PartialEq)]
-	pub struct Unary {
-		pub operator: operators::UnaryOperator,
-		pub operand: Term
-	}
-
-	#[derive(Debug, Clone, PartialEq)]
-	pub struct Binary {
-		pub lhs: Term,
-		pub operator: operators::BinaryOperator,
-		pub rhs: Term
-	}
-
-	#[derive(Debug, Clone, PartialEq)]
-	pub enum Term {
-		Object(Object),
-		List(List),
-		Call(Call),
-		Function(Function),
-		Literal(Literal),
-		Identifier(String),
-		Expression(Box<Expression>)
-	}
-
-	#[derive(Debug, Clone, PartialEq)]
-	pub struct Object(
-		pub Vec<(String, Expression)>
-	);
-
-	#[derive(Debug, Clone, PartialEq)]
-	pub struct List(
-		pub Vec<Expression>
-	);
-
-	#[derive(Debug, Clone, PartialEq)]
-	pub struct Call {
-		pub arguments: Vec<Expression>,
-		pub function: Box<Expression>
-	}
-
-	#[derive(Debug, Clone, PartialEq)]
-	pub struct Function {
-		pub arguments: Vec<String>,
-		pub statements: Vec<super::Statement>
-	}
-
-	#[derive(Debug, Clone, PartialEq)]
-	pub enum Literal {
-		Boolean(bool),
-		String(String),
-		Number(f64)
-	}
-
-	pub mod operators {
-		#[derive(Debug, Clone, Copy, PartialEq)]
-		pub enum BinaryOperator {
-			Plus,
-			Minus,
-			Divide,
-			Multiply,
-			Modulo,
-			EqEq,
-			NotEq,
-			And,
-			Or,
-			Gt,
-			Lt,
-			Gte,
-			Lte,
-			ListAccess,
-			ObjectAccess
-		}
-
-		#[derive(Debug, Clone, Copy, PartialEq)]
-		pub enum UnaryOperator {
-			Minus,
-			Not
-		}
-	}
-}
-
-// Implementations
 macro_rules! impl_basic_conv {
 	(from $from:ty => $for:ty as $variant:ident $({ $preproc:path })?) => {
 		impl From<$from> for $for {
@@ -154,25 +13,7 @@ macro_rules! impl_basic_conv {
 	};
 }
 
-impl_basic_conv!(from Object => Term as Object);
-impl_basic_conv!(from List => Term as List);
-impl_basic_conv!(from Function => Term as Function);
-impl_basic_conv!(from Literal => Term as Literal);
-impl_basic_conv!(from Expression => Term as Expression { Box::new });
-impl_basic_conv!(from Unary => Term as from { Expression::Unary });
-impl_basic_conv!(from Binary => Term as from { Expression::Binary });
-
-impl From<Term> for Expression {
-	fn from(value: Term) -> Self {
-		match value {
-			Term::Expression(expression) => *expression,
-			_ => Expression::Term(value)
-		}
-	}
-}
-
-impl_basic_conv!(from Call => Statement as Call);
-impl_basic_conv!(from Call => Term as Call);
+//* Others *//
 
 impl operators::BinaryOperator {
 	pub fn get_precedence(&self) -> u8 {
@@ -184,6 +25,30 @@ impl operators::BinaryOperator {
 		}
 	}
 }
+
+//* From<T> *//
+
+impl From<Term> for Expression {
+	fn from(value: Term) -> Self {
+		match value {
+			Term::Expression(expression) => *expression,
+			_ => Expression::Term(value)
+		}
+	}
+}
+
+impl_basic_conv!(from Object => Term as Object);
+impl_basic_conv!(from List => Term as List);
+impl_basic_conv!(from Function => Term as Function);
+impl_basic_conv!(from Literal => Term as Literal);
+impl_basic_conv!(from Expression => Term as Expression { Box::new });
+impl_basic_conv!(from Unary => Term as from { Expression::Unary });
+impl_basic_conv!(from Binary => Term as from { Expression::Binary });
+
+impl_basic_conv!(from Call => Statement as Call);
+impl_basic_conv!(from Call => Term as Call);
+
+//* TryFrom<T> *//
 
 impl TryFrom<String> for operators::BinaryOperator {
 	type Error = String;
@@ -223,6 +88,8 @@ impl TryFrom<String> for operators::UnaryOperator {
 		}
 	}
 }
+
+//* Display *//
 
 impl Display for operators::BinaryOperator {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -266,7 +133,7 @@ impl Display for Expression {
 	}
 }
 
-impl Display for expressions::Unary {
+impl Display for Unary {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self.operator {
 			operators::UnaryOperator::Minus => write!(f, "{}{}", self.operator, self.operand),
@@ -275,7 +142,7 @@ impl Display for expressions::Unary {
 	}
 }
 
-impl Display for expressions::Binary {
+impl Display for Binary {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self.operator {
 			operators::BinaryOperator::ListAccess |
@@ -286,7 +153,7 @@ impl Display for expressions::Binary {
 	}
 }
 
-impl Display for expressions::Term {
+impl Display for Term {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Object(value) => write!(f, "{value}"),
@@ -300,7 +167,7 @@ impl Display for expressions::Term {
 	}
 }
 
-impl Display for expressions::Object {
+impl Display for Object {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let formatted = self
 			.0
@@ -313,7 +180,7 @@ impl Display for expressions::Object {
 	}
 }
 
-impl Display for expressions::List {
+impl Display for List {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let formatted = self
 			.0
@@ -326,7 +193,7 @@ impl Display for expressions::List {
 	}
 }
 
-impl Display for expressions::Call {
+impl Display for Call {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let function = self
 			.function
@@ -343,13 +210,14 @@ impl Display for expressions::Call {
 	}
 }
 
-impl Display for expressions::Function {
+impl Display for Function {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let arguments = self.arguments.join(", ");
 		write!(f, "func({arguments})")
 	}
 }
-impl Display for expressions::Literal {
+
+impl Display for Literal {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Boolean(value) => write!(f, "{value}"),
