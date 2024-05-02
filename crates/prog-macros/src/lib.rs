@@ -58,10 +58,10 @@ pub fn enum_kind(item: pm::TokenStream) -> pm::TokenStream {
 	};
 	
 	// Expanding variants into their names
-    let kind_variants = enum_data.variants.iter().map(|variant| {
-        let variant_name = &variant.ident;
-        quote! { #variant_name }
-    });
+	let kind_variants = enum_data.variants.iter().map(|variant| {
+		let variant_name = &variant.ident;
+		quote! { #variant_name }
+	});
 
 	// Expanding display impl
 	let enum_kind_display_impl = {
