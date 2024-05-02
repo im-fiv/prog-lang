@@ -4,45 +4,12 @@ use anyhow::Result;
 use serde::Serialize;
 
 use prog_parser::ast;
-use prog_macros::VariantUnwrap;
+use prog_macros::{VariantUnwrap, EnumKind};
 
 use crate::arg_parser::{ArgList, ParsedArg};
 use crate::context::RuntimeContext;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum RuntimeValueKind {
-	Boolean,
-	String,
-	Number,
-	List,
-	Object,
-
-	Function,
-	IntrinsicFunction,
-
-	Identifier,
-	Empty
-}
-
-impl Display for RuntimeValueKind {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Boolean => write!(f, "Boolean"),
-			Self::String => write!(f, "String"),
-			Self::Number => write!(f, "Number"),
-			Self::List => write!(f, "List"),
-			Self::Object => write!(f, "Object"),
-
-			Self::Function => write!(f, "Function"),
-			Self::IntrinsicFunction => write!(f, "IntrinsicFunction"),
-
-			Self::Identifier => write!(f, "Identifier"),
-			Self::Empty => write!(f, "Nothing")
-		}
-	}
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, VariantUnwrap)]
+#[derive(Debug, Clone, PartialEq, Serialize, VariantUnwrap, EnumKind)]
 pub enum RuntimeValue {
 	Boolean(bool),
 	String(String),
@@ -61,26 +28,6 @@ pub enum RuntimeValue {
 	Identifier(Identifier),
 
 	Empty
-}
-
-impl RuntimeValue {
-	pub fn kind(&self) -> RuntimeValueKind {
-		use RuntimeValueKind as Kind;
-
-		match self {
-			Self::Boolean(_) => Kind::Boolean,
-			Self::String(_) => Kind::String,
-			Self::Number(_) => Kind::Number,
-			Self::List(_) => Kind::List,
-			Self::Object(_) => Kind::Object,
-			
-			Self::Function(_) => Kind::Function,
-			Self::IntrinsicFunction(_) => Kind::IntrinsicFunction,
-
-			Self::Identifier(..) => Kind::Identifier,
-			Self::Empty => Kind::Empty
-		}.to_owned()
-	}
 }
 
 impl From<ast::expressions::Literal> for RuntimeValue {
