@@ -6,7 +6,7 @@ use super::Rule;
 macro_rules! assert_rule {
 	($var:ident == $rule:ident $(| $rest:ident)* in $main_pair:expr) => {
 		if !matches!($var.as_rule(), Rule::$rule $(| Rule::$rest)*) {
-			let expected_str = assert_rule!(format_expected $rule $($rest),*);
+			let expected_str = assert_rule!(format_expected $rule $( $rest ),*);
 
 			error!(
 				"invalid pair of type '{:?}' in '{:?}' (expected {})", $var.as_span(),
@@ -19,8 +19,8 @@ macro_rules! assert_rule {
 
 	(format_expected $rule:ident $($rest:ident),*) => {
 		[
-			format!("'{:?}'", Rule::$rule)
-			$(, format!(", '{:?}'", Rule::$rest))*
+			format!("'{:?}'", Rule::$rule),
+			$( format!(", '{:?}'", Rule::$rest) ),*
 		].concat()
 	};
 }
@@ -28,7 +28,7 @@ macro_rules! assert_rule {
 macro_rules! get_pair_safe {
 	(from $pairs:ident expect $rule:ident $(| $rest:ident)* in $main_pair:expr) => {
 		{
-			let expected_str = assert_rule!(format_expected $rule $($rest),*);
+			let expected_str = assert_rule!(format_expected $rule $( $rest ),*);
 
 			let next_pair = $pairs
 				.next()
@@ -38,6 +38,8 @@ macro_rules! get_pair_safe {
 					expected_str,
 					$main_pair.as_rule()
 				));
+			
+			assert_rule!(next_pair == $rule $(| $rest)* in $main_pair);
 
 			next_pair
 		}
