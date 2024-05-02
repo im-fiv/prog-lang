@@ -12,10 +12,9 @@ use serde::Serialize;
 use clap::Parser;
 
 fn execute_run_command(args: cli::RunCommand) {
-	let contents = read_file(args.file_path);
+	let contents = read_file(&args.file_path);
 
-	// TODO: extract filename
-	let parser = ProgParser::new(&contents, String::from("TODO"));
+	let parser = ProgParser::new(&contents, &args.file_path[..]);
 	let ast = parser.parse().unwrap();
 
 	let mut interpreter = Interpreter::new();
@@ -40,7 +39,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 	async fn execute_str(req_body: String) -> impl Responder {
 		println!("New request with body: {req_body}");
 
-		let parser = ProgParser::new(&req_body, String::from("stdin"));
+		let parser = ProgParser::new(&req_body, "stdin");
 		let ast = match parser.parse() {
 			Ok(ast) => ast,
 			Err(error) => return handle_anyhow_error(error)

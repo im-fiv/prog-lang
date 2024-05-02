@@ -17,14 +17,14 @@ struct PestParser;
 
 pub struct Parser<'inp> {
 	input: Span<'inp>,
-	filename: String
+	file: &'inp str
 }
 
 impl<'inp> Parser<'inp> {
-	pub fn new(input: &'inp str, filename: String) -> Self {
+	pub fn new(input: &'inp str, file: &'inp str) -> Self {
 		Self {
 			input: Span::new(input, 0, input.len()).unwrap(),
-			filename
+			file
 		}
 	}
 	
