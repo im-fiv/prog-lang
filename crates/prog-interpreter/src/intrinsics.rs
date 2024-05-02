@@ -47,11 +47,23 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 		bail!("Cannot find the specified file at path '{path_str}'");
 	}
 
+	let filename = path
+		.file_name()
+		.unwrap()
+		.to_os_string()
+		.into_string()
+		.unwrap();
+
 	let contents = prog_utils::read_file(path.to_str().unwrap());
-	let ast = prog_parser::parse(&contents)?;
+
+	let parser = prog_parser::Parser::new(&contents[..], filename);
+	let ast = parser.parse()?;
+
 	let mut interpreter = crate::Interpreter::new();
 	context.clone_into(&mut interpreter.context);
+
 	let result = interpreter.execute(ast)?;
+
 	*context = interpreter.context;
 
 	Ok(result)

@@ -3,8 +3,9 @@ use std::fs::ReadDir;
 
 use anyhow::Result;
 
-fn execute_string(code: String) -> Result<prog_interpreter::RuntimeValue> {
-	let ast = prog_parser::parse(&code)?;
+fn execute_string(code: String, filename: String) -> Result<prog_interpreter::RuntimeValue> {
+	let parser = prog_parser::Parser::new(&code[..], filename);
+	let ast = parser.parse()?;
 
 	let mut interpreter = prog_interpreter::Interpreter::new();
 	interpreter.context.con_stdout_allowed = false;
@@ -37,8 +38,15 @@ fn iterate_dir(paths: ReadDir) {
 
 		println!("Running file {}", path.display());
 
+		let filename = path
+			.file_name()
+			.unwrap()
+			.to_os_string()
+			.into_string()
+			.unwrap();
+
 		let contents = prog_utils::read_file(path);
-		let execution_result = execute_string(contents);
+		let execution_result = execute_string(contents, filename);
 
 		assert!(execution_result.is_ok(), "Execution failed: {}", execution_result.unwrap_err())
 	}

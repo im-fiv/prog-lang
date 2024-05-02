@@ -1,7 +1,7 @@
 pub mod cli;
 
 use cli::Cli;
-use prog_parser::parse;
+use prog_parser::Parser as ProgParser;
 use prog_interpreter::{Interpreter, RuntimeValue};
 use prog_utils::read_file;
 
@@ -13,8 +13,13 @@ use clap::Parser;
 
 fn execute_run_command(args: cli::RunCommand) {
 	let contents = read_file(args.file_path);
-	let ast = parse(&contents).unwrap();
+
+	// TODO: extract filename
+	let parser = ProgParser::new(&contents, String::from("TODO"));
+	let ast = parser.parse().unwrap();
+
 	let mut interpreter = Interpreter::new();
+
 	let result = interpreter.execute(ast).unwrap();
 
 	dbg!(result);
@@ -35,7 +40,8 @@ fn execute_serve_command(args: cli::ServeCommand) {
 	async fn execute_str(req_body: String) -> impl Responder {
 		println!("New request with body: {req_body}");
 
-		let ast = match parse(&req_body) {
+		let parser = ProgParser::new(&req_body, String::from("stdin"));
+		let ast = match parser.parse() {
 			Ok(ast) => ast,
 			Err(error) => return handle_anyhow_error(error)
 		};
