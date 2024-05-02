@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 text_io = "0.1.12"
 serde = { version = "1.0.199", features = ["derive"] }
+anyhow = { workspace = true }
 prog-parser = { workspace = true }
 prog-utils = { workspace = true }
 prog-macros = { workspace = true }
-anyhow = { workspace = true }

@@ -8,6 +8,7 @@ members = ["crates/*"]
 
 [workspace.dependencies]
 anyhow = "1.0.82"
+ariadne = "0.4.1"
 prog-parser = { path = "./crates/prog-parser" }
 prog-interpreter = { path = "./crates/prog-interpreter" }
 prog-utils = { path = "./crates/prog-utils" }
