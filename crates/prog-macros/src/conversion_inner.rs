@@ -1,68 +1,9 @@
 use syn::{Result, Variant, Generics};
 
-use proc_macro2::{TokenStream, Ident, Span};
+use proc_macro2::{TokenStream, Ident};
 use quote::quote;
 
-/// Expands to the type of an enum variant's fields.
-fn expand_fields_type(variant: &Variant) -> Result<TokenStream> {
-	let unnamed_fields = match variant.fields {
-		syn::Fields::Unnamed(ref unnamed_fields) => unnamed_fields,
-		syn::Fields::Unit => return Ok(quote! { () }),
-
-		_ => return Err(syn::Error::new_spanned(
-			&variant.fields,
-			"Derive of this macro is only allowed for enums with variants containing unnamed or unit fields"
-		))
-	};
-
-	Ok(match variant.fields.len() {
-		0 => quote! { () },
-
-		1 => {
-			let temp_type = &unnamed_fields.unnamed[0].ty;
-			quote!(#temp_type)
-		},
-
-		_ => {
-			let mut field_types = vec![];
-
-			for field in &unnamed_fields.unnamed {
-				field_types.push(&field.ty);
-			}
-
-			quote! {
-				( #(#field_types),* )
-			}
-		}
-	})
-}
-
-/// Expands to a token stream to destructure a variant with unnamed fields
-fn expand_destructure_pattern(fields_len: usize) -> (TokenStream, TokenStream) {
-	if fields_len == 0 {
-		(
-			quote! { },
-			quote! { () }
-		)
-	} else if fields_len == 1 {
-		(
-			quote! { (value) },
-			quote! { value }
-		)
-	} else {
-		let mut value_names = vec![];
-
-		for index in 0..fields_len {
-			value_names.push(Ident::new(
-				&format!("value{}", index),
-				Span::call_site()
-			));
-		}
-
-		let result = quote! { (#(#value_names),*) };
-		(result.clone(), result)
-	}
-}
+use super::utils::{expand_fields_type, expand_destructure_pattern};
 
 /// Expands to impl of `TryInto` for variant's unnamed fields type
 pub(crate) fn expand_variant(
