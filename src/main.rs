@@ -12,7 +12,7 @@ use serde::Serialize;
 use clap::Parser;
 
 fn execute_run_command(args: cli::RunCommand) {
-	let contents = read_file(&args.file_path);
+	let contents = read_file(args.file_path);
 	let ast = parse(&contents).unwrap();
 	let mut interpreter = Interpreter::new();
 	let result = interpreter.execute(ast).unwrap();

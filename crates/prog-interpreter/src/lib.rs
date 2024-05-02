@@ -11,6 +11,39 @@ use values::RuntimeFunction;
 use prog_parser::ast;
 use anyhow::{Result, bail};
 
+fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
+	match term {
+		ast::expressions::Term::Identifier(value) => Some(value.to_owned()),
+		ast::expressions::Term::Expression(value) => {
+			if let ast::expressions::Expression::Term(ref value) = value.as_ref() {
+				identifier_from_term(value)
+			} else {
+				None
+			}
+		},
+
+		_ => None
+	}
+}
+
+fn is_value_truthy(rv: &RuntimeValue) -> bool {
+	use RuntimeValue as Rv;
+	
+	match rv {
+		Rv::Boolean(value) => *value,
+		Rv::String(value) => !value.is_empty(),
+		Rv::Number(value) => value != &0.0,
+		Rv::List(value) => !value.is_empty(),
+		Rv::Object(value) => !value.is_empty(),
+
+		Rv::Function(_) => true,
+		Rv::IntrinsicFunction(..) => true,
+
+		Rv::Identifier(..) => unreachable!("RuntimeValue of kind Identifier"),
+		Rv::Empty => false
+	}
+}
+
 #[derive(Debug)]
 pub struct Interpreter {
 	pub context: RuntimeContext
@@ -92,7 +125,7 @@ impl Interpreter {
 	fn execute_while_loop(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>) -> Result<RuntimeValue> {
 		let mut evaluated = self.evaluate_expression(condition.clone(), false)?;
 
-		while self.is_value_truthy(&evaluated) {
+		while is_value_truthy(&evaluated) {
 			self.context.deeper();
 			self.execute(ast::Program { statements: statements.clone() })?;
 			self.context.shallower();
@@ -106,7 +139,7 @@ impl Interpreter {
 	fn execute_if(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>, elseif_branches: Vec<ast::ConditionBranch>, else_branch: Option<ast::ConditionBranch>) -> Result<RuntimeValue> {
 		let evaluated = self.evaluate_expression(condition, false)?;
 
-		if self.is_value_truthy(&evaluated) {
+		if is_value_truthy(&evaluated) {
 			self.context.deeper();
 			self.execute(ast::Program { statements })?;
 			self.context.shallower();
@@ -117,7 +150,7 @@ impl Interpreter {
 		for branch in elseif_branches {
 			let evaluated = self.evaluate_expression(branch.condition, false)?; 
 
-			if self.is_value_truthy(&evaluated) {
+			if is_value_truthy(&evaluated) {
 				self.context.deeper();
 				self.execute(ast::Program { statements: branch.statements })?;
 				self.context.shallower();
@@ -129,7 +162,7 @@ impl Interpreter {
 		if let Some(branch) = else_branch {
 			let evaluated = self.evaluate_expression(branch.condition, false)?; 
 
-			if self.is_value_truthy(&evaluated) {
+			if is_value_truthy(&evaluated) {
 				self.context.deeper();
 				self.execute(ast::Program { statements: branch.statements })?;
 				self.context.shallower();
@@ -238,39 +271,6 @@ impl Interpreter {
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn is_value_truthy(&self, rv: &RuntimeValue) -> bool {
-		use RuntimeValue as Rv;
-		
-		match rv {
-			Rv::Boolean(value) => *value,
-			Rv::String(value) => !value.is_empty(),
-			Rv::Number(value) => value != &0.0,
-			Rv::List(value) => !value.is_empty(),
-			Rv::Object(value) => !value.is_empty(),
-
-			Rv::Function(_) => true,
-			Rv::IntrinsicFunction(..) => true,
-
-			Rv::Identifier(..) => unreachable!("RuntimeValue of kind Identifier"),
-			Rv::Empty => false
-		}
-	}
-
-	fn identifier_from_term(&self, term: &ast::expressions::Term) -> Option<String> {
-		match term {
-			ast::expressions::Term::Identifier(value) => Some(value.to_owned()),
-			ast::expressions::Term::Expression(value) => {
-				if let ast::expressions::Expression::Term(ref value) = value.as_ref() {
-					self.identifier_from_term(value)
-				} else {
-					None
-				}
-			},
-
-			_ => None
-		}
-	}
-
 	fn evaluate_expression(&mut self, expression: ast::Expression, stop_on_ident: bool) -> Result<RuntimeValue> {
 		use ast::expressions::*;
 		
@@ -321,12 +321,12 @@ impl Interpreter {
 		let mut evaluated_lhs = self.evaluate_term(lhs.clone(), stop_on_ident)?;
 		let evaluated_lhs_forced = self.evaluate_term(lhs, false)?;
 
-		let is_object_access = match (&evaluated_lhs_forced, operator) {
-			(RuntimeValue::Object(_), Op::ObjectAccess) => true,
-			_ => false
-		};
+		let is_object_access = matches!(
+			(&evaluated_lhs_forced, operator),
+			(RuntimeValue::Object(_), Op::ObjectAccess)
+		);
 
-		let evaluated_rhs = match (is_object_access, self.identifier_from_term(&rhs)) {
+		let evaluated_rhs = match (is_object_access, identifier_from_term(&rhs)) {
 			(true, Some(value)) => RuntimeValue::Identifier(values::Identifier(value)),
 			_ => self.evaluate_term(rhs, false)?
 		};
@@ -346,7 +346,7 @@ impl Interpreter {
 			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs >= rhs)),
 			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs <= rhs)),
 
-			(Op::Plus, Rv::String(lhs), rhs) => Ok(Rv::String(format!("{}{}", lhs, rhs.to_string()))),
+			(Op::Plus, Rv::String(lhs), rhs) => Ok(Rv::String(format!("{lhs}{rhs}"))),
 
 			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs && rhs)),
 			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs || rhs)),
