@@ -36,9 +36,9 @@ impl From<ast::expressions::Literal> for RuntimeValue {
 		use ast::expressions::Literal;
 
 		match value {
-			Literal::Boolean(value) => Self::Boolean(value),
-			Literal::String(value) => Self::String(value),
-			Literal::Number(value) => Self::Number(value)
+			Literal::Boolean(value, _) => Self::Boolean(value),
+			Literal::String(value, _) => Self::String(value),
+			Literal::Number(value, _) => Self::Number(value)
 		}
 	}
 }

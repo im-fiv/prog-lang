@@ -11,6 +11,11 @@ use anyhow::Result;
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
+#[inline]
+fn span_to_pos(span: Span) -> Position {
+	(span.start(), span.end())
+}
+
 #[derive(pest_derive::Parser)]
 #[grammar = "grammar.pest"]
 struct PestParser;
@@ -76,8 +81,8 @@ impl<'inp> Parser<'inp> {
 				Rule::call => self.parse_function_call(pair).into(),
 				Rule::while_stmt => self.parse_while_stmt(pair),
 				
-				Rule::break_stmt => Statement::Break,
-				Rule::continue_stmt => Statement::Continue,
+				Rule::break_stmt => Statement::Break(span_to_pos(pair.as_span())),
+				Rule::continue_stmt => Statement::Continue(span_to_pos(pair.as_span())),
 	
 				Rule::if_stmt => self.parse_if_stmt(pair),
 	
@@ -105,7 +110,8 @@ impl<'inp> Parser<'inp> {
 		if value.is_none() {
 			return Statement::VariableDefine {
 				name,
-				value: None
+				value: None,
+				position: span_to_pos(pair.as_span())
 			};
 		}
 	
@@ -113,12 +119,15 @@ impl<'inp> Parser<'inp> {
 	
 		Statement::VariableDefine {
 			name,
-			value: Some(value)
+			value: Some(value),
+			position: span_to_pos(pair.as_span())
 		}
 	}
 	
 	fn parse_var_assign_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
 		assert_rule!(pair == var_assign_stmt in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
 	
 		let name = pair_into_string(
@@ -129,43 +138,46 @@ impl<'inp> Parser<'inp> {
 			get_pair_safe!(from pairs expect expression in pair)
 		);
 	
-		Statement::VariableAssign {
-			name,
-			value
-		}
+		Statement::VariableAssign { name, value, position }
 	}
 	
 	fn parse_do_block(&self, pair: Pair<'_, Rule>) -> Statement {
 		assert_rule!(pair == do_block in pair);
 	
+		let position = span_to_pos(pair.as_span());
 		let statements = self.parse_statements(pair.into_inner());
-		Statement::DoBlock(statements)
+
+		Statement::DoBlock(statements, position)
 	}
 	
 	fn parse_return_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
 		assert_rule!(pair == return_stmt in pair);
 	
+		let position = span_to_pos(pair.as_span());
 		let value = pair
 			.into_inner()
 			.next();
 	
 		if value.is_none() {
-			return Statement::Return(None);
+			return Statement::Return(None, position);
 		}
 	
 		let parsed_expression = self.parse_expression(value.unwrap());
-		
-		if matches!(parsed_expression, Expression::Empty) {
-			return Statement::Return(None);
+
+		if let Expression::Empty(_) = parsed_expression {
+			return Statement::Return(None, position);
 		}
 	
 		Statement::Return(
-			Some(parsed_expression)
+			Some(parsed_expression),
+			position
 		)
 	}
 	
 	fn parse_list(&self, pair: Pair<'_, Rule>) -> expressions::List {
 		assert_rule!(pair == list in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let pairs = pair.clone().into_inner();
 		let mut expressions = vec![];
 	
@@ -176,11 +188,13 @@ impl<'inp> Parser<'inp> {
 			expressions.push(parsed_pair);
 		}
 	
-		expressions::List(expressions)
+		expressions::List(expressions, position)
 	}
 	
 	fn parse_object(&self, pair: Pair<'_, Rule>) -> expressions::Object {
 		assert_rule!(pair == object in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let pairs = pair.clone().into_inner();
 		let mut entries = vec![];
 	
@@ -192,11 +206,13 @@ impl<'inp> Parser<'inp> {
 			);
 		}
 	
-		expressions::Object(entries)
+		expressions::Object(entries, position)
 	}
 	
-	fn parse_object_entry(&self, pair: Pair<'_, Rule>) -> (String, expressions::Expression) {
+	fn parse_object_entry(&self, pair: Pair<'_, Rule>) -> expressions::ObjectEntry {
 		assert_rule!(pair == object_entry in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
 	
 		let name = pair_into_string(
@@ -207,14 +223,15 @@ impl<'inp> Parser<'inp> {
 			get_pair_safe!(from pairs expect expression in pair)
 		);
 	
-		(name, value)
+		expressions::ObjectEntry { name, value, position }
 	}
 	
 	fn parse_function_call(&self, pair: Pair<'_, Rule>) -> expressions::Call {
 		assert_rule!(pair == call in pair);
 	
+		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
-		let mut arguments: Vec<Expression> = vec![];
+		let mut arguments = vec![];
 	
 		let next_pair = get_pair_safe!(from pairs expect call_body_empty | call_body_nonempty in pair);
 	
@@ -226,11 +243,16 @@ impl<'inp> Parser<'inp> {
 			get_pair_safe!(from pairs expect expression in pair)
 		);
 	
-		expressions::Call { arguments, function: Box::new(function) }
+		expressions::Call {
+			arguments,
+			function: Box::new(function),
+			position
+		}
 	}
 	
 	fn parse_function_call_args(&self, pair: Pair<'_, Rule>) -> Vec<Expression> {
 		assert_rule!(pair == call_body_nonempty in pair);
+		
 		let pairs = pair.clone().into_inner();
 		let mut arguments = vec![];
 	
@@ -244,6 +266,8 @@ impl<'inp> Parser<'inp> {
 	
 	fn parse_while_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
 		assert_rule!(pair == while_stmt in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
 	
 		let condition = self.parse_expression(
@@ -254,11 +278,13 @@ impl<'inp> Parser<'inp> {
 			get_pair_safe!(from pairs expect do_block in pair).into_inner()
 		);
 	
-		Statement::WhileLoop { condition, statements }
+		Statement::WhileLoop { condition, statements, position }
 	}
 	
 	fn parse_if_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
 		assert_rule!(pair == if_stmt in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
 	
 		let condition = self.parse_expression(
@@ -282,11 +308,13 @@ impl<'inp> Parser<'inp> {
 			}
 		}
 	
-		Statement::If { condition, statements, elseif_branches, else_branch }
+		Statement::If { condition, statements, elseif_branches, else_branch, position }
 	}
 	
 	fn parse_elseif_branch(&self, pair: Pair<'_, Rule>) -> ConditionBranch {
 		assert_rule!(pair == if_elseif in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
 	
 		let condition = self.parse_expression(
@@ -297,22 +325,30 @@ impl<'inp> Parser<'inp> {
 			get_pair_safe!(from pairs expect statements in pair).into_inner()
 		);
 	
-		ConditionBranch { condition, statements }
+		ConditionBranch { condition, statements, position }
 	}
 	
 	fn parse_else_branch(&self, pair: Pair<'_, Rule>) -> ConditionBranch {
 		assert_rule!(pair == if_else in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
 	
 		let statements = self.parse_statements(
 			get_pair_safe!(from pairs expect statements in pair).into_inner()
 		);
 	
-		ConditionBranch { condition: Expression::Empty, statements }
+		ConditionBranch {
+			condition: Expression::Empty(None),
+			statements,
+			position
+		}
 	}
 	
 	fn parse_expr_assign_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
 		assert_rule!(pair == expr_assign_stmt in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
 	
 		let expression = self.parse_expression(
@@ -323,7 +359,7 @@ impl<'inp> Parser<'inp> {
 			get_pair_safe!(from pairs expect expression in pair)
 		);
 	
-		Statement::ExpressionAssign { expression, value }
+		Statement::ExpressionAssign { expression, value, position }
 	}
 	
 	fn parse_expression_with_precedence(&self, pairs: &mut Peekable<Pairs<Rule>>, precedence: u8) -> Expression {
@@ -335,6 +371,7 @@ impl<'inp> Parser<'inp> {
 			.next()
 			.unwrap();
 	
+		let mut position = span_to_pos(left_pair.as_span());
 		let mut left = self.parse_term(left_pair);
 	
 		while let Some(pair) = pairs.peek() {
@@ -342,6 +379,7 @@ impl<'inp> Parser<'inp> {
 				break;
 			}
 	
+			let operator_position = span_to_pos(pair.as_span());
 			let operator = get_bin_operator_from_pair(pair);
 			let operator_precedence = operator.get_precedence();
 			
@@ -353,12 +391,14 @@ impl<'inp> Parser<'inp> {
 			pairs.next();
 	
 			let right = self.parse_expression_with_precedence(pairs, operator_precedence + 1);
+			position.1 = right.position().1;
 	
 			left = Expression::Binary(
 				expressions::Binary {
 					lhs: left.clone(),
-					operator,
-					rhs: right.into()
+					operator: (operator, operator_position),
+					rhs: right.into(),
+					position
 				}
 			).into()
 		}
@@ -389,6 +429,8 @@ impl<'inp> Parser<'inp> {
 	
 	fn parse_function(&self, pair: Pair<'_, Rule>) -> expressions::Function {
 		assert_rule!(pair == function in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
 		let mut arguments = vec![];
 	
@@ -402,17 +444,23 @@ impl<'inp> Parser<'inp> {
 		// We don't call `parse_do_block` because it's a pain in the ass to extract the statements from there
 		let statements = self.parse_statements(next_pair.into_inner());
 	
-		expressions::Function { arguments, statements }
+		expressions::Function { arguments, statements, position }
 	}
 	
-	fn parse_function_def_args(&self, pair: Pair<'_, Rule>) -> Vec<String> {
+	fn parse_function_def_args(&self, pair: Pair<'_, Rule>) -> Vec<(String, Position)> {
 		assert_rule!(pair == function_def_args in pair);
+		
 		let pairs = pair.clone().into_inner();
 		let mut arguments = vec![];
 	
 		for arg_pair in pairs {
 			assert_rule!(arg_pair == identifier in pair);
-			arguments.push(pair_into_string(&arg_pair));
+			let position = span_to_pos(pair.as_span());
+
+			arguments.push((
+				pair_into_string(&arg_pair),
+				position
+			));
 		}
 	
 		arguments
@@ -433,10 +481,14 @@ impl<'inp> Parser<'inp> {
 	
 	fn parse_unary_expression(&self, pair: Pair<Rule>) -> expressions::Unary {
 		assert_rule!(pair == unary_expression in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
 	
+		let operator_pair = get_pair_safe!(from pairs expect unary_operator in pair);
+		let operator_position = span_to_pos(operator_pair.as_span());
 		let operator = expressions::operators::UnaryOperator::try_from(
-			pair_into_string(&get_pair_safe!(from pairs expect unary_operator in pair))
+			pair_into_string(&operator_pair)
 		).unwrap();
 	
 		let operand = self.parse_term(
@@ -444,8 +496,9 @@ impl<'inp> Parser<'inp> {
 		);
 	
 		expressions::Unary {
-			operator,
-			operand
+			operator: (operator, operator_position),
+			operand,
+			position
 		}
 	}
 	
@@ -463,40 +516,51 @@ impl<'inp> Parser<'inp> {
 	
 	fn parse_identifier(&self, pair: Pair<Rule>) -> expressions::Term {
 		assert_rule!(pair == identifier in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let as_str = pair_into_string(&pair);
 	
 		if as_str == "void" {
-			return Expression::Empty.into();
+			return Expression::Empty(Some(position)).into();
 		}
 	
-		expressions::Term::Identifier(as_str)
+		expressions::Term::Identifier(as_str, position)
 	}
 	
 	fn parse_number_literal(&self, pair: Pair<Rule>) -> expressions::Literal {
 		assert_rule!(pair == number_literal in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let string = pair.as_str().to_owned();
 	
 		match string.parse::<f64>() {
-			Ok(num) => expressions::Literal::Number(num),
+			Ok(num) => expressions::Literal::Number(num, position),
 			Err(_) => error!("failed to parse number literal '{}'", pair.as_span(), string)
 		}
 	}
 	
 	fn parse_string_literal(&self, pair: Pair<Rule>) -> expressions::Literal {
 		assert_rule!(pair == string_literal in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let literal = pair.as_str().to_owned();
 		let clean_literal = literal.trim_start_matches(&['\'', '\"'][..]).trim_end_matches(&['\'', '\"'][..]);
 	
-		expressions::Literal::String(clean_literal.to_owned())
+		expressions::Literal::String(
+			clean_literal.to_owned(),
+			position
+		)
 	}
 	
 	fn parse_boolean_literal(&self, pair: Pair<Rule>) -> expressions::Literal {
 		assert_rule!(pair == boolean_literal in pair);
+
+		let position = span_to_pos(pair.as_span());
 		let literal = pair.as_str();
 	
 		match literal {
-			"true" => expressions::Literal::Boolean(true),
-			"false" => expressions::Literal::Boolean(false),
+			"true" => expressions::Literal::Boolean(true, position),
+			"false" => expressions::Literal::Boolean(false, position),
 	
 			_ => error!("expected 'true' or 'false', got '{}'", pair.as_span(), literal)
 		}

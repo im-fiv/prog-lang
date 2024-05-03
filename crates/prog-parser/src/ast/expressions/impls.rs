@@ -15,6 +15,41 @@ macro_rules! impl_basic_conv {
 
 //* Others *//
 
+impl Expression {
+	pub fn position(&self) -> Position {
+		match self {
+			Self::Unary(value) => value.position,
+			Self::Binary(value) => value.position,
+			Self::Term(value) => value.position(),
+			Self::Empty(value) => value.expect("Position of Expression::Empty is None").to_owned()
+		}
+	}
+}
+
+impl Term {
+	pub fn position(&self) -> Position {
+		match self {
+			Self::Object(value) => value.1,
+			Self::List(value) => value.1,
+			Self::Call(value) => value.position,
+			Self::Function(value) => value.position,
+			Self::Literal(value) => value.position(),
+			Self::Identifier(_, value) => value.to_owned(),
+			Self::Expression(value) => value.position()
+		}
+	}
+}
+
+impl Literal {
+	pub fn position(&self) -> Position {
+		match self {
+			Self::Boolean(_, value) => value,
+			Self::String(_, value) => value,
+			Self::Number(_, value) => value
+		}.to_owned()
+	}
+}
+
 impl operators::BinaryOperator {
 	pub fn get_precedence(&self) -> u8 {
 		match self {
@@ -128,27 +163,27 @@ impl Display for Expression {
 			Self::Unary(value) => write!(f, "{value}"),
 			Self::Binary(value) => write!(f, "{value}"),
 			Self::Term(value) => write!(f, "{value}"),
-			Self::Empty => write!(f, "")
+			Self::Empty(_) => write!(f, "")
 		}
 	}
 }
 
 impl Display for Unary {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self.operator {
-			operators::UnaryOperator::Minus => write!(f, "{}{}", self.operator, self.operand),
-			operators::UnaryOperator::Not => write!(f, "{} {}", self.operator, self.operand)
+		match self.operator.0 {
+			operators::UnaryOperator::Minus => write!(f, "{}{}", self.operator.0, self.operand),
+			operators::UnaryOperator::Not => write!(f, "{} {}", self.operator.0, self.operand)
 		}
 	}
 }
 
 impl Display for Binary {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self.operator {
+		match self.operator.0 {
 			operators::BinaryOperator::ListAccess |
-			operators::BinaryOperator::ObjectAccess => write!(f, "{}{}{}", self.lhs, self.operator, self.rhs),
+			operators::BinaryOperator::ObjectAccess => write!(f, "{}{}{}", self.lhs, self.operator.0, self.rhs),
 
-			_ => write!(f, "{} {} {}", self.lhs, self.operator, self.rhs)
+			_ => write!(f, "{} {} {}", self.lhs, self.operator.0, self.rhs)
 		}
 	}
 }
@@ -161,7 +196,7 @@ impl Display for Term {
 			Self::Call(value) => write!(f, "{value}"),
 			Self::Function(value) => write!(f, "{value}"),
 			Self::Literal(value) => write!(f, "{value}"),
-			Self::Identifier(value) => write!(f, "{value}"),
+			Self::Identifier(value, _) => write!(f, "{value}"),
 			Self::Expression(value) => write!(f, "{value}"),
 		}
 	}
@@ -172,7 +207,7 @@ impl Display for Object {
 		let formatted = self
 			.0
 			.iter()
-			.map(|(name, value)| format!("{name} = {value}"))
+			.map(|entry| format!("{} = {}", entry.name, entry.value))
 			.collect::<Vec<String>>()
 			.join(", ");
 
@@ -212,7 +247,13 @@ impl Display for Call {
 
 impl Display for Function {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let arguments = self.arguments.join(", ");
+		let arguments = self
+			.arguments
+			.iter()
+			.map(|(argument, _)| argument.to_owned())
+			.collect::<Vec<_>>()
+			.join(", ");
+
 		write!(f, "func({arguments})")
 	}
 }
@@ -220,9 +261,9 @@ impl Display for Function {
 impl Display for Literal {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Boolean(value) => write!(f, "{value}"),
-			Self::String(value) => write!(f, "{value}"),
-			Self::Number(value) => write!(f, "{value}")
+			Self::Boolean(value, _) => write!(f, "{value}"),
+			Self::String(value, _) => write!(f, "{value}"),
+			Self::Number(value, _) => write!(f, "{value}")
 		}
 	}
 }

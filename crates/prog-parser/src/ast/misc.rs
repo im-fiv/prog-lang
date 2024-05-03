@@ -1,4 +1,4 @@
-use super::{Statement, Expression};
+use super::{Statement, Expression, Position};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
@@ -8,5 +8,6 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConditionBranch {
 	pub condition: Expression,
-	pub statements: Vec<Statement>
+	pub statements: Vec<Statement>,
+	pub position: Position
 }

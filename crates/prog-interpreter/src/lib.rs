@@ -13,7 +13,7 @@ use anyhow::{Result, bail};
 
 fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
 	match term {
-		ast::expressions::Term::Identifier(value) => Some(value.to_owned()),
+		ast::expressions::Term::Identifier(value, _) => Some(value.to_owned()),
 		ast::expressions::Term::Expression(value) => {
 			if let ast::expressions::Expression::Term(ref value) = value.as_ref() {
 				identifier_from_term(value)
@@ -76,24 +76,24 @@ impl Interpreter {
 
 	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<RuntimeValue> {
 		match statement {
-			ast::Statement::VariableDefine { name, value } => self.execute_variable_define(name, value),
-			ast::Statement::VariableAssign { name, value } => self.execute_variable_assign(name, value),
-			ast::Statement::DoBlock(statements) => self.execute_do_block(statements),
+			ast::Statement::VariableDefine { name, value, position } => self.execute_variable_define(name, value),
+			ast::Statement::VariableAssign { name, value, position } => self.execute_variable_assign(name, value),
+			ast::Statement::DoBlock(statements, position) => self.execute_do_block(statements),
 
-			ast::Statement::Return(expression) => match expression {
+			ast::Statement::Return(expression, position) => match expression {
 				Some(expression) => self.evaluate_expression(expression, false),
 				None => Ok(RuntimeValue::Empty)
 			},
 
 			ast::Statement::Call(call) => self.evaluate_call(call),
-			ast::Statement::WhileLoop { condition, statements } => self.execute_while_loop(condition, statements),
+			ast::Statement::WhileLoop { condition, statements, position } => self.execute_while_loop(condition, statements),
 
-			ast::Statement::Break => unimplemented!("break"),
-			ast::Statement::Continue => unimplemented!("continue"),
+			ast::Statement::Break(position) => unimplemented!("break"),
+			ast::Statement::Continue(position) => unimplemented!("continue"),
 
-			ast::Statement::If { condition, statements, elseif_branches, else_branch } => self.execute_if(condition, statements, elseif_branches, else_branch),
+			ast::Statement::If { condition, statements, elseif_branches, else_branch, position } => self.execute_if(condition, statements, elseif_branches, else_branch),
 		
-			ast::Statement::ExpressionAssign { expression, value } => self.execute_expression_assign(expression, value)
+			ast::Statement::ExpressionAssign { expression, value, position} => self.execute_expression_assign(expression, value)
 		}
 	}
 
@@ -182,13 +182,13 @@ impl Interpreter {
 			_ => bail!("Expression `{:?}` is not assignable", expression)
 		};
 
-		if !matches!(expression.operator, Op::ListAccess | Op::ObjectAccess) {
+		if !matches!(expression.operator.0, Op::ListAccess | Op::ObjectAccess) {
 			bail!("Expression `{:?}` is not assignable", expression);
 		}
 
 		let value = self.evaluate_expression(value, false)?;
 
-		if expression.operator == Op::ListAccess {
+		if expression.operator.0 == Op::ListAccess {
 			self.execute_expression_assign_list(expression, value)
 		} else {
 			self.execute_expression_assign_object(expression, value)
@@ -196,7 +196,7 @@ impl Interpreter {
 	}
 
 	fn execute_expression_assign_list(&mut self, expression: ast::expressions::Binary, value: RuntimeValue) -> Result<RuntimeValue> {
-		let ast::expressions::Binary { lhs, rhs, operator: _ } = expression.clone();
+		let ast::expressions::Binary { lhs, rhs, operator: _, position } = expression.clone();
 
 		let list_name = match self.evaluate_term(rhs, true)? {
 			RuntimeValue::Identifier(identifier) => identifier.0,
@@ -238,7 +238,7 @@ impl Interpreter {
 	}
 
 	fn execute_expression_assign_object(&mut self, expression: ast::expressions::Binary, value: RuntimeValue) -> Result<RuntimeValue> {
-		let ast::expressions::Binary { lhs, rhs, operator: _ } = expression.clone();
+		let ast::expressions::Binary { lhs, rhs, operator: _, position } = expression.clone();
 
 		let object_name = match self.evaluate_term(lhs, true)? {
 			RuntimeValue::Identifier(identifier) => identifier.0,
@@ -278,13 +278,13 @@ impl Interpreter {
 			Expression::Unary(expression) => self.evaluate_unary_expression(expression.operator, expression.operand, stop_on_ident),
 			Expression::Binary(expression) => self.evaluate_binary_expression(expression.lhs, expression.operator, expression.rhs, stop_on_ident),
 			Expression::Term(term) => self.evaluate_term(term, stop_on_ident),
-			Expression::Empty => Ok(RuntimeValue::Empty)
+			Expression::Empty(_) => Ok(RuntimeValue::Empty)
 		}
 	}
 
 	fn evaluate_unary_expression(
 		&mut self,
-		operator: ast::expressions::operators::UnaryOperator,
+		operator: (ast::expressions::operators::UnaryOperator, ast::Position),
 		operand: ast::expressions::Term,
 		stop_on_ident: bool
 	) -> Result<RuntimeValue> {
@@ -293,7 +293,7 @@ impl Interpreter {
 
 		let evaluated_operand = self.evaluate_term(operand, stop_on_ident)?;
 
-		match (operator, evaluated_operand) {
+		match (operator.0, evaluated_operand) {
 			(Op::Minus, Rv::Number(value)) => Ok(Rv::Number(-value)),
 
 			(Op::Not, Rv::Boolean(value)) => Ok(Rv::Boolean(!value)),
@@ -311,7 +311,7 @@ impl Interpreter {
 	fn evaluate_binary_expression(
 		&mut self,
 		lhs: ast::expressions::Term,
-		operator: ast::expressions::operators::BinaryOperator,
+		operator: (ast::expressions::operators::BinaryOperator, ast::Position),
 		rhs: ast::expressions::Term,
 		stop_on_ident: bool
 	) -> Result<RuntimeValue> {
@@ -322,7 +322,7 @@ impl Interpreter {
 		let evaluated_lhs_forced = self.evaluate_term(lhs, false)?;
 
 		let is_object_access = matches!(
-			(&evaluated_lhs_forced, operator),
+			(&evaluated_lhs_forced, operator.0),
 			(RuntimeValue::Object(_), Op::ObjectAccess)
 		);
 
@@ -335,7 +335,7 @@ impl Interpreter {
 			evaluated_lhs = evaluated_lhs_forced;
 		}
 
-		match (operator, evaluated_lhs, evaluated_rhs) {
+		match (operator.0, evaluated_lhs, evaluated_rhs) {
 			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs + rhs)),
 			(Op::Minus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs - rhs)),
 			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs / rhs)),
@@ -403,7 +403,7 @@ impl Interpreter {
 			Term::Call(value) => self.evaluate_call(value),
 			Term::Function(value) => self.evaluate_function(value),
 			Term::Literal(value) => Ok(value.into()),
-			Term::Identifier(value) => match stop_on_ident {
+			Term::Identifier(value, _) => match stop_on_ident {
 				true => Ok(RuntimeValue::Identifier(value.into())),
 				false => self.context.get_value(&value)
 			},
@@ -412,8 +412,14 @@ impl Interpreter {
 	}
 
 	fn evaluate_function(&self, function: ast::expressions::Function) -> Result<RuntimeValue> {
+		let arguments = function
+			.arguments
+			.into_iter()
+			.map(|(argument, _)| argument)
+			.collect::<Vec<_>>();
+
 		Ok(RuntimeValue::Function(RuntimeFunction {
-			arguments: function.arguments,
+			arguments: arguments,
 			statements: function.statements
 		}))
 	}
@@ -422,8 +428,9 @@ impl Interpreter {
 		use std::collections::HashMap;
 		let mut new_map = HashMap::new();
 
-		for (name, value) in object.0 {
-			let value = self.evaluate_expression(value, false)?;
+		for entry in object.0 {
+			let name = entry.name;
+			let value = self.evaluate_expression(entry.value, false)?;
 			
 			if new_map.insert(name.clone(), value).is_some() {
 				bail!("Duplicate key `{name}` found in object");
@@ -451,7 +458,7 @@ impl Interpreter {
 			.arguments
 			.into_iter()
 			.map(|arg| self.evaluate_expression(arg, false))
-			.collect::<Result<Vec<RuntimeValue>>>()?;
+			.collect::<Result<Vec<_>>>()?;
 
 		let original_expression = *call.function.clone();
 		let expression = self.evaluate_expression(*call.function, false)?;

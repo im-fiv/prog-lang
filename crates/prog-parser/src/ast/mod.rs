@@ -6,3 +6,5 @@ mod statements;
 pub use expressions::Expression;
 pub use statements::*;
 pub use misc::*;
+
+pub type Position = (usize, usize);
