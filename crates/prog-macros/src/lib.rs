@@ -39,13 +39,19 @@ pub fn variant_unwrap(item: pm::TokenStream) -> pm::TokenStream {
 
 	// Concatenating and returning
 	quote! {
-		#(#expanded_variants)*
+		#( #expanded_variants )*
 	}.into()
 }
 
 #[proc_macro_derive(EnumKind)]
 pub fn enum_kind(item: pm::TokenStream) -> pm::TokenStream {
 	let item = parse_macro_input!(item as DeriveInput);
+
+	let (
+		impl_generics,
+		type_generics,
+		where_clause
+	) = item.generics.split_for_impl();
 
 	let enum_name = item.ident;
 	let enum_vis = item.vis;
@@ -116,7 +122,7 @@ pub fn enum_kind(item: pm::TokenStream) -> pm::TokenStream {
 		}
 
 		quote! {
-			impl #enum_name {
+			impl #impl_generics #enum_name #type_generics #where_clause {
 				pub fn kind(&self) -> #enum_kind_name {
 					match self {
 						#( #match_arms ),*
