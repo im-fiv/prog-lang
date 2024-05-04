@@ -97,9 +97,9 @@ pub struct RuntimeFunction {
 impl Display for RuntimeFunction {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let arguments_str = self.arguments.join(", ");
-		let formatted = format!("func({arguments_str})");
+		let formatted = format!("Function({arguments_str})");
 		
-		write!(f, "{{ {formatted} }}")
+		write!(f, "{formatted}")
 	}
 }
 
