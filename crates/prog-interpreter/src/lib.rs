@@ -1,9 +1,11 @@
 pub mod arg_parser;
 pub mod context;
+pub mod errors;
 pub mod intrinsics;
 pub mod values;
 
 pub use values::{RuntimeValue, RuntimeValueKind};
+pub use errors::{InterpretError, InterpretErrorKind};
 
 use context::RuntimeContext;
 use values::RuntimeFunction;
@@ -45,21 +47,28 @@ fn is_value_truthy(rv: &RuntimeValue) -> bool {
 }
 
 #[derive(Debug)]
-pub struct Interpreter {
-	pub context: RuntimeContext
+pub struct Interpreter<'inp> {
+	pub context: RuntimeContext,
+	source: &'inp str,
+	file: &'inp str
 }
 
-impl Default for Interpreter {
-	fn default() -> Self {
-		Self::new()
-	}
-}
-
-impl Interpreter {
-	pub fn new() -> Self {
+impl<'inp> Interpreter<'inp> {
+	pub fn new(source: &'inp str, file: &'inp str) -> Self {
 		Self {
-			context: RuntimeContext::new()
+			context: RuntimeContext::new(),
+			source,
+			file
 		}
+	}
+
+	fn create_error(&self, position: ast::Position, kind: InterpretErrorKind) -> Result<RuntimeValue> {
+		bail!(errors::InterpretError::new(
+			self.source.to_owned(),
+			self.file.to_owned(),
+			position,
+			kind
+		))
 	}
 
 	pub fn execute(&mut self, ast: ast::Program) -> Result<RuntimeValue> {
@@ -88,8 +97,15 @@ impl Interpreter {
 			ast::Statement::Call(call) => self.evaluate_call(call),
 			ast::Statement::WhileLoop { condition, statements, position } => self.execute_while_loop(condition, statements),
 
-			ast::Statement::Break(position) => unimplemented!("break"),
-			ast::Statement::Continue(position) => unimplemented!("continue"),
+			ast::Statement::Break(position) => self.create_error(
+				position.clone(),
+				InterpretErrorKind::UnsupportedStatement(String::from("break"), position)
+			),
+
+			ast::Statement::Continue(position) => self.create_error(
+				position.clone(),
+				InterpretErrorKind::UnsupportedStatement(String::from("continue"), position)
+			),
 
 			ast::Statement::If { condition, statements, elseif_branches, else_branch, position } => self.execute_if(condition, statements, elseif_branches, else_branch),
 		
@@ -419,7 +435,7 @@ impl Interpreter {
 			.collect::<Vec<_>>();
 
 		Ok(RuntimeValue::Function(RuntimeFunction {
-			arguments: arguments,
+			arguments,
 			statements: function.statements
 		}))
 	}

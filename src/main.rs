@@ -14,10 +14,10 @@ use clap::Parser;
 fn execute_run_command(args: cli::RunCommand) {
 	let contents = read_file(&args.file_path);
 
-	let parser = ProgParser::new(&contents, &args.file_path[..]);
+	let parser = ProgParser::new(&contents, &args.file_path);
 	let ast = parser.parse().unwrap();
 
-	let mut interpreter = Interpreter::new();
+	let mut interpreter = Interpreter::new(&contents, &args.file_path);
 
 	let result = interpreter.execute(ast).unwrap();
 
@@ -45,7 +45,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 			Err(error) => return handle_anyhow_error(error)
 		};
 
-		let mut interpreter = Interpreter::new();
+		let mut interpreter = Interpreter::new(&req_body, "stdin");
 		interpreter.context.con_stdout_allowed = false;
 		interpreter.context.imports_allowed = false;
 		interpreter.context.input_allowed = false;

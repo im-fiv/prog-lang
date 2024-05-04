@@ -54,7 +54,7 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 	let parser = prog_parser::Parser::new(&contents[..], path_str);
 	let ast = parser.parse()?;
 
-	let mut interpreter = crate::Interpreter::new();
+	let mut interpreter = crate::Interpreter::new(&contents, "intrinsic");
 	context.clone_into(&mut interpreter.context);
 
 	let result = interpreter.execute(ast)?;

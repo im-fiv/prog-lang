@@ -3,11 +3,11 @@ use std::fs::ReadDir;
 
 use anyhow::Result;
 
-fn execute_string(code: String, file: &str) -> Result<prog_interpreter::RuntimeValue> {
-	let parser = prog_parser::Parser::new(&code[..], file);
+fn execute_string(source: String, file: &str) -> Result<prog_interpreter::RuntimeValue> {
+	let parser = prog_parser::Parser::new(&source[..], file);
 	let ast = parser.parse()?;
 
-	let mut interpreter = prog_interpreter::Interpreter::new();
+	let mut interpreter = prog_interpreter::Interpreter::new(&source, file);
 	interpreter.context.con_stdout_allowed = false;
 
 	let result = interpreter.execute(ast)?;
