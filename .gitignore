@@ -5,3 +5,5 @@
 
 /syntax-extension/node_modules
 /syntax-extension/*.vsix
+
+input.prog

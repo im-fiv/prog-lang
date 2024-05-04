@@ -1,3 +1,0 @@
-while true do
-	if true then continue end
-end
