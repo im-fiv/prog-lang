@@ -13,7 +13,7 @@ use pest::Span;
 
 #[inline]
 fn span_to_pos(span: Span) -> Position {
-	(span.start(), span.end())
+	span.start()..span.end()
 }
 
 #[derive(pest_derive::Parser)]
@@ -391,14 +391,14 @@ impl<'inp> Parser<'inp> {
 			pairs.next();
 	
 			let right = self.parse_expression_with_precedence(pairs, operator_precedence + 1);
-			position.1 = right.position().1;
+			position = position.start..right.position().end;
 	
 			left = Expression::Binary(
 				expressions::Binary {
 					lhs: left.clone(),
 					operator: (operator, operator_position),
 					rhs: right.into(),
-					position
+					position: position.clone()
 				}
 			).into()
 		}

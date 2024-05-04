@@ -979,6 +979,7 @@ name = "prog-interpreter"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "ariadne",
  "prog-macros",
  "prog-parser",
  "prog-utils",
@@ -1018,14 +1019,17 @@ name = "prog-parser"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "ariadne",
  "pest",
  "pest_derive",
+ "prog-utils",
 ]
 
 [[package]]
 name = "prog-utils"
 version = "0.0.0"
+dependencies = [
+ "ariadne",
+]
 
 [[package]]
 name = "quote"

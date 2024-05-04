@@ -18,10 +18,10 @@ macro_rules! impl_basic_conv {
 impl Expression {
 	pub fn position(&self) -> Position {
 		match self {
-			Self::Unary(value) => value.position,
-			Self::Binary(value) => value.position,
+			Self::Unary(value) => value.position.clone(),
+			Self::Binary(value) => value.position.clone(),
 			Self::Term(value) => value.position(),
-			Self::Empty(value) => value.expect("Position of Expression::Empty is None").to_owned()
+			Self::Empty(value) => value.to_owned().expect("Position of Expression::Empty is None")
 		}
 	}
 }
@@ -29,10 +29,10 @@ impl Expression {
 impl Term {
 	pub fn position(&self) -> Position {
 		match self {
-			Self::Object(value) => value.1,
-			Self::List(value) => value.1,
-			Self::Call(value) => value.position,
-			Self::Function(value) => value.position,
+			Self::Object(value) => value.1.clone(),
+			Self::List(value) => value.1.clone(),
+			Self::Call(value) => value.position.clone(),
+			Self::Function(value) => value.position.clone(),
 			Self::Literal(value) => value.position(),
 			Self::Identifier(_, value) => value.to_owned(),
 			Self::Expression(value) => value.position()

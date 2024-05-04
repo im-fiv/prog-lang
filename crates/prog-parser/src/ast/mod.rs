@@ -7,4 +7,4 @@ pub use expressions::Expression;
 pub use statements::*;
 pub use misc::*;
 
-pub type Position = (usize, usize);
+pub use prog_utils::pretty_errors::Position;
