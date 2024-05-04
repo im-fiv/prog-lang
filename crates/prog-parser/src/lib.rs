@@ -63,7 +63,7 @@ impl<'inp> Parser<'inp> {
 			self.file.to_owned(),
 			position.clone(),
 			ParseErrorKind::ExpectedRules(
-				errors::ExpectedRules { rules: positives, position }
+				errors::ExpectedRules(positives)
 			)
 		)
 	}
@@ -268,6 +268,7 @@ impl<'inp> Parser<'inp> {
 		let mut arguments = vec![];
 	
 		let next_pair = get_pair_safe!(from pairs expect call_body_empty | call_body_nonempty in pair);
+		let arguments_pos = span_to_pos(next_pair.as_span());
 	
 		if next_pair.as_rule() == Rule::call_body_nonempty {
 			arguments = self.parse_function_call_args(next_pair);
@@ -278,7 +279,7 @@ impl<'inp> Parser<'inp> {
 		);
 	
 		expressions::Call {
-			arguments,
+			arguments: (arguments, arguments_pos),
 			function: Box::new(function),
 			position
 		}

@@ -88,7 +88,10 @@ fn serde_use_display<T: Display, S: serde::Serializer>(value: &T, serializer: S)
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeFunction {
 	pub arguments: Vec<String>,
-	pub statements: Vec<ast::Statement>
+	pub statements: Vec<ast::Statement>,
+
+	pub source: String,
+	pub file: String
 }
 
 impl Display for RuntimeFunction {
@@ -100,7 +103,11 @@ impl Display for RuntimeFunction {
 	}
 }
 
-pub type IntrinsicFunctionPtr = fn(&mut RuntimeContext, HashMap<String, ParsedArg>) -> Result<RuntimeValue>;
+pub type IntrinsicFunctionPtr = fn(
+	context: &mut RuntimeContext,
+	args: HashMap<String, ParsedArg>,
+	call_site: CallSite
+) -> Result<RuntimeValue>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntrinsicFunction {
@@ -112,6 +119,13 @@ impl Display for IntrinsicFunction {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "func({:?})", self.pointer)
 	}
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CallSite {
+	pub source: String,
+	pub file: String,
+	pub position: ast::Position
 }
 
 #[derive(Debug, Clone, PartialEq)]

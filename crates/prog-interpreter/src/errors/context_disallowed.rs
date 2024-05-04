@@ -4,13 +4,14 @@ use serde::Serialize;
 use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
 
 #[derive(Debug, Clone, Serialize)]
-pub struct ValueDoesntExist(
-	pub String
-);
+pub struct ContextDisallowed {
+	pub thing: String,
+	pub plural: bool
+}
 
-impl AriadneCompatible for ValueDoesntExist {
+impl AriadneCompatible for ContextDisallowed {
 	fn message(&self) -> String {
-		String::from("value doesn't exist")
+		String::from("context disallowed")
 	}
 
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>> {
@@ -20,8 +21,9 @@ impl AriadneCompatible for ValueDoesntExist {
 		vec![
 			Label::new((file, position))
 				.with_message(format!(
-					"`{}` hasn't yet been defined",
-					self.0.fg(color)
+					"{} in this context {} not allowed",
+					self.thing.fg(color),
+					if self.plural { "are" } else { "is" }
 				))
 				.with_color(color)
 		]

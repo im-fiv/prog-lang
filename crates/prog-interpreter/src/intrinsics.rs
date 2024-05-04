@@ -2,11 +2,13 @@ use std::collections::HashMap;
 use anyhow::{Result, bail};
 
 use prog_macros::get_argument;
+
+use crate::values::{IntrinsicFunction, RuntimeValue, RuntimeValueKind, CallSite};
 use crate::arg_parser::{ArgList, Arg, ParsedArg};
 use crate::context::RuntimeContext;
-use crate::values::{IntrinsicFunction, RuntimeValue, RuntimeValueKind};
+use crate::errors;
 
-fn print_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>) -> Result<RuntimeValue> {
+fn print_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, _call_site: CallSite) -> Result<RuntimeValue> {
 	let to_print = get_argument!(args => varargs: ...)
 		.into_iter()
 		.map(|arg| format!("{}", arg))
@@ -22,9 +24,17 @@ fn print_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>
 	Ok(RuntimeValue::Empty)
 }
 
-fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>) -> Result<RuntimeValue> {
+fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, call_site: CallSite) -> Result<RuntimeValue> {
 	if !context.imports_allowed {
-		bail!("Imports in this context are not allowed");
+		bail!(errors::InterpretError::new(
+			call_site.source,
+			call_site.file,
+			call_site.position,
+			errors::InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
+				thing: String::from("imports"),
+				plural: true
+			})
+		));
 	}
 
 	let path_str = get_argument!(args => path: String);
@@ -48,13 +58,12 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 	}
 
 	let path_str = path.to_str().unwrap();
-
 	let contents = prog_utils::read_file(path_str);
 
-	let parser = prog_parser::Parser::new(&contents[..], path_str);
+	let parser = prog_parser::Parser::new(&contents, path_str);
 	let ast = parser.parse()?;
 
-	let mut interpreter = crate::Interpreter::new(&contents, "intrinsic");
+	let mut interpreter = crate::Interpreter::new(contents, path_str.to_owned());
 	context.clone_into(&mut interpreter.context);
 
 	let result = interpreter.execute(ast)?;
@@ -64,11 +73,19 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 	Ok(result)
 }
 
-fn input_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>) -> Result<RuntimeValue> {
+fn input_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, call_site: CallSite) -> Result<RuntimeValue> {
 	use text_io::read;
 
 	if !context.input_allowed {
-		bail!("Input in this context is not allowed");
+		bail!(errors::InterpretError::new(
+			call_site.source,
+			call_site.file,
+			call_site.position,
+			errors::InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
+				thing: String::from("user input"),
+				plural: false
+			})
+		));
 	}
 
 	let message = get_argument!(args => message: String?);

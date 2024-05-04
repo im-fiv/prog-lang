@@ -9,7 +9,7 @@ pub type Span<'a> = (&'a str, Position);
 
 pub trait AriadneCompatible {
 	fn message(&self) -> String;
-	fn labels(self, file: &str) -> Vec<Label<Span>>;
+	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>>;
 }
 
 #[derive(Debug)]
@@ -33,7 +33,10 @@ impl<Kind: Clone + AriadneCompatible + Serialize> PrettyError<Kind> {
 		).with_message(self.kind.message());
 
 		report.add_labels(
-			self.kind.clone().labels(&self.file)
+			self.kind.clone().labels(
+				&self.file,
+				self.position.clone()
+			)
 		);
 
 		report.finish()

@@ -8,7 +8,7 @@ pub use values::{RuntimeValue, RuntimeValueKind};
 pub use errors::{InterpretError, InterpretErrorKind};
 
 use context::RuntimeContext;
-use values::RuntimeFunction;
+use values::{RuntimeFunction, Identifier, CallSite};
 
 use prog_parser::ast;
 use anyhow::{Result, bail};
@@ -47,14 +47,14 @@ fn is_value_truthy(rv: &RuntimeValue) -> bool {
 }
 
 #[derive(Debug)]
-pub struct Interpreter<'inp> {
+pub struct Interpreter {
 	pub context: RuntimeContext,
-	source: &'inp str,
-	file: &'inp str
+	source: String,
+	file: String
 }
 
-impl<'inp> Interpreter<'inp> {
-	pub fn new(source: &'inp str, file: &'inp str) -> Self {
+impl Interpreter {
+	pub fn new(source: String, file: String) -> Self {
 		Self {
 			context: RuntimeContext::new(),
 			source,
@@ -64,8 +64,8 @@ impl<'inp> Interpreter<'inp> {
 
 	fn create_error(&self, position: ast::Position, kind: InterpretErrorKind) -> Result<RuntimeValue> {
 		bail!(errors::InterpretError::new(
-			self.source.to_owned(),
-			self.file.to_owned(),
+			self.source.clone(),
+			self.file.clone(),
 			position,
 			kind
 		))
@@ -87,9 +87,9 @@ impl<'inp> Interpreter<'inp> {
 		match statement {
 			ast::Statement::VariableDefine { name, value, position } => self.execute_variable_define(name, value, position),
 			ast::Statement::VariableAssign { name, value, position } => self.execute_variable_assign(name, value, position),
-			ast::Statement::DoBlock(statements, position) => self.execute_do_block(statements),
+			ast::Statement::DoBlock(statements, position) => self.execute_do_block(statements, position),
 
-			ast::Statement::Return(expression, position) => match expression {
+			ast::Statement::Return(expression, _position) => match expression {
 				Some(expression) => self.evaluate_expression(expression, false),
 				None => Ok(RuntimeValue::Empty)
 			},
@@ -99,18 +99,16 @@ impl<'inp> Interpreter<'inp> {
 
 			ast::Statement::Break(position) => self.create_error(
 				position.clone(),
-				InterpretErrorKind::UnsupportedStatement(errors::UnsupportedStatement {
-					statement: String::from("break"),
-					position
-				})
+				InterpretErrorKind::UnsupportedStatement(
+					errors::UnsupportedStatement(String::from("break"))
+				)
 			),
 
 			ast::Statement::Continue(position) => self.create_error(
 				position.clone(),
-				InterpretErrorKind::UnsupportedStatement(errors::UnsupportedStatement {
-					statement: String::from("continue"),
-					position
-				})
+				InterpretErrorKind::UnsupportedStatement(
+					errors::UnsupportedStatement(String::from("continue"))
+				)
 			),
 
 			ast::Statement::If { condition, statements, elseif_branches, else_branch, position } => self.execute_if(condition, statements, elseif_branches, else_branch),
@@ -126,10 +124,9 @@ impl<'inp> Interpreter<'inp> {
 		};
 
 		if self.context.insert_value(name.0.clone(), evaluated_value).is_err() {
-			self.create_error(name.1.clone(), InterpretErrorKind::ValueAlreadyExists(errors::ValueAlreadyExists {
-				value: name.0,
-				position: name.1
-			}))?;
+			self.create_error(name.1.clone(), InterpretErrorKind::ValueAlreadyExists(
+				errors::ValueAlreadyExists(name.0)
+			))?;
 		}
 
 		Ok(RuntimeValue::Empty)
@@ -139,16 +136,17 @@ impl<'inp> Interpreter<'inp> {
 		let evaluated_value = self.evaluate_expression(value, false)?;
 
 		if self.context.update_value(name.0.clone(), evaluated_value).is_err() {
-			self.create_error(name.1.clone(), InterpretErrorKind::ValueDoesntExist(errors::ValueDoesntExist {
-				value: name.0,
-				position: name.1
-			}))?;
+			let a = self.create_error(name.1.clone(), InterpretErrorKind::ValueDoesntExist(
+				errors::ValueDoesntExist(name.0)
+			));
+
+			a?;
 		}
 
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_do_block(&mut self, statements: Vec<ast::Statement>) -> Result<RuntimeValue> {
+	fn execute_do_block(&mut self, statements: Vec<ast::Statement>, _position: ast::Position) -> Result<RuntimeValue> {
 		self.context.deeper();
 		let result = self.execute(ast::Program { statements });
 		self.context.shallower();
@@ -361,7 +359,7 @@ impl<'inp> Interpreter<'inp> {
 		);
 
 		let evaluated_rhs = match (is_object_access, identifier_from_term(&rhs)) {
-			(true, Some(value)) => RuntimeValue::Identifier(values::Identifier(value)),
+			(true, Some(value)) => RuntimeValue::Identifier(Identifier(value)),
 			_ => self.evaluate_term(rhs, false)?
 		};
 
@@ -454,7 +452,10 @@ impl<'inp> Interpreter<'inp> {
 
 		Ok(RuntimeValue::Function(RuntimeFunction {
 			arguments,
-			statements: function.statements
+			statements: function.statements,
+
+			source: self.source.to_owned(),
+			file: self.file.to_owned()
 		}))
 	}
 
@@ -488,43 +489,111 @@ impl<'inp> Interpreter<'inp> {
 	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<RuntimeValue> {
 		use std::iter::zip;
 
+		let call_site = CallSite {
+			source: self.source.clone(),
+			file: self.file.clone(),
+			position: call.position
+		};
+
+		let call_arguments_pos = call.arguments.1;
 		let call_arguments = call
 			.arguments
+			.0
+			.clone()
 			.into_iter()
 			.map(|arg| self.evaluate_expression(arg, false))
 			.collect::<Result<Vec<_>>>()?;
 
 		let original_expression = *call.function.clone();
+		// TODO: store position data in runtime values to be able to retrieve the initial definition
+		let function_pos = original_expression.position();
+
 		let expression = self.evaluate_expression(*call.function, false)?;
 
 		if let RuntimeValue::IntrinsicFunction(function) = expression {
-			let call_arguments = function.arguments.verify(&call_arguments)?;
+			let convert_error = |e: arg_parser::ArgumentParseError| {
+				match e {
+					arg_parser::ArgumentParseError::CountMismatch {
+						expected,
+						end_boundary,
+						got
+					} => self.create_error(
+						call_arguments_pos,
+						InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
+							expected, end_boundary, got, function_pos
+						})
+					).unwrap_err(),
+
+					arg_parser::ArgumentParseError::IncorrectType {
+						index,
+						expected,
+						got
+					} => {
+						let argument = call
+							.arguments
+							.0
+							.get(index)
+							.unwrap_or_else(|| unreachable!("Argument at index `{index}` does not exist when it should"));
+
+						self.create_error(
+							argument.position(),
+							InterpretErrorKind::ArgumentTypeMismatch(errors::ArgumentTypeMismatch {
+								expected, got, function_pos
+							})
+						).unwrap_err()
+					}
+				}
+			};
+
+			let call_arguments = function
+				.arguments
+				.verify(&call_arguments)
+				.map_err(convert_error)?;
 			
 			self.context.deeper();
-			let result = (function.pointer)(&mut self.context, call_arguments);
+			let result = (function.pointer)(&mut self.context, call_arguments, call_site);
 			self.context.shallower();
 
 			return result;
 		}
 
 		if let RuntimeValue::Function(function) = expression {
-			let expected_str = format!("(expected {} arguments, got {})", function.arguments.len(), call_arguments.len());
-
 			let got_len = call_arguments.len();
 			let expected_len = function.arguments.len();
 			
 			if got_len != expected_len {
-				let word = if got_len < expected_len { "few" } else { "many" };
-				bail!("Too {} arguments in function call {}", word, expected_str);
-			}
-			
-			self.context.deeper();
-			for (arg_name, arg_value) in zip(function.arguments, call_arguments) {
-				self.context.insert_value(arg_name, arg_value)?;
+				self.create_error(call_arguments_pos, InterpretErrorKind::ArgumentCountMismatch(
+					errors::ArgumentCountMismatch {
+						expected: expected_len..expected_len,
+						end_boundary: true,
+						got: got_len,
+						function_pos
+					}
+				))?;
 			}
 
-			let result = self.execute(ast::Program { statements: function.statements });
-			self.context.shallower();
+			let source = self.source.clone();
+			let file = self.file.clone();
+			
+			// Function execution
+			let result = {
+				self.context.deeper();
+
+				self.source = function.source;
+				self.file = function.file;
+				for (arg_name, arg_value) in zip(function.arguments, call_arguments) {
+					self.context.insert_value(arg_name, arg_value)?;
+				}
+
+				let result = self.execute(ast::Program { statements: function.statements });
+
+				self.context.shallower();
+
+				result
+			};
+
+			self.source = source;
+			self.file = file;
 
 			result
 		} else {

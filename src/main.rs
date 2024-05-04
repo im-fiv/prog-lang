@@ -43,7 +43,7 @@ fn execute_run_command(args: cli::RunCommand) {
 	let parser = ProgParser::new(&contents, &args.file_path);
 	let ast = parser.parse().unwrap();
 
-	let mut interpreter = Interpreter::new(&contents, &args.file_path);
+	let mut interpreter = Interpreter::new(contents, args.file_path);
 
 	let result = interpreter.execute(ast).unwrap();
 
@@ -70,7 +70,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 			Err(error) => return handle_anyhow_error(error)
 		};
 
-		let mut interpreter = Interpreter::new(&req_body, "stdin");
+		let mut interpreter = Interpreter::new(req_body, String::from("stdin"));
 		interpreter.context.con_stdout_allowed = false;
 		interpreter.context.imports_allowed = false;
 		interpreter.context.input_allowed = false;

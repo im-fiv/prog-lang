@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use anyhow::{Result, bail};
+use std::ops::Range;
 
 use crate::{RuntimeValue, RuntimeValueKind};
 
@@ -44,7 +44,7 @@ impl ArgList {
 	}
 
 	/// Verifies the provided arguments according to the inner argument types list
-	pub fn verify(&self, arguments: &[RuntimeValue]) -> Result<HashMap<String, ParsedArg>> {
+	pub fn verify(&self, arguments: &[RuntimeValue]) -> Result<HashMap<String, ParsedArg>, ArgumentParseError> {
 		use core::iter::zip;
 
 		if let Some(result) = self.check_args_length(arguments)? {
@@ -64,7 +64,7 @@ impl ArgList {
 		for (index, (own_argument, got_argument)) in zip(own_arguments, arguments.clone()).enumerate() {
 			let mut check_args = |expected: &RuntimeValueKind, got: &RuntimeValueKind, name: &str, optional: bool| {
 				if !optional && (expected != got) {
-					bail!("Invalid type of argument #{} (expected {}, got {})", index, expected, got);
+					return Err(ArgumentParseError::incorrect_type(index, expected.to_string(), got.to_string()));
 				}
 
 				if optional && (got == &RuntimeValueKind::Empty) && (expected != &RuntimeValueKind::Empty) {
@@ -96,10 +96,10 @@ impl ArgList {
 		Ok(result)
 	}
 
-	fn check_args_length(&self, got: &[RuntimeValue]) -> Result<Option<HashMap<String, ParsedArg>>> {
+	fn check_args_length(&self, got: &[RuntimeValue]) -> Result<Option<HashMap<String, ParsedArg>>, ArgumentParseError> {
 		if self.arguments.is_none() {
 			if !got.is_empty() {
-				bail!("Invalid number of arguments passed (expected 0, got {})", got.len());
+				return Err(ArgumentParseError::count_mismatch(0..0, true, got.len()));
 			}
 
 			return Ok(Some(HashMap::new()));
@@ -125,20 +125,22 @@ impl ArgList {
 		let expected_len = own_arguments.len();
 
 		if (got_len != expected_len) && (num_optional == 0) && !has_variadic {
-			bail!("Invalid number of arguments passed (expected {}, got {})", expected_len, got_len);
+			return Err(ArgumentParseError::count_mismatch(expected_len..expected_len, true, got_len));
 		}
 
 		if !has_variadic && (num_optional > 0) && ((got_len < expected_len - num_optional) || (got_len > expected_len)) {
-			bail!("Invalid number of arguments passed (expected at least {} and {} at most, got {})", expected_len - num_optional, expected_len, got_len);
+			return Err(ArgumentParseError::count_mismatch((expected_len - num_optional)..expected_len, true, got_len));
 		}
 
 		// Argument list may contain only 1 variadic argument, hence the -1
 		if has_variadic && (num_optional == 0) && (got_len < expected_len - 1) {
-			bail!("Invalid number of arguments passed (expected at least {}, got {})", expected_len - 1, got_len);
+			let expected_len = expected_len - 1;
+			return Err(ArgumentParseError::count_mismatch(expected_len..expected_len, false, got_len))
 		}
 
 		if has_variadic && (num_optional > 0) && (got_len < expected_len - 1 - num_optional) {
-			bail!("Invalid number of arguments passed (expected at least {}, got {})", expected_len - 1 - num_optional, got_len);
+			let expected_len = expected_len - 1 - num_optional;
+			return Err(ArgumentParseError::count_mismatch(expected_len..expected_len, false, got_len));
 		}
 
 		Ok(None)
@@ -156,4 +158,29 @@ pub enum Arg {
 pub enum ParsedArg {
 	Regular(RuntimeValue),
 	Variadic(Vec<RuntimeValue>)
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArgumentParseError {
+	CountMismatch {
+		expected: Range<usize>,
+		end_boundary: bool,
+		got: usize
+	},
+
+	IncorrectType {
+		index: usize,
+		expected: String,
+		got: String
+	}
+}
+
+impl ArgumentParseError {
+	pub fn count_mismatch(expected: Range<usize>, end_boundary: bool, got: usize) -> Self {
+		Self::CountMismatch { expected, end_boundary, got }
+	}
+
+	pub fn incorrect_type(index: usize, expected: String, got: String) -> Self {
+		Self::IncorrectType { index, expected, got }
+	}
 }

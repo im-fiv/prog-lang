@@ -236,10 +236,10 @@ impl Display for Call {
 
 		let arguments = self
 			.arguments
+			.0
 			.iter()
-			.map(|argument| argument.to_string())
-			.collect::<Vec<String>>()
-			.join(", ");
+			.map(|arg| arg.to_string())
+			.collect::<String>();
 
 		write!(f, "{function}({arguments})")
 	}

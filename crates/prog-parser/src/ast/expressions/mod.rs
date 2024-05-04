@@ -57,7 +57,7 @@ pub struct List(
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Call {
-	pub arguments: Vec<Expression>,
+	pub arguments: (Vec<Expression>, Position),
 	pub function: Box<Expression>,
 	pub position: Position
 }

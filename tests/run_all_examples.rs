@@ -7,7 +7,7 @@ fn execute_string(source: String, file: &str) -> Result<prog_interpreter::Runtim
 	let parser = prog_parser::Parser::new(&source[..], file);
 	let ast = parser.parse()?;
 
-	let mut interpreter = prog_interpreter::Interpreter::new(&source, file);
+	let mut interpreter = prog_interpreter::Interpreter::new(source, file.to_owned());
 	interpreter.context.con_stdout_allowed = false;
 
 	let result = interpreter.execute(ast)?;
