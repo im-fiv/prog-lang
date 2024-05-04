@@ -1,4 +1,5 @@
 use ariadne::{Label, Report, ReportKind, Source};
+use serde::Serialize;
 
 use std::fmt;
 use std::io;
@@ -8,18 +9,18 @@ pub type Span<'a> = (&'a str, Position);
 
 pub trait AriadneCompatible {
 	fn message(&self) -> String;
-	fn labels<'a>(&'a self, file: &'a str) -> Vec<Label<Span>>;
+	fn labels(self, file: &str) -> Vec<Label<Span>>;
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct PrettyError<Kind: AriadneCompatible> {
+#[derive(Debug)]
+pub struct PrettyError<Kind: Clone + AriadneCompatible + Serialize> {
 	pub file: String,
 	pub source: String,
 	pub position: Position,
 	pub kind: Kind
 }
 
-impl<Kind: AriadneCompatible> PrettyError<Kind> {
+impl<Kind: Clone + AriadneCompatible + Serialize> PrettyError<Kind> {
 	pub fn new(source: String, file: String, position: Position, kind: Kind) -> Self {
 		Self { source, file, position, kind }
 	}
@@ -32,7 +33,7 @@ impl<Kind: AriadneCompatible> PrettyError<Kind> {
 		).with_message(self.kind.message());
 
 		report.add_labels(
-			self.kind.labels(&self.file)
+			self.kind.clone().labels(&self.file)
 		);
 
 		report.finish()
@@ -52,7 +53,7 @@ impl<Kind: AriadneCompatible> PrettyError<Kind> {
 	}
 }
 
-impl<Kind: AriadneCompatible> fmt::Display for PrettyError<Kind> {
+impl<Kind: Clone + AriadneCompatible + Serialize> fmt::Display for PrettyError<Kind> {
 	fn fmt<'fmtref>(&self, f: &'fmtref mut fmt::Formatter<'_>) -> fmt::Result {
 		use io::Write;
 
@@ -67,6 +68,22 @@ impl<Kind: AriadneCompatible> fmt::Display for PrettyError<Kind> {
 		writer
 			.flush()
 			.map_err(|_| fmt::Error)
+	}
+}
+
+impl<Kind: Clone + AriadneCompatible + Serialize> Serialize for PrettyError<Kind> {
+	fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		use serde::ser::SerializeStruct;
+
+		let mut s = serializer.serialize_struct("PrettyError", 5)?;
+
+		s.serialize_field("message", &self.kind.message())?;
+		s.serialize_field("file", &self.file)?;
+		s.serialize_field("source", &self.source)?;
+		s.serialize_field("position", &self.position)?;
+		s.serialize_field("kind", &self.kind)?;
+
+		s.end()
 	}
 }
 

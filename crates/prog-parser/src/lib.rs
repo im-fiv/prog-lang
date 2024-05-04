@@ -1,15 +1,18 @@
 pub mod ast;
+mod errors_legacy;
 mod errors;
 mod utils;
 
 use ast::*;
-use errors::error;
+use errors_legacy::error;
 use utils::*;
 
 use std::iter::Peekable;
-use anyhow::Result;
+use anyhow::{Result, bail};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
+
+pub use errors::{ParseError, ParseErrorKind};
 
 #[inline]
 fn span_to_pos(span: Span) -> Position {
@@ -21,25 +24,48 @@ fn span_to_pos(span: Span) -> Position {
 struct PestParser;
 
 pub struct Parser<'inp> {
-	input: Span<'inp>,
+	source: &'inp str,
 	file: &'inp str
 }
 
 impl<'inp> Parser<'inp> {
-	pub fn new(input: &'inp str, file: &'inp str) -> Self {
-		Self {
-			input: Span::new(input, 0, input.len()).unwrap(),
-			file
-		}
+	pub fn new(source: &'inp str, file: &'inp str) -> Self {
+		Self { source, file }
 	}
 	
 	pub fn parse(&self) -> Result<Program> {
 		use pest::Parser;
 	
-		let tt = PestParser::parse(Rule::program, self.input.as_str())?;
-		let ast = self.transform_ast(tt);
+		let tt = PestParser::parse(Rule::program, self.source);
+
+		if let Err(e) = tt {
+			bail!(self.convert_error(e));
+		}
+
+		let ast = self.transform_ast(tt.unwrap());
 	
 		Ok(ast)
+	}
+
+	fn convert_error(&self, pest_error: pest::error::Error<Rule>) -> ParseError {
+		let positives = match pest_error.variant {
+			pest::error::ErrorVariant::ParsingError { positives, negatives: _ } => positives,
+			_ => panic!("Only ErrorVariant::ParsingError is suitable for conversion")
+		};
+	
+		let position = match pest_error.location {
+			pest::error::InputLocation::Pos(p) => p..p,
+			pest::error::InputLocation::Span(s) => (s.0)..(s.1)
+		};
+	
+		ParseError::new(
+			self.source.to_owned(),
+			self.file.to_owned(),
+			position.clone(),
+			ParseErrorKind::ExpectedRules(
+				errors::ExpectedRules { rules: positives, position }
+			)
+		)
 	}
 
 	fn transform_ast(&self, pairs: Pairs<'_, Rule>) -> Program {

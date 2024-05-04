@@ -9,6 +9,10 @@ members = ["crates/*"]
 [workspace.dependencies]
 anyhow = "1.0.82"
 ariadne = "0.4.1"
+serde_json = "1.0.116"
+pest = "2.7.9"
+pest_derive = "2.7.9"
+serde = { version = "1.0.199", features = ["derive"] }
 prog-parser = { path = "./crates/prog-parser" }
 prog-interpreter = { path = "./crates/prog-interpreter" }
 prog-utils = { path = "./crates/prog-utils" }
@@ -18,10 +22,10 @@ prog-macros = { path = "./crates/prog-macros" }
 actix-web = "4"
 actix-cors = "0.7.0"
 actix-files = "0.6.5"
-serde = "1.0.199"
-serde-error = "0.1.2"
-serde_json = "1.0.116"
 clap = { version = "4.5.4", features = ["derive"] }
+pest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 anyhow = { workspace = true }
 prog-parser = { workspace = true }
 prog-interpreter = { workspace = true }

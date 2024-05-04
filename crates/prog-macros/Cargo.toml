@@ -10,4 +10,4 @@ proc-macro = true
 quote = "*"
 proc-macro2 = "*"
 paste = "1.0.14"
-syn = { version = "*", features = ["extra-traits"] }
+syn = { version = "*", features = ["full", "extra-traits"] }

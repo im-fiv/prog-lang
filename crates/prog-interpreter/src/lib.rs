@@ -99,12 +99,18 @@ impl<'inp> Interpreter<'inp> {
 
 			ast::Statement::Break(position) => self.create_error(
 				position.clone(),
-				InterpretErrorKind::UnsupportedStatement(String::from("break"), position)
+				InterpretErrorKind::UnsupportedStatement(errors::UnsupportedStatement {
+					statement: String::from("break"),
+					position
+				})
 			),
 
 			ast::Statement::Continue(position) => self.create_error(
 				position.clone(),
-				InterpretErrorKind::UnsupportedStatement(String::from("continue"), position)
+				InterpretErrorKind::UnsupportedStatement(errors::UnsupportedStatement {
+					statement: String::from("continue"),
+					position
+				})
 			),
 
 			ast::Statement::If { condition, statements, elseif_branches, else_branch, position } => self.execute_if(condition, statements, elseif_branches, else_branch),

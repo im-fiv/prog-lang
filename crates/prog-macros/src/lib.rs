@@ -2,29 +2,24 @@ extern crate proc_macro;
 
 mod conversion_inner;
 mod get_argument_inner;
+mod impl_ariadne_compatible_inner;
 mod utils;
 
 use proc_macro as pm;
 
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput};
+use syn::parse_macro_input;
 
-/// Implements `TryInto` for all variants into their unnamed fields type. **Only compatible with enums**
+/// Implements [`TryInto`] for all variants into their unnamed fields type. **Only compatible with enums**
 #[proc_macro_derive(VariantUnwrap)]
-pub fn variant_unwrap(item: pm::TokenStream) -> pm::TokenStream {
-	let item = parse_macro_input!(item as DeriveInput);
+pub fn variant_unwrap(input: pm::TokenStream) -> pm::TokenStream {
+	let item = parse_macro_input!(input as syn::ItemEnum);
 	let enum_name = item.ident;
-
-	// Unwrapping enum data
-	let enum_data = match utils::get_enum_data(item.data) {
-		Ok(data) => data,
-		Err(err) => return err.to_compile_error().into()
-	};
 
 	// Expanding variants
 	let mut expanded_variants = vec![];
 
-	for variant in enum_data.variants {
+	for variant in item.variants {
 		let expanded = conversion_inner::expand_variant(
 			variant,
 			&enum_name,
@@ -43,9 +38,10 @@ pub fn variant_unwrap(item: pm::TokenStream) -> pm::TokenStream {
 	}.into()
 }
 
+/// Expands to `enum <Enum>Kind` and implements `.kind()` for the deriving enum. **Only compatible with enums**
 #[proc_macro_derive(EnumKind)]
-pub fn enum_kind(item: pm::TokenStream) -> pm::TokenStream {
-	let item = parse_macro_input!(item as DeriveInput);
+pub fn enum_kind(input: pm::TokenStream) -> pm::TokenStream {
+	let item = parse_macro_input!(input as syn::ItemEnum);
 
 	let (
 		impl_generics,
@@ -56,22 +52,16 @@ pub fn enum_kind(item: pm::TokenStream) -> pm::TokenStream {
 	let enum_name = item.ident;
 	let enum_vis = item.vis;
 	let enum_kind_name = quote::format_ident!("{enum_name}Kind");
-
-	// Unwrapping enum data
-	let enum_data = match utils::get_enum_data(item.data) {
-		Ok(data) => data,
-		Err(err) => return err.to_compile_error().into()
-	};
 	
 	// Expanding variants into their names
-	let kind_variants = enum_data.variants.iter().map(|variant| {
+	let kind_variants = item.variants.iter().map(|variant| {
 		let variant_name = &variant.ident;
 		quote! { #variant_name }
 	});
 
 	// Expanding display impl
 	let enum_kind_display_impl = {
-		let match_arms = enum_data.variants.iter().map(|variant| {
+		let match_arms = item.variants.iter().map(|variant| {
 			let variant_name = &variant.ident;
 
 			quote! {
@@ -105,7 +95,7 @@ pub fn enum_kind(item: pm::TokenStream) -> pm::TokenStream {
 		let mut match_arms = vec![];
 
 		// Assuming that the variant names are identical in the deriving enum and the kind enum
-		for variant in enum_data.variants {
+		for variant in item.variants {
 			let variant_name = variant.ident;
 
 			let suffix = match variant.fields {
@@ -140,7 +130,18 @@ pub fn enum_kind(item: pm::TokenStream) -> pm::TokenStream {
 	expanded.into()
 }
 
-/// Used for safely unwrapping a `ParsedArg`.
+/// Expands to the implementation of [`prog_utils::pretty_errors::AriadneCompatible`]. **Only compatible with enums**
+#[proc_macro_derive(ImplAriadneCompatible)]
+pub fn impl_ariadne_compatible(input: pm::TokenStream) -> pm::TokenStream {
+	let item = parse_macro_input!(input as syn::ItemEnum);
+
+	match impl_ariadne_compatible_inner::expand_impl(item) {
+		Ok(ts) => ts.into(),
+		Err(e) => e.to_compile_error().into()
+	}
+}
+
+/// Used for safely unwrapping a [`prog_interpreter::arg_parser::ParsedArg`].
 #[proc_macro]
 pub fn get_argument(input: pm::TokenStream) -> pm::TokenStream {
 	let input = parse_macro_input!(input as get_argument_inner::GetArgumentInput);

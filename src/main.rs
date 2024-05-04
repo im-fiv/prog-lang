@@ -11,6 +11,32 @@ use actix_cors::Cors;
 use serde::Serialize;
 use clap::Parser;
 
+fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
+	let interpret_error = anyhow_error
+		.downcast_ref::<
+			prog_interpreter::InterpretError
+		>();
+
+	let parse_error = anyhow_error
+		.downcast_ref::<
+			prog_parser::ParseError
+		>();
+
+	if let Some(interpret_error) = interpret_error {
+		return serde_json
+			::to_string_pretty(interpret_error)
+			.map_err(|e| e.to_string());
+	}
+
+	if let Some(parse_error) = parse_error {
+		return serde_json
+			::to_string_pretty(parse_error)
+			.map_err(|e| e.to_string());
+	}
+
+	Err(String::from("Failed to serialize anyhow error to JSON"))
+}
+
 fn execute_run_command(args: cli::RunCommand) {
 	let contents = read_file(&args.file_path);
 
@@ -26,10 +52,9 @@ fn execute_run_command(args: cli::RunCommand) {
 
 fn execute_serve_command(args: cli::ServeCommand) {
 	fn handle_anyhow_error(error: anyhow::Error) -> HttpResponse {
-		let as_serde_error = serde_error::Error::new(&*error);
-		let json = match serde_json::to_string_pretty(&as_serde_error) {
-			Ok(json) => json,
-			Err(error) => return HttpResponse::from_error(error)
+		let json = match serialize_anyhow(error) {
+			Ok(s) => s,
+			Err(error) => return HttpResponse::InternalServerError().body(error)
 		};
 
 		HttpResponse::Ok().body(json)

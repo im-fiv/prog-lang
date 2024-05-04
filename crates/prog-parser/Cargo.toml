@@ -4,7 +4,10 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-pest = "2.7.9"
-pest_derive = "2.7.9"
+serde = { workspace = true }
 anyhow = { workspace = true }
+ariadne = { workspace = true }
+pest = { workspace = true }
+pest_derive = { workspace = true }
 prog-utils = { workspace = true }
+prog-macros = { workspace = true }

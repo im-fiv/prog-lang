@@ -996,11 +996,11 @@ dependencies = [
  "actix-web",
  "anyhow",
  "clap",
+ "pest",
  "prog-interpreter",
  "prog-parser",
  "prog-utils",
  "serde",
- "serde-error",
  "serde_json",
 ]
 
@@ -1019,16 +1019,22 @@ name = "prog-parser"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "ariadne",
  "pest",
  "pest_derive",
+ "prog-macros",
  "prog-utils",
+ "serde",
 ]
 
 [[package]]
 name = "prog-utils"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "ariadne",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1148,15 +1154,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c9f6e76df036c77cd94996771fb40db98187f096dd0b9af39c6c6e452ba966a"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-error"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e988182713aeed6a619a88bca186f6d6407483485ffe44c869ee264f8eabd13f"
-dependencies = [
- "serde",
 ]
 
 [[package]]

@@ -1,21 +1,6 @@
 use proc_macro2 as pm2;
 use quote::quote;
 
-/// Unwraps the enum data of a given item data if item is an enum
-pub(crate) fn get_enum_data(item_data: syn::Data) -> syn::Result<syn::DataEnum> {
-	let enum_data = match item_data {
-		syn::Data::Enum(enum_data) => enum_data,
-
-		// If item is not an enum, throw an error
-		_ => return Err(syn::Error::new(
-			pm2::Span::call_site(),
-			"Derive of this macro is only allowed for enums"
-		))
-	};
-
-	Ok(enum_data)
-}
-
 /// Expands to the type of an enum variant's fields.
 pub(crate) fn expand_fields_type(variant: &syn::Variant) -> syn::Result<pm2::TokenStream> {
 	let unnamed_fields = match variant.fields {
