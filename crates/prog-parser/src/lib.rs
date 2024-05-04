@@ -127,15 +127,17 @@ impl<'inp> Parser<'inp> {
 		assert_rule!(pair == var_define_stmt in pair);
 		let mut pairs = pair.clone().into_inner();
 	
+		let name_pair = get_pair_safe!(from pairs expect identifier in pair);
+		let name_position = span_to_pos(name_pair.as_span());
 		let name = pair_into_string(
-			&get_pair_safe!(from pairs expect identifier in pair)
+			&name_pair
 		);
 	
 		let value = pairs.next();
 	
 		if value.is_none() {
 			return Statement::VariableDefine {
-				name,
+				name: (name, name_position),
 				value: None,
 				position: span_to_pos(pair.as_span())
 			};
@@ -144,7 +146,7 @@ impl<'inp> Parser<'inp> {
 		let value = self.parse_expression(value.unwrap());
 	
 		Statement::VariableDefine {
-			name,
+			name: (name, name_position),
 			value: Some(value),
 			position: span_to_pos(pair.as_span())
 		}
@@ -156,15 +158,21 @@ impl<'inp> Parser<'inp> {
 		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
 	
+		let name_pair = get_pair_safe!(from pairs expect identifier in pair);
+		let name_position = span_to_pos(name_pair.as_span());
 		let name = pair_into_string(
-			&get_pair_safe!(from pairs expect identifier in pair)
+			&name_pair
 		);
 	
 		let value = self.parse_expression(
 			get_pair_safe!(from pairs expect expression in pair)
 		);
 	
-		Statement::VariableAssign { name, value, position }
+		Statement::VariableAssign {
+			name: (name, name_position),
+			value,
+			position
+		}
 	}
 	
 	fn parse_do_block(&self, pair: Pair<'_, Rule>) -> Statement {

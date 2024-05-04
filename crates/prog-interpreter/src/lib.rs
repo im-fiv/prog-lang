@@ -85,8 +85,8 @@ impl<'inp> Interpreter<'inp> {
 
 	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<RuntimeValue> {
 		match statement {
-			ast::Statement::VariableDefine { name, value, position } => self.execute_variable_define(name, value),
-			ast::Statement::VariableAssign { name, value, position } => self.execute_variable_assign(name, value),
+			ast::Statement::VariableDefine { name, value, position } => self.execute_variable_define(name, value, position),
+			ast::Statement::VariableAssign { name, value, position } => self.execute_variable_assign(name, value, position),
 			ast::Statement::DoBlock(statements, position) => self.execute_do_block(statements),
 
 			ast::Statement::Return(expression, position) => match expression {
@@ -119,20 +119,32 @@ impl<'inp> Interpreter<'inp> {
 		}
 	}
 
-	fn execute_variable_define(&mut self, name: String, value: Option<ast::Expression>) -> Result<RuntimeValue> {
+	fn execute_variable_define(&mut self, name: (String, ast::Position), value: Option<ast::Expression>, _position: ast::Position) -> Result<RuntimeValue> {
 		let evaluated_value = match value {
 			None => RuntimeValue::Empty,
 			Some(expression) => self.evaluate_expression(expression, false)?
 		};
 
-		self.context.insert_value(name, evaluated_value)?;
+		if self.context.insert_value(name.0.clone(), evaluated_value).is_err() {
+			self.create_error(name.1.clone(), InterpretErrorKind::ValueAlreadyExists(errors::ValueAlreadyExists {
+				value: name.0,
+				position: name.1
+			}))?;
+		}
+
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_variable_assign(&mut self, name: String, value: ast::Expression) -> Result<RuntimeValue> {
+	fn execute_variable_assign(&mut self, name: (String, ast::Position), value: ast::Expression, _position: ast::Position) -> Result<RuntimeValue> {
 		let evaluated_value = self.evaluate_expression(value, false)?;
 
-		self.context.update_value(name, evaluated_value)?;
+		if self.context.update_value(name.0.clone(), evaluated_value).is_err() {
+			self.create_error(name.1.clone(), InterpretErrorKind::ValueDoesntExist(errors::ValueDoesntExist {
+				value: name.0,
+				position: name.1
+			}))?;
+		}
+
 		Ok(RuntimeValue::Empty)
 	}
 
