@@ -1,3 +1,5 @@
+pub mod pretty_errors;
+
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
