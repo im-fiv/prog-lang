@@ -95,7 +95,7 @@ impl Interpreter {
 			},
 
 			ast::Statement::Call(call) => self.evaluate_call(call),
-			ast::Statement::WhileLoop { condition, statements, position } => self.execute_while_loop(condition, statements),
+			ast::Statement::WhileLoop { condition, statements, position } => self.execute_while_loop(condition, statements, position),
 
 			ast::Statement::Break(position) => self.create_error(
 				position.clone(),
@@ -111,9 +111,9 @@ impl Interpreter {
 				)
 			),
 
-			ast::Statement::If { condition, statements, elseif_branches, else_branch, position } => self.execute_if(condition, statements, elseif_branches, else_branch),
+			ast::Statement::If { condition, statements, elseif_branches, else_branch, position } => self.execute_if(condition, statements, elseif_branches, else_branch, position),
 		
-			ast::Statement::ExpressionAssign { expression, value, position} => self.execute_expression_assign(expression, value)
+			ast::Statement::ExpressionAssign { expression, value, position} => self.execute_expression_assign(expression, value, position)
 		}
 	}
 
@@ -136,11 +136,9 @@ impl Interpreter {
 		let evaluated_value = self.evaluate_expression(value, false)?;
 
 		if self.context.update_value(name.0.clone(), evaluated_value).is_err() {
-			let a = self.create_error(name.1.clone(), InterpretErrorKind::ValueDoesntExist(
+			return self.create_error(name.1.clone(), InterpretErrorKind::ValueDoesntExist(
 				errors::ValueDoesntExist(name.0)
 			));
-
-			a?;
 		}
 
 		Ok(RuntimeValue::Empty)
@@ -154,7 +152,7 @@ impl Interpreter {
 		result
 	}
 
-	fn execute_while_loop(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>) -> Result<RuntimeValue> {
+	fn execute_while_loop(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>, _position: ast::Position) -> Result<RuntimeValue> {
 		let mut evaluated = self.evaluate_expression(condition.clone(), false)?;
 
 		while is_value_truthy(&evaluated) {
@@ -168,7 +166,14 @@ impl Interpreter {
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_if(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>, elseif_branches: Vec<ast::ConditionBranch>, else_branch: Option<ast::ConditionBranch>) -> Result<RuntimeValue> {
+	fn execute_if(
+		&mut self,
+		condition: ast::Expression,
+		statements: Vec<ast::Statement>,
+		elseif_branches: Vec<ast::ConditionBranch>,
+		else_branch: Option<ast::ConditionBranch>,
+		_position: ast::Position
+	) -> Result<RuntimeValue> {
 		let evaluated = self.evaluate_expression(condition, false)?;
 
 		if is_value_truthy(&evaluated) {
@@ -206,16 +211,26 @@ impl Interpreter {
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_expression_assign(&mut self, expression: ast::Expression, value: ast::Expression) -> Result<RuntimeValue> {
+	fn execute_expression_assign(&mut self, expression: ast::Expression, value: ast::Expression, _position: ast::Position) -> Result<RuntimeValue> {
 		use ast::expressions::operators::BinaryOperator as Op;
 
 		let expression = match expression {
 			ast::Expression::Binary(expression) => expression,
-			_ => bail!("Expression `{:?}` is not assignable", expression)
+			_ => return self.create_error(
+				expression.position(),
+				InterpretErrorKind::ExpressionNotAssignable(
+					errors::ExpressionNotAssignable(None)
+				)
+			)
 		};
 
 		if !matches!(expression.operator.0, Op::ListAccess | Op::ObjectAccess) {
-			bail!("Expression `{:?}` is not assignable", expression);
+			return self.create_error(
+				expression.position,
+				InterpretErrorKind::ExpressionNotAssignable(
+					errors::ExpressionNotAssignable(None)
+				)
+			)
 		}
 
 		let value = self.evaluate_expression(value, false)?;
@@ -228,29 +243,43 @@ impl Interpreter {
 	}
 
 	fn execute_expression_assign_list(&mut self, expression: ast::expressions::Binary, value: RuntimeValue) -> Result<RuntimeValue> {
-		let ast::expressions::Binary { lhs, rhs, operator: _, position } = expression.clone();
+		let ast::expressions::Binary { lhs, rhs, operator: _, position } = expression;
 
-		let list_name = match self.evaluate_term(rhs, true)? {
+		let list_name = match self.evaluate_term(rhs.clone(), true)? {
 			RuntimeValue::Identifier(identifier) => identifier.0,
-			_ => bail!("Expression `{expression}` is not assignable")
+			_ => return self.create_error(position, InterpretErrorKind::ExpressionNotAssignable(
+				errors::ExpressionNotAssignable(None)
+			))
 		};
 
 		let mut inner_list = match self.context.get_value(&list_name)? {
 			RuntimeValue::List(inner_list) => inner_list,
-			_ => bail!("Expression `{expression}` is not assignable")
+			value => return self.create_error(position, InterpretErrorKind::ExpressionNotAssignable(
+				errors::ExpressionNotAssignable(Some(value.kind()))
+			))
 		};
 
-		let index = match self.evaluate_term(lhs, false)? {
+		let index = match self.evaluate_term(lhs.clone(), false)? {
 			RuntimeValue::Number(index) => index as i64,
-			value => bail!(
-				"Cannot index `{}` using `{}`",
-				RuntimeValueKind::List,
-				value.kind()
-			)
+			value => return self.create_error(position, InterpretErrorKind::CannotIndexValue(
+				errors::CannotIndexValue {
+					kind: (RuntimeValueKind::List, rhs.position()),
+					expected_index_kind: RuntimeValueKind::Number,
+					index_kind: (value.kind(), lhs.position()),
+					because_negative: false
+				}
+			))
 		};
 
 		if index.is_negative() {
-			bail!("Value `{index}` cannot be used to index `{list_name}` as it is negative");
+			return self.create_error(position, InterpretErrorKind::CannotIndexValue(
+				errors::CannotIndexValue {
+					kind: (RuntimeValueKind::List, rhs.position()),
+					expected_index_kind: RuntimeValueKind::Number,
+					index_kind: (value.kind(), lhs.position()),
+					because_negative: true
+				}
+			))
 		}
 
 		let index: usize = index.try_into()?;
@@ -272,25 +301,32 @@ impl Interpreter {
 	fn execute_expression_assign_object(&mut self, expression: ast::expressions::Binary, value: RuntimeValue) -> Result<RuntimeValue> {
 		let ast::expressions::Binary { lhs, rhs, operator: _, position } = expression.clone();
 
-		let object_name = match self.evaluate_term(lhs, true)? {
+		let object_name = match self.evaluate_term(lhs.clone(), true)? {
 			RuntimeValue::Identifier(identifier) => identifier.0,
-			_ => bail!("Expression `{expression}` is not assignable")
+			_ => return self.create_error(position, InterpretErrorKind::ExpressionNotAssignable(
+				errors::ExpressionNotAssignable(None)
+			))
 		};
 
 		let mut inner_object = match self.context.get_value(&object_name)? {
 			RuntimeValue::Object(inner_object) => inner_object,
-			_ => bail!("Expression `{expression}` is not assignable")
+			value => return self.create_error(position, InterpretErrorKind::ExpressionNotAssignable(
+				errors::ExpressionNotAssignable(Some(value.kind()))
+			))
 		};
 
-		let entry_name = match self.evaluate_term(rhs, true)? {
+		let entry_name = match self.evaluate_term(rhs.clone(), true)? {
 			RuntimeValue::Identifier(value) => value.0,
 			RuntimeValue::String(value) => value,
 
-			value => bail!(
-				"Cannot index `{}` using `{}`",
-				RuntimeValueKind::Object,
-				value.kind()
-			)
+			value => return self.create_error(position, InterpretErrorKind::CannotIndexValue(
+				errors::CannotIndexValue {
+					kind: (RuntimeValueKind::Object, lhs.position()),
+					expected_index_kind: RuntimeValueKind::String,
+					index_kind: (value.kind(), rhs.position()),
+					because_negative: false
+				}
+			))
 		};
 
 		inner_object.insert(entry_name, value);
@@ -323,7 +359,7 @@ impl Interpreter {
 		use ast::expressions::operators::UnaryOperator as Op;
 		use RuntimeValue as Rv;
 
-		let evaluated_operand = self.evaluate_term(operand, stop_on_ident)?;
+		let evaluated_operand = self.evaluate_term(operand.clone(), stop_on_ident)?;
 
 		match (operator.0, evaluated_operand) {
 			(Op::Minus, Rv::Number(value)) => Ok(Rv::Number(-value)),
@@ -336,7 +372,13 @@ impl Interpreter {
 			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(false)),
 			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(true)),
 
-		 	(operator, operand) => bail!("Cannot perform an unsupported unary operation `{}` on `{}`", operator, operand)
+			// `self.create_error` first argument isn't used in `UnsupportedUnary`
+			(_, evaluated_operand) => return self.create_error(0..0, InterpretErrorKind::UnsupportedUnary(
+				errors::UnsupportedUnary {
+					operator,
+					operand: (evaluated_operand.kind(), operand.position())
+				}
+			))
 		}
 	}
 
@@ -351,7 +393,7 @@ impl Interpreter {
 		use RuntimeValue as Rv;
 		
 		let mut evaluated_lhs = self.evaluate_term(lhs.clone(), stop_on_ident)?;
-		let evaluated_lhs_forced = self.evaluate_term(lhs, false)?;
+		let evaluated_lhs_forced = self.evaluate_term(lhs.clone(), false)?;
 
 		let is_object_access = matches!(
 			(&evaluated_lhs_forced, operator.0),
@@ -360,7 +402,7 @@ impl Interpreter {
 
 		let evaluated_rhs = match (is_object_access, identifier_from_term(&rhs)) {
 			(true, Some(value)) => RuntimeValue::Identifier(Identifier(value)),
-			_ => self.evaluate_term(rhs, false)?
+			_ => self.evaluate_term(rhs.clone(), false)?
 		};
 
 		if is_object_access {
@@ -422,7 +464,15 @@ impl Interpreter {
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
 			(Op::NotEq, _, _) => Ok(Rv::Boolean(true)),
 
-			(operator, lhs, rhs) => bail!("Cannot perform an unsupported binary operation `{} {} {}`", lhs.kind(), operator, rhs.kind())
+			// (operator, lhs, rhs) => bail!("Cannot perform an unsupported binary operation `{} {} {}`", lhs.kind(), operator, rhs.kind())
+			// `self.create_error` first argument isn't used in `UnsupportedBinary`
+			(_, evaluated_lhs, evaluated_rhs) => return self.create_error(0..0, InterpretErrorKind::UnsupportedBinary(
+				errors::UnsupportedBinary {
+					lhs: (evaluated_lhs.kind(), lhs.position()),
+					operator,
+					rhs: (evaluated_rhs.kind(), rhs.position())
+				}
+			))
 		}
 	}
 
@@ -461,18 +511,32 @@ impl Interpreter {
 
 	fn evaluate_object(&mut self, object: ast::expressions::Object) -> Result<RuntimeValue> {
 		use std::collections::HashMap;
-		let mut new_map = HashMap::new();
+
+		let mut value_map = HashMap::new();
+		let mut position_map: HashMap<String, std::ops::Range<usize>> = HashMap::new();
 
 		for entry in object.0 {
 			let name = entry.name;
 			let value = self.evaluate_expression(entry.value, false)?;
 			
-			if new_map.insert(name.clone(), value).is_some() {
-				bail!("Duplicate key `{name}` found in object");
+			if value_map.insert(name.clone(), value).is_some() {
+				let definition_pos = position_map
+					.get(&name)
+					.unwrap_or_else(|| unreachable!("Position for entry `{}` does not exist in the position map", name))
+					.to_owned();
+
+				return self.create_error(entry.position, InterpretErrorKind::DuplicateObjectEntry(
+					errors::DuplicateObjectEntry {
+						entry_name: name,
+						definition_pos
+					}
+				));
 			}
+
+			position_map.insert(name, entry.position);
 		}
 
-		Ok(RuntimeValue::Object(new_map))
+		Ok(RuntimeValue::Object(value_map))
 	}
 
 	fn evaluate_list(&mut self, list: ast::expressions::List) -> Result<RuntimeValue> {
@@ -597,7 +661,12 @@ impl Interpreter {
 
 			result
 		} else {
-			bail!("Expression `{:?}` is not callable", original_expression);
+			self.create_error(
+				original_expression.position(),
+				InterpretErrorKind::ExpressionNotCallable(
+					errors::ExpressionNotCallable(expression.kind())
+				)
+			)
 		}
 	}
 }

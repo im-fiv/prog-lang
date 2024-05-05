@@ -82,7 +82,7 @@ pub fn enum_kind(input: pm::TokenStream) -> pm::TokenStream {
 
 	// Expanding kind enum
 	let kind_enum = quote! {
-		#[derive(::core::fmt::Debug, ::core::clone::Clone, ::core::marker::Copy, ::core::cmp::PartialEq)]
+		#[derive(::core::fmt::Debug, ::core::clone::Clone, ::core::marker::Copy, ::core::cmp::PartialEq, ::serde::Serialize)]
 		#enum_vis enum #enum_kind_name {
 			#( #kind_variants ),*
 		}

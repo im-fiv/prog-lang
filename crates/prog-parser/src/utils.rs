@@ -3,13 +3,14 @@ use pest::iterators::Pair;
 use super::expressions;
 use super::Rule;
 
+// TODO: check if any of the expected rules are `term` and perform `is_term` check on them instead
 macro_rules! assert_rule {
 	($var:ident == $rule:ident $(| $rest:ident)* in $main_pair:expr) => {
 		if !matches!($var.as_rule(), Rule::$rule $(| Rule::$rest)*) {
 			let expected_str = assert_rule!(format_expected $rule $( $rest ),*);
 
 			error!(
-				"invalid pair of type '{:?}' in '{:?}' (expected {})", $var.as_span(),
+				"invalid pair of type `{:?}` in `{:?}` (expected {})", $var.as_span(),
 				$var.as_rule(),
 				$main_pair.as_rule(),
 				expected_str
@@ -19,8 +20,8 @@ macro_rules! assert_rule {
 
 	(format_expected $rule:ident $($rest:ident),*) => {
 		[
-			format!("'{:?}'", Rule::$rule),
-			$( format!(", '{:?}'", Rule::$rest) ),*
+			format!("`{:?}`", Rule::$rule),
+			$( format!(", `{:?}`", Rule::$rest) ),*
 		].concat()
 	};
 }
@@ -33,7 +34,7 @@ macro_rules! get_pair_safe {
 			let next_pair = $pairs
 				.next()
 				.unwrap_or_else(|| error!(
-					"pair of type {} is missing in '{:?}'",
+					"pair of type {} is missing in `{:?}`",
 					$main_pair.as_span(),
 					expected_str,
 					$main_pair.as_rule()
@@ -51,13 +52,6 @@ pub(crate) use get_pair_safe;
 
 pub(crate) fn pair_into_string(pair: &Pair<'_, Rule>) -> String {
 	String::from(pair.as_span().as_str())
-}
-
-pub(crate) fn is_term(pair: &Pair<'_, Rule>) -> bool {
-	matches!(
-		pair.as_rule(),
-		Rule::literal | Rule::identifier
-	)
 }
 
 pub(crate) fn get_bin_operator_from_pair(pair: &Pair<'_, Rule>) -> expressions::operators::BinaryOperator {

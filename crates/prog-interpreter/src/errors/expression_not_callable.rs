@@ -2,17 +2,16 @@ use ariadne::{ColorGenerator, Label, Fmt};
 use serde::Serialize;
 
 use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
+use crate::RuntimeValueKind;
 
 #[derive(Debug, Clone, Serialize)]
-pub struct ArgumentTypeMismatch {
-	pub expected: String,
-	pub got: String,
-	pub function_pos: Position
-}
+pub struct ExpressionNotCallable(
+	pub RuntimeValueKind
+);
 
-impl AriadneCompatible for ArgumentTypeMismatch {
+impl AriadneCompatible for ExpressionNotCallable {
 	fn message(&self) -> String {
-		String::from("argument type mismatch")
+		String::from("expression not callable")
 	}
 
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>> {
@@ -24,15 +23,11 @@ impl AriadneCompatible for ArgumentTypeMismatch {
 		vec![
 			Label::new((file, position))
 				.with_message(format!(
-					"expected argument of type {}, got {}",
-					self.expected.fg(color_expected),
-					self.got.fg(color_got)
+					"expected expression of type {}, got {}",
+					"Function".fg(color_expected),
+					self.0.to_string().fg(color_got)
 				))
-				.with_color(color_got),
-			
-			Label::new((file, self.function_pos))
-				.with_message("function in question")
-				.with_color(color_expected)
+				.with_color(color_got)
 		]
 	}
 }

@@ -442,23 +442,38 @@ impl<'inp> Parser<'inp> {
 	}
 	
 	fn parse_term(&self, pair: Pair<'_, Rule>) -> expressions::Term {
+		// In accordance with `src/crates/prog-parser/src/grammar.pest:44`
+		assert_rule!(pair == unary_expression | binary_expression | term in pair);
+
 		match pair.as_rule() {
-			Rule::object => self.parse_object(pair).into(),
-			Rule::list => self.parse_list(pair).into(),
+			Rule::unary_expression => return self.parse_unary_expression(pair).into(),
+			Rule::binary_expression | Rule::expression => return self.parse_expression(pair).into(),
+
+			_ => ()
+		}
+
+		let inner_pair = pair
+			.into_inner()
+			.next()
+			.unwrap_or_else(|| panic!("inner pairs of term are empty"));
+
+		match inner_pair.as_rule() {
+			Rule::object => self.parse_object(inner_pair).into(),
+			Rule::list => self.parse_list(inner_pair).into(),
 	
-			Rule::call => self.parse_function_call(pair).into(),
-			Rule::function => self.parse_function(pair).into(),
+			Rule::call => self.parse_function_call(inner_pair).into(),
+			Rule::function => self.parse_function(inner_pair).into(),
 	
-			Rule::unary_expression => self.parse_unary_expression(pair).into(),
-			Rule::binary_expression | Rule::expression => self.parse_expression(pair).into(),
+			Rule::unary_expression => self.parse_unary_expression(inner_pair).into(),
+			Rule::binary_expression | Rule::expression => self.parse_expression(inner_pair).into(),
 	
 			Rule::number_literal |
 			Rule::string_literal |
-			Rule::boolean_literal => self.parse_literal(pair).into(),
+			Rule::boolean_literal => self.parse_literal(inner_pair).into(),
 	
-			Rule::identifier => self.parse_identifier(pair),
+			Rule::identifier => self.parse_identifier(inner_pair),
 	
-			rule => error!("unsupported expression rule '{:?}'", pair.as_span(), rule)
+			rule => error!("unsupported term rule '{:?}'", inner_pair.as_span(), rule)
 		}
 	}
 	
@@ -507,7 +522,7 @@ impl<'inp> Parser<'inp> {
 			.into_inner()
 			.peekable();
 	
-		if pairs.len() < 1 || is_term(&pair) {
+		if pairs.len() < 1 || pair.as_rule() == Rule::term {
 			return Expression::Term(self.parse_term(pair));
 		}
 	
@@ -525,7 +540,7 @@ impl<'inp> Parser<'inp> {
 		let operator = expressions::operators::UnaryOperator::try_from(
 			pair_into_string(&operator_pair)
 		).unwrap();
-	
+
 		let operand = self.parse_term(
 			get_pair_safe!(from pairs expect term in pair)
 		);
