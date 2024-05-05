@@ -9,9 +9,9 @@ Prog Lang is an interpreted programming language written in Rust, developed duri
 
 ## Notable Features
 
-- **Interpreted**: Albeit slower than compiled languages, does not have a need for a compiler and can be run on any machine.
+- **Interpreted**: Albeit slower than compiled languages, does not require an architecture-dependent compiler and can be run on any machine.
 - **Syntax**: Designed to be as simple as possible. Basic features, basic syntax.
-- **Parsing Library**: Utilizes [pest.rs](https://pest.rs/) to parse the source code, enabling quick modifications when needed.
+- **Parsing Library**: Utilizes [pest.rs](https://pest.rs/) to parse the source code, enabling quick modifications to the grammar when needed.
 
 ## Whats Next
 
