@@ -290,10 +290,11 @@ impl Interpreter {
 
 		inner_list[index] = value;
 
-		self.context.update_value(
-			list_name,
-			RuntimeValue::List(inner_list)
-		)?;
+		if self.context.update_value(list_name.clone(), RuntimeValue::List(inner_list)).is_err() {
+			return self.create_error(rhs.position(), InterpretErrorKind::ValueDoesntExist(
+				errors::ValueDoesntExist(list_name)
+			));
+		}
 
 		Ok(RuntimeValue::Empty)
 	}
@@ -331,10 +332,11 @@ impl Interpreter {
 
 		inner_object.insert(entry_name, value);
 
-		self.context.update_value(
-			object_name,
-			RuntimeValue::Object(inner_object)
-		)?;
+		if self.context.update_value(object_name.clone(), RuntimeValue::Object(inner_object)).is_err() {
+			return self.create_error(lhs.position(), InterpretErrorKind::ValueDoesntExist(
+				errors::ValueDoesntExist(object_name)
+			));
+		}
 
 		Ok(RuntimeValue::Empty)
 	}
@@ -479,6 +481,8 @@ impl Interpreter {
 	fn evaluate_term(&mut self, term: ast::expressions::Term, stop_on_ident: bool) -> Result<RuntimeValue> {
 		use ast::expressions::*;
 
+		let position = term.position();
+
 		match term {
 			Term::Object(value) => self.evaluate_object(value),
 			Term::List(value) => self.evaluate_list(value),
@@ -487,7 +491,13 @@ impl Interpreter {
 			Term::Literal(value) => Ok(value.into()),
 			Term::Identifier(value, _) => match stop_on_ident {
 				true => Ok(RuntimeValue::Identifier(value.into())),
-				false => self.context.get_value(&value)
+				false => self.context
+					.get_value(&value)
+					.map_err(|_|
+						self.create_error(position, InterpretErrorKind::ValueDoesntExist(
+							errors::ValueDoesntExist(value)
+						)).unwrap_err()
+					)
 			},
 			Term::Expression(value) => self.evaluate_expression(*value, stop_on_ident)
 		}
@@ -642,22 +652,21 @@ impl Interpreter {
 			// Function execution
 			let result = {
 				self.context.deeper();
-
 				self.source = function.source;
 				self.file = function.file;
+
 				for (arg_name, arg_value) in zip(function.arguments, call_arguments) {
-					self.context.insert_value(arg_name, arg_value)?;
+					self.context.insert_value(arg_name.clone(), arg_value)?;
 				}
 
 				let result = self.execute(ast::Program { statements: function.statements });
 
 				self.context.shallower();
+				self.source = source;
+				self.file = file;
 
 				result
 			};
-
-			self.source = source;
-			self.file = file;
 
 			result
 		} else {
