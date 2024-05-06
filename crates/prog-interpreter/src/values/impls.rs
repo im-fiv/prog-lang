@@ -62,9 +62,15 @@ impl Display for RuntimeValue {
 
 impl Display for RuntimeFunction {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let arguments_str = self.arguments.join(", ");
+		let arguments_str = self
+			.ast
+			.arguments
+			.iter()
+			.map(|(a, _)| a.to_owned())
+			.collect::<Vec<_>>()
+			.join(", ");
+
 		let formatted = format!("Function({arguments_str})");
-		
 		write!(f, "{formatted}")
 	}
 }

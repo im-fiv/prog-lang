@@ -39,11 +39,15 @@ fn serde_use_display<T: Display, S: serde::Serializer>(value: &T, serializer: S)
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeFunction {
-	pub arguments: Vec<String>,
-	pub statements: Vec<ast::Statement>,
-
+	pub ast: ast::expressions::Function,
 	pub source: String,
 	pub file: String
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IntrinsicFunction {
+	pub pointer: IntrinsicFunctionPtr,
+	pub arguments: ArgList
 }
 
 pub type IntrinsicFunctionPtr = fn(
@@ -51,12 +55,6 @@ pub type IntrinsicFunctionPtr = fn(
 	args: HashMap<String, ParsedArg>,
 	call_site: CallSite
 ) -> Result<RuntimeValue>;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct IntrinsicFunction {
-	pub pointer: IntrinsicFunctionPtr,
-	pub arguments: ArgList
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallSite {

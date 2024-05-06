@@ -504,16 +504,8 @@ impl Interpreter {
 	}
 
 	fn evaluate_function(&self, function: ast::expressions::Function) -> Result<RuntimeValue> {
-		let arguments = function
-			.arguments
-			.into_iter()
-			.map(|(argument, _)| argument)
-			.collect::<Vec<_>>();
-
 		Ok(RuntimeValue::Function(RuntimeFunction {
-			arguments,
-			statements: function.statements,
-
+			ast: function,
 			source: self.source.to_owned(),
 			file: self.file.to_owned()
 		}))
@@ -594,7 +586,11 @@ impl Interpreter {
 					} => self.create_error(
 						call_arguments_pos,
 						InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
-							expected, end_boundary, got, function_pos
+							expected,
+							end_boundary,
+							got,
+							fn_call_pos: function_pos,
+							fn_def_args_pos: None
 						})
 					).unwrap_err(),
 
@@ -633,15 +629,33 @@ impl Interpreter {
 
 		if let RuntimeValue::Function(function) = expression {
 			let got_len = call_arguments.len();
-			let expected_len = function.arguments.len();
+			let expected_len = function.ast.arguments.len();
 			
 			if got_len != expected_len {
+				let first_arg = function
+					.ast
+					.arguments
+					.first()
+					.unwrap();
+
+				let last_arg = function
+					.ast
+					.arguments
+					.last()
+					.unwrap();
+
+				let fn_call_pos = function_pos;
+				let fn_def_args_pos = Some(
+					(first_arg.1.start)..(last_arg.1.end)
+				);
+
 				self.create_error(call_arguments_pos, InterpretErrorKind::ArgumentCountMismatch(
 					errors::ArgumentCountMismatch {
 						expected: expected_len..expected_len,
 						end_boundary: true,
 						got: got_len,
-						function_pos
+						fn_call_pos,
+						fn_def_args_pos
 					}
 				))?;
 			}
@@ -655,11 +669,11 @@ impl Interpreter {
 				self.source = function.source;
 				self.file = function.file;
 
-				for (arg_name, arg_value) in zip(function.arguments, call_arguments) {
+				for ((arg_name, _), arg_value) in zip(function.ast.arguments, call_arguments) {
 					self.context.insert_value(arg_name.clone(), arg_value)?;
 				}
 
-				let result = self.execute(ast::Program { statements: function.statements });
+				let result = self.execute(ast::Program { statements: function.ast.statements });
 
 				self.context.shallower();
 				self.source = source;
