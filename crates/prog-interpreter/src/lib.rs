@@ -505,7 +505,7 @@ impl Interpreter {
 
 	fn evaluate_function(&self, function: ast::expressions::Function) -> Result<RuntimeValue> {
 		Ok(RuntimeValue::Function(RuntimeFunction {
-			ast: function,
+			ast: Box::new(function),
 			source: self.source.to_owned(),
 			file: self.file.to_owned()
 		}))

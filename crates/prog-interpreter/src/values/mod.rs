@@ -39,7 +39,7 @@ fn serde_use_display<T: Display, S: serde::Serializer>(value: &T, serializer: S)
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeFunction {
-	pub ast: ast::expressions::Function,
+	pub ast: Box<ast::expressions::Function>,
 	pub source: String,
 	pub file: String
 }
