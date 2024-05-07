@@ -1,0 +1,34 @@
+def fibonacci_regular = func(num) do
+	def a = 0
+	def b = 1
+	def c
+
+	if num == 0 then
+		return a
+	end
+
+	def i = 2
+
+	while i <= num do
+		c = a + b
+		a = b
+		b = c
+
+		i = i + 1
+	end
+
+	return b
+end
+
+def fibonacci_recursive = func(num) do
+	if num <= 1 then
+		return num
+	end
+
+	return ((num - 1) -> fibonacci_recursive) + ((num - 2) -> fibonacci_recursive) 
+end
+
+def arg_number = 10
+
+("(", arg_number, ") -> fibonacci_regular = ", (arg_number) -> fibonacci_regular) -> print
+("(", arg_number, ") -> fibonacci_recursive = ", (arg_number) -> fibonacci_recursive) -> print

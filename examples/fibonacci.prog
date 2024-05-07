@@ -1,15 +1,15 @@
-def fibonacci = func(n) do
+def fibonacci = func(num) do
 	def a = 0
 	def b = 1
 	def c
 
-	if n == 0 then
+	if num == 0 then
 		return a
 	end
 
 	def i = 2
 
-	while i <= n do
+	while i <= num do
 		c = a + b
 		a = b
 		b = c
@@ -20,9 +20,9 @@ def fibonacci = func(n) do
 	return b
 end
 
-def main = func(n) do
-	def number = (n) -> fibonacci
-	(n, " fibonacci number is ", number) -> print
+def main = func(num) do
+	def number = (num) -> fibonacci
+	(num, " fibonacci number is ", number) -> print
 
 	return number
 end

@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
 use std::fs::ReadDir;
+use std::path::Path;
 
 use anyhow::Result;
 
@@ -15,7 +16,7 @@ fn execute_string(source: String, file: &str) -> Result<prog_interpreter::Runtim
 	Ok(result)
 }
 
-fn iterate_dir(paths: ReadDir) {
+fn iterate_dir(paths: ReadDir, exclusions: &[String]) {
 	let file_extension = OsStr::new("prog");
 
 	for path in paths {
@@ -28,13 +29,21 @@ fn iterate_dir(paths: ReadDir) {
 				.read_dir()
 				.expect("Failed to read directory");
 
-			iterate_dir(paths);
+			iterate_dir(paths, exclusions);
 			continue;
 		}
 
 		if path.extension().unwrap_or(OsStr::new("")) != file_extension {
 			continue;
 		}
+
+		if exclusions.iter().any(|exclusion| {
+            let exclusion_path = Path::new(exclusion);
+            path.ends_with(exclusion_path)
+        }) {
+			println!("Skipping file {}", path.display());
+            continue;
+        }
 
 		println!("Running file {}", path.display());
 
@@ -50,5 +59,9 @@ fn iterate_dir(paths: ReadDir) {
 #[test]
 fn run_all_examples() {
 	let paths = std::fs::read_dir("./examples").expect("Failed to read directory");
-	iterate_dir(paths);
+	let exclusions = vec![
+		String::from("mandelbrot_set.prog")
+	];
+
+	iterate_dir(paths, exclusions.as_slice());
 }

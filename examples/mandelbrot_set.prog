@@ -1,0 +1,62 @@
+def in_mandelbrot = func(x0, y0, n) do
+	def x = 0
+	def y = 0
+	def x_temp = 0
+
+	while n > 0 do
+		x_temp = (x * x) - (y * y) + x0
+		y = 2 * x * y + y0
+		x = x_temp
+		n = n - 1
+
+		if x * x + y * y > 4 then
+			return false
+		end
+	end
+
+	return true
+end
+
+def print_mandelbrot = func(s) do
+	def dx = (s.x.max - s.x.min) / s.width
+	def dy = (s.y.max - s.y.min) / s.height
+
+	def x = 0
+	def y = s.y.max
+
+	while y > s.y.min do
+		x = s.x.min
+
+		while x < s.x.max do
+			if (x, y, s.threshold) -> in_mandelbrot then
+				("*") -> raw_print
+			else
+				(".") -> raw_print
+			end
+
+			x = x + dx
+		end
+
+		("\n") -> raw_print
+		y = y - dy
+	end
+end
+
+def settings = {
+	x = {
+		min = -2,
+		max = 1
+	},
+
+	y = {
+		min = -1.5,
+		max = 1.5
+	},
+
+	width = 80,
+	height = 40,
+
+	threshold = 1000
+}
+
+(settings) -> print_mandelbrot
