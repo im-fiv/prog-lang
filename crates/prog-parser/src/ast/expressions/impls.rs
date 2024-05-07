@@ -1,17 +1,7 @@
 use std::fmt::Display;
-use super::*;
 
-macro_rules! impl_basic_conv {
-	(from $from:ty => $for:ty as $variant:ident $({ $preproc:path })?) => {
-		impl From<$from> for $for {
-			fn from(value: $from) -> Self {
-				Self::$variant(
-					$( $preproc )? (value)
-				)
-			}
-		}
-	};
-}
+use super::*;
+use crate::impl_basic_conv;
 
 //* Others *//
 
@@ -74,14 +64,12 @@ impl From<Term> for Expression {
 
 impl_basic_conv!(from Object => Term as Object);
 impl_basic_conv!(from List => Term as List);
+impl_basic_conv!(from Call => Term as Call);
 impl_basic_conv!(from Function => Term as Function);
 impl_basic_conv!(from Literal => Term as Literal);
 impl_basic_conv!(from Expression => Term as Expression { Box::new });
 impl_basic_conv!(from Unary => Term as from { Expression::Unary });
 impl_basic_conv!(from Binary => Term as from { Expression::Binary });
-
-impl_basic_conv!(from Call => Statement as Call);
-impl_basic_conv!(from Call => Term as Call);
 
 //* TryFrom<T> *//
 

@@ -100,19 +100,18 @@ impl<'inp> Parser<'inp> {
 			}
 	
 			let statement = match pair.as_rule() {
-				Rule::var_define_stmt => self.parse_var_define_stmt(pair),
-				Rule::var_assign_stmt => self.parse_var_assign_stmt(pair),
-				Rule::do_block => self.parse_do_block(pair),
-				Rule::return_stmt => self.parse_return_stmt(pair),
+				Rule::var_define_stmt => self.parse_var_define_stmt(pair).into(),
+				Rule::var_assign_stmt => self.parse_var_assign_stmt(pair).into(),
+				Rule::do_block => self.parse_do_block(pair).into(),
+				Rule::return_stmt => self.parse_return_stmt(pair).into(),
 				Rule::call => self.parse_function_call(pair).into(),
-				Rule::while_stmt => self.parse_while_stmt(pair),
+				Rule::while_stmt => self.parse_while_stmt(pair).into(),
 				
-				Rule::break_stmt => Statement::Break(span_to_pos(pair.as_span())),
-				Rule::continue_stmt => Statement::Continue(span_to_pos(pair.as_span())),
+				Rule::break_stmt => self.parse_break_stmt(pair).into(),
+				Rule::continue_stmt => self.parse_continue_stmt(pair).into(),
 	
-				Rule::if_stmt => self.parse_if_stmt(pair),
-	
-				Rule::expr_assign_stmt => self.parse_expr_assign_stmt(pair),
+				Rule::if_stmt => self.parse_if_stmt(pair).into(),
+				Rule::expr_assign_stmt => self.parse_expr_assign_stmt(pair).into(),
 	
 				rule => error!("statement of type '{:?}' is not yet implemented", pair.as_span(), rule)
 			};
@@ -123,7 +122,7 @@ impl<'inp> Parser<'inp> {
 		statements
 	}
 	
-	fn parse_var_define_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
+	fn parse_var_define_stmt(&self, pair: Pair<'_, Rule>) -> ast::VariableDefine {
 		assert_rule!(pair == var_define_stmt in pair);
 		let mut pairs = pair.clone().into_inner();
 	
@@ -136,7 +135,7 @@ impl<'inp> Parser<'inp> {
 		let value = pairs.next();
 	
 		if value.is_none() {
-			return Statement::VariableDefine {
+			return ast::VariableDefine {
 				name: (name, name_position),
 				value: None,
 				position: span_to_pos(pair.as_span())
@@ -145,14 +144,14 @@ impl<'inp> Parser<'inp> {
 	
 		let value = self.parse_expression(value.unwrap());
 	
-		Statement::VariableDefine {
+		ast::VariableDefine {
 			name: (name, name_position),
 			value: Some(value),
 			position: span_to_pos(pair.as_span())
 		}
 	}
 	
-	fn parse_var_assign_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
+	fn parse_var_assign_stmt(&self, pair: Pair<'_, Rule>) -> ast::VariableAssign {
 		assert_rule!(pair == var_assign_stmt in pair);
 
 		let position = span_to_pos(pair.as_span());
@@ -168,23 +167,23 @@ impl<'inp> Parser<'inp> {
 			get_pair_safe!(from pairs expect expression in pair)
 		);
 	
-		Statement::VariableAssign {
+		ast::VariableAssign {
 			name: (name, name_position),
 			value,
 			position
 		}
 	}
 	
-	fn parse_do_block(&self, pair: Pair<'_, Rule>) -> Statement {
+	fn parse_do_block(&self, pair: Pair<'_, Rule>) -> ast::DoBlock {
 		assert_rule!(pair == do_block in pair);
 	
 		let position = span_to_pos(pair.as_span());
 		let statements = self.parse_statements(pair.into_inner());
 
-		Statement::DoBlock(statements, position)
+		ast::DoBlock { statements, position }
 	}
 	
-	fn parse_return_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
+	fn parse_return_stmt(&self, pair: Pair<'_, Rule>) -> ast::Return {
 		assert_rule!(pair == return_stmt in pair);
 	
 		let position = span_to_pos(pair.as_span());
@@ -193,19 +192,25 @@ impl<'inp> Parser<'inp> {
 			.next();
 	
 		if value.is_none() {
-			return Statement::Return(None, position);
+			return ast::Return {
+				expression: None,
+				position
+			}
 		}
 	
 		let parsed_expression = self.parse_expression(value.unwrap());
 
 		if let Expression::Empty(_) = parsed_expression {
-			return Statement::Return(None, position);
+			return ast::Return {
+				expression: None,
+				position
+			}
 		}
 	
-		Statement::Return(
-			Some(parsed_expression),
+		ast::Return {
+			expression: Some(parsed_expression),
 			position
-		)
+		}
 	}
 	
 	fn parse_list(&self, pair: Pair<'_, Rule>) -> expressions::List {
@@ -299,7 +304,7 @@ impl<'inp> Parser<'inp> {
 		arguments
 	}
 	
-	fn parse_while_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
+	fn parse_while_stmt(&self, pair: Pair<'_, Rule>) -> ast::WhileLoop {
 		assert_rule!(pair == while_stmt in pair);
 
 		let position = span_to_pos(pair.as_span());
@@ -313,10 +318,22 @@ impl<'inp> Parser<'inp> {
 			get_pair_safe!(from pairs expect do_block in pair).into_inner()
 		);
 	
-		Statement::WhileLoop { condition, statements, position }
+		ast::WhileLoop { condition, statements, position }
+	}
+
+	fn parse_break_stmt(&self, pair: Pair<'_, Rule>) -> ast::Break {
+		ast::Break {
+			position: span_to_pos(pair.as_span())
+		}
+	}
+
+	fn parse_continue_stmt(&self, pair: Pair<'_, Rule>) -> ast::Continue {
+		ast::Continue {
+			position: span_to_pos(pair.as_span())
+		}
 	}
 	
-	fn parse_if_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
+	fn parse_if_stmt(&self, pair: Pair<'_, Rule>) -> ast::If {
 		assert_rule!(pair == if_stmt in pair);
 
 		let position = span_to_pos(pair.as_span());
@@ -343,7 +360,7 @@ impl<'inp> Parser<'inp> {
 			}
 		}
 	
-		Statement::If { condition, statements, elseif_branches, else_branch, position }
+		ast::If { condition, statements, elseif_branches, else_branch, position }
 	}
 	
 	fn parse_elseif_branch(&self, pair: Pair<'_, Rule>) -> ConditionBranch {
@@ -380,7 +397,7 @@ impl<'inp> Parser<'inp> {
 		}
 	}
 	
-	fn parse_expr_assign_stmt(&self, pair: Pair<'_, Rule>) -> Statement {
+	fn parse_expr_assign_stmt(&self, pair: Pair<'_, Rule>) -> ast::ExpressionAssign {
 		assert_rule!(pair == expr_assign_stmt in pair);
 
 		let position = span_to_pos(pair.as_span());
@@ -394,7 +411,7 @@ impl<'inp> Parser<'inp> {
 			get_pair_safe!(from pairs expect expression in pair)
 		);
 	
-		Statement::ExpressionAssign { expression, value, position }
+		ast::ExpressionAssign { expression, value, position }
 	}
 	
 	fn parse_expression_with_precedence(&self, pairs: &mut Peekable<Pairs<Rule>>, precedence: u8) -> Expression {

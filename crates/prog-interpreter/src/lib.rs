@@ -85,106 +85,111 @@ impl Interpreter {
 
 	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<RuntimeValue> {
 		match statement {
-			ast::Statement::VariableDefine { name, value, position } => self.execute_variable_define(name, value, position),
-			ast::Statement::VariableAssign { name, value, position } => self.execute_variable_assign(name, value, position),
-			ast::Statement::DoBlock(statements, position) => self.execute_do_block(statements, position),
-
-			ast::Statement::Return(expression, _position) => match expression {
-				Some(expression) => self.evaluate_expression(expression, false),
-				None => Ok(RuntimeValue::Empty)
-			},
-
-			ast::Statement::Call(call) => self.evaluate_call(call),
-			ast::Statement::WhileLoop { condition, statements, position } => self.execute_while_loop(condition, statements, position),
-
-			ast::Statement::Break(position) => self.create_error(
-				position.clone(),
-				InterpretErrorKind::UnsupportedStatement(
-					errors::UnsupportedStatement(String::from("break"))
-				)
-			),
-
-			ast::Statement::Continue(position) => self.create_error(
-				position.clone(),
-				InterpretErrorKind::UnsupportedStatement(
-					errors::UnsupportedStatement(String::from("continue"))
-				)
-			),
-
-			ast::Statement::If { condition, statements, elseif_branches, else_branch, position } => self.execute_if(condition, statements, elseif_branches, else_branch, position),
-		
-			ast::Statement::ExpressionAssign { expression, value, position} => self.execute_expression_assign(expression, value, position)
+			ast::Statement::VariableDefine(statement) => self.execute_variable_define(statement),
+			ast::Statement::VariableAssign(statement) => self.execute_variable_assign(statement),
+			ast::Statement::DoBlock(statement) => self.execute_do_block(statement),
+			ast::Statement::Return(statement) => self.execute_return(statement),
+			ast::Statement::Call(statement) => self.evaluate_call(statement),
+			ast::Statement::WhileLoop(statement) => self.execute_while_loop(statement),
+			ast::Statement::Break(statement) => self.execute_break(statement),
+			ast::Statement::Continue(statement) => self.execute_continue(statement),
+			ast::Statement::If(statement) => self.execute_if(statement),
+			ast::Statement::ExpressionAssign(statement) => self.execute_expression_assign(statement)
 		}
 	}
 
-	fn execute_variable_define(&mut self, name: (String, ast::Position), value: Option<ast::Expression>, _position: ast::Position) -> Result<RuntimeValue> {
-		let evaluated_value = match value {
+	fn execute_variable_define(&mut self, statement: ast::VariableDefine) -> Result<RuntimeValue> {
+		let evaluated_value = match statement.value {
 			None => RuntimeValue::Empty,
 			Some(expression) => self.evaluate_expression(expression, false)?
 		};
 
-		if self.context.insert_value(name.0.clone(), evaluated_value).is_err() {
-			self.create_error(name.1.clone(), InterpretErrorKind::ValueAlreadyExists(
-				errors::ValueAlreadyExists(name.0)
+		if self.context.insert_value(statement.name.0.clone(), evaluated_value).is_err() {
+			self.create_error(statement.name.1, InterpretErrorKind::ValueAlreadyExists(
+				errors::ValueAlreadyExists(statement.name.0)
 			))?;
 		}
 
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_variable_assign(&mut self, name: (String, ast::Position), value: ast::Expression, _position: ast::Position) -> Result<RuntimeValue> {
-		let evaluated_value = self.evaluate_expression(value, false)?;
+	fn execute_variable_assign(&mut self, statement: ast::VariableAssign) -> Result<RuntimeValue> {
+		let evaluated_value = self.evaluate_expression(statement.value, false)?;
 
-		if self.context.update_value(name.0.clone(), evaluated_value).is_err() {
-			return self.create_error(name.1.clone(), InterpretErrorKind::ValueDoesntExist(
-				errors::ValueDoesntExist(name.0)
+		if self.context.update_value(statement.name.0.clone(), evaluated_value).is_err() {
+			return self.create_error(statement.name.1, InterpretErrorKind::ValueDoesntExist(
+				errors::ValueDoesntExist(statement.name.0)
 			));
 		}
 
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_do_block(&mut self, statements: Vec<ast::Statement>, _position: ast::Position) -> Result<RuntimeValue> {
+	fn execute_do_block(&mut self, statement: ast::DoBlock) -> Result<RuntimeValue> {
 		self.context.deeper();
-		let result = self.execute(ast::Program { statements });
+		let result = self.execute(ast::Program {
+			statements: statement.statements
+		});
 		self.context.shallower();
 
 		result
 	}
 
-	fn execute_while_loop(&mut self, condition: ast::Expression, statements: Vec<ast::Statement>, _position: ast::Position) -> Result<RuntimeValue> {
-		let mut evaluated = self.evaluate_expression(condition.clone(), false)?;
+	fn execute_return(&mut self, statement: ast::Return) -> Result<RuntimeValue> {
+		match statement.expression {
+			Some(expression) => self.evaluate_expression(expression, false),
+			None => Ok(RuntimeValue::Empty)
+		}
+	}
+
+	fn execute_while_loop(&mut self, statement: ast::WhileLoop) -> Result<RuntimeValue> {
+		let mut evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
 
 		while is_value_truthy(&evaluated) {
 			self.context.deeper();
-			self.execute(ast::Program { statements: statements.clone() })?;
+			self.execute(ast::Program {
+				statements: statement.statements.clone()
+			})?;
 			self.context.shallower();
 
-			evaluated = self.evaluate_expression(condition.clone(), false)?;
+			evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
 		}
 
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_if(
-		&mut self,
-		condition: ast::Expression,
-		statements: Vec<ast::Statement>,
-		elseif_branches: Vec<ast::ConditionBranch>,
-		else_branch: Option<ast::ConditionBranch>,
-		_position: ast::Position
-	) -> Result<RuntimeValue> {
-		let evaluated = self.evaluate_expression(condition, false)?;
+	fn execute_break(&mut self, statement: ast::Break) -> Result<RuntimeValue> {
+		self.create_error(
+			statement.position,
+			InterpretErrorKind::UnsupportedStatement(
+				errors::UnsupportedStatement(String::from("break"))
+			)
+		)
+	}
+
+	fn execute_continue(&mut self, statement: ast::Continue) -> Result<RuntimeValue> {
+		self.create_error(
+			statement.position,
+			InterpretErrorKind::UnsupportedStatement(
+				errors::UnsupportedStatement(String::from("continue"))
+			)
+		)
+	}
+
+	fn execute_if(&mut self, statement: ast::If) -> Result<RuntimeValue> {
+		let evaluated = self.evaluate_expression(statement.condition, false)?;
 
 		if is_value_truthy(&evaluated) {
 			self.context.deeper();
-			self.execute(ast::Program { statements })?;
+			self.execute(ast::Program {
+				statements: statement.statements
+			})?;
 			self.context.shallower();
 
 			return Ok(RuntimeValue::Empty);
 		}
 
-		for branch in elseif_branches {
+		for branch in statement.elseif_branches {
 			let evaluated = self.evaluate_expression(branch.condition, false)?; 
 
 			if is_value_truthy(&evaluated) {
@@ -196,7 +201,7 @@ impl Interpreter {
 			}
 		}
 
-		if let Some(branch) = else_branch {
+		if let Some(branch) = statement.else_branch {
 			let evaluated = self.evaluate_expression(branch.condition, false)?; 
 
 			if is_value_truthy(&evaluated) {
@@ -211,13 +216,13 @@ impl Interpreter {
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_expression_assign(&mut self, expression: ast::Expression, value: ast::Expression, _position: ast::Position) -> Result<RuntimeValue> {
+	fn execute_expression_assign(&mut self, statement: ast::ExpressionAssign) -> Result<RuntimeValue> {
 		use ast::expressions::operators::BinaryOperator as Op;
 
-		let expression = match expression {
+		let expression = match statement.expression {
 			ast::Expression::Binary(expression) => expression,
 			_ => return self.create_error(
-				expression.position(),
+				statement.expression.position(),
 				InterpretErrorKind::ExpressionNotAssignable(
 					errors::ExpressionNotAssignable(None)
 				)
@@ -233,7 +238,7 @@ impl Interpreter {
 			)
 		}
 
-		let value = self.evaluate_expression(value, false)?;
+		let value = self.evaluate_expression(statement.value, false)?;
 
 		if expression.operator.0 == Op::ListAccess {
 			self.execute_expression_assign_list(expression, value)
