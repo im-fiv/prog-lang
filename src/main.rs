@@ -45,7 +45,7 @@ fn execute_run_command(args: cli::RunCommand) {
 
 	let mut interpreter = Interpreter::new(contents, args.file_path);
 
-	let result = interpreter.execute(ast).unwrap();
+	let result = interpreter.execute(ast, false).unwrap();
 
 	dbg!(result);
 }
@@ -75,7 +75,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 		interpreter.context.imports_allowed = false;
 		interpreter.context.input_allowed = false;
 
-		let result = match interpreter.execute(ast) {
+		let result = match interpreter.execute(ast, false) {
 			Ok(result) => result,
 			Err(error) => return handle_anyhow_error(error)
 		};

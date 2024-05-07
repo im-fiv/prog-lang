@@ -1,0 +1,23 @@
+def sum_regular = func(num) do
+	def accumulator = 0
+
+	while num > 0 do
+		accumulator = accumulator + num
+		num = num - 1
+	end
+
+	return accumulator
+end
+
+def sum_recursive = func(num) do
+	if num <= 0 then
+		return 0
+	end
+
+	return num + ((num - 1) -> sum_recursive)
+end
+
+def arg_number = 25
+
+("(", arg_number, ") -> sum_regular = ", (arg_number) -> sum_regular) -> print
+("(", arg_number, ") -> sum_recursive = ", (arg_number) -> sum_recursive) -> print

@@ -25,12 +25,15 @@ pub enum RuntimeValue {
 	
 	#[serde(serialize_with = "serde_use_display")]
 	IntrinsicFunction(IntrinsicFunction),
-	
+
+	Empty,
+
 	// It is of type `Identifier` mainly to avoid `TryInto<String>` conflicts with `String` variant in `Conversion` derive macro
 	#[serde(skip)]
 	Identifier(Identifier),
 
-	Empty
+	#[serde(skip)]
+	Marker(MarkerKind)
 }
 
 fn serde_use_display<T: Display, S: serde::Serializer>(value: &T, serializer: S) -> std::result::Result<S::Ok, S::Error> {
@@ -65,3 +68,10 @@ pub struct CallSite {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier(pub String);
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum MarkerKind {
+	Return(Box<RuntimeValue>),
+	Break,
+	Continue
+}

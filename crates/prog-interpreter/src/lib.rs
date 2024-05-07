@@ -41,8 +41,10 @@ fn is_value_truthy(rv: &RuntimeValue) -> bool {
 		Rv::Function(_) => true,
 		Rv::IntrinsicFunction(..) => true,
 
+		Rv::Empty => false,
+
 		Rv::Identifier(..) => unreachable!("RuntimeValue of kind Identifier"),
-		Rv::Empty => false
+		Rv::Marker(..) => unreachable!("RuntimeValue of kind Marker")
 	}
 }
 
@@ -71,12 +73,21 @@ impl Interpreter {
 		))
 	}
 
-	pub fn execute(&mut self, ast: ast::Program) -> Result<RuntimeValue> {
+	pub fn execute(&mut self, ast: ast::Program, keep_marker: bool) -> Result<RuntimeValue> {
 		for statement in ast.statements {
 			let result = self.execute_statement(statement)?;
 
-			if !matches!(result, RuntimeValue::Empty) {
-				return Ok(result);
+			// In case of `return`, `break`, and `continue` statements
+			if let RuntimeValue::Marker(ref marker) = result {
+				if keep_marker {
+					return Ok(result);
+				}
+
+				if let values::MarkerKind::Return(value) = marker {
+					return Ok(*value.to_owned());
+				}
+
+				return Ok(RuntimeValue::Empty);
 			}
 		}
 
@@ -129,17 +140,21 @@ impl Interpreter {
 		self.context.deeper();
 		let result = self.execute(ast::Program {
 			statements: statement.statements
-		});
+		}, false);
 		self.context.shallower();
 
 		result
 	}
 
 	fn execute_return(&mut self, statement: ast::Return) -> Result<RuntimeValue> {
-		match statement.expression {
-			Some(expression) => self.evaluate_expression(expression, false),
-			None => Ok(RuntimeValue::Empty)
-		}
+		let value = match statement.expression {
+			Some(expression) => self.evaluate_expression(expression, false)?,
+			None => RuntimeValue::Empty
+		};
+
+		Ok(RuntimeValue::Marker(
+			values::MarkerKind::Return(Box::new(value))
+		))
 	}
 
 	fn execute_while_loop(&mut self, statement: ast::WhileLoop) -> Result<RuntimeValue> {
@@ -147,10 +162,21 @@ impl Interpreter {
 
 		while is_value_truthy(&evaluated) {
 			self.context.deeper();
-			self.execute(ast::Program {
+			let result = self.execute(ast::Program {
 				statements: statement.statements.clone()
-			})?;
+			}, true)?;
 			self.context.shallower();
+
+			if let RuntimeValue::Marker(ref marker) = result {
+				match marker {
+					values::MarkerKind::Return(_) => return Ok(result),
+					values::MarkerKind::Break => break,
+					values::MarkerKind::Continue => {
+						evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
+						continue;
+					}
+				};
+			}
 
 			evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
 		}
@@ -181,10 +207,14 @@ impl Interpreter {
 
 		if is_value_truthy(&evaluated) {
 			self.context.deeper();
-			self.execute(ast::Program {
+			let result = self.execute(ast::Program {
 				statements: statement.statements
-			})?;
+			}, true)?;
 			self.context.shallower();
+
+			if result.kind() == RuntimeValueKind::Marker {
+				return Ok(result);
+			}
 
 			return Ok(RuntimeValue::Empty);
 		}
@@ -194,23 +224,31 @@ impl Interpreter {
 
 			if is_value_truthy(&evaluated) {
 				self.context.deeper();
-				self.execute(ast::Program { statements: branch.statements })?;
+				let result = self.execute(ast::Program {
+					statements: branch.statements
+				}, true)?;
 				self.context.shallower();
+
+				if result.kind() == RuntimeValueKind::Marker {
+					return Ok(result);
+				}
 
 				return Ok(RuntimeValue::Empty);
 			}
 		}
 
 		if let Some(branch) = statement.else_branch {
-			let evaluated = self.evaluate_expression(branch.condition, false)?; 
+			self.context.deeper();
+			let result = self.execute(ast::Program {
+				statements: branch.statements
+			}, true)?;
+			self.context.shallower();
 
-			if is_value_truthy(&evaluated) {
-				self.context.deeper();
-				self.execute(ast::Program { statements: branch.statements })?;
-				self.context.shallower();
-
-				return Ok(RuntimeValue::Empty);
+			if result.kind() == RuntimeValueKind::Marker {
+				return Ok(result);
 			}
+
+			return Ok(RuntimeValue::Empty);
 		}
 
 		Ok(RuntimeValue::Empty)
@@ -567,21 +605,18 @@ impl Interpreter {
 		};
 
 		let call_arguments_pos = call.arguments.1;
-		let call_arguments = call
-			.arguments
-			.0
+		let call_arguments = call.arguments.0
 			.clone()
 			.into_iter()
 			.map(|arg| self.evaluate_expression(arg, false))
 			.collect::<Result<Vec<_>>>()?;
 
 		let original_expression = *call.function.clone();
-		// TODO: store position data in runtime values to be able to retrieve the initial definition
 		let function_pos = original_expression.position();
 
-		let expression = self.evaluate_expression(*call.function, false)?;
+		let function_expression = self.evaluate_expression(*call.function, false)?;
 
-		if let RuntimeValue::IntrinsicFunction(function) = expression {
+		if let RuntimeValue::IntrinsicFunction(function) = function_expression {
 			let convert_error = |e: arg_parser::ArgumentParseError| {
 				match e {
 					arg_parser::ArgumentParseError::CountMismatch {
@@ -632,7 +667,7 @@ impl Interpreter {
 			return result;
 		}
 
-		if let RuntimeValue::Function(function) = expression {
+		if let RuntimeValue::Function(function) = function_expression {
 			let got_len = call_arguments.len();
 			let expected_len = function.ast.arguments.len();
 			
@@ -678,7 +713,9 @@ impl Interpreter {
 					self.context.insert_value(arg_name.clone(), arg_value)?;
 				}
 
-				let result = self.execute(ast::Program { statements: function.ast.statements });
+				let result = self.execute(ast::Program {
+					statements: function.ast.statements
+				}, false);
 
 				self.context.shallower();
 				self.source = source;
@@ -692,7 +729,7 @@ impl Interpreter {
 			self.create_error(
 				original_expression.position(),
 				InterpretErrorKind::ExpressionNotCallable(
-					errors::ExpressionNotCallable(expression.kind())
+					errors::ExpressionNotCallable(function_expression.kind())
 				)
 			)
 		}

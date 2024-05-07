@@ -54,8 +54,10 @@ impl Display for RuntimeValue {
 			Self::Function(value) => write!(f, "{value}"),
 			Self::IntrinsicFunction(value) => write!(f, "{value}"),
 
+			Self::Empty => write!(f, ""),
+
 			Self::Identifier(value) => write!(f, "{}", value.0),
-			Self::Empty => write!(f, "")
+			Self::Marker(value) => write!(f, "Marker({value})")
 		}
 	}
 }
@@ -78,5 +80,15 @@ impl Display for RuntimeFunction {
 impl Display for IntrinsicFunction {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "func({:?})", self.pointer)
+	}
+}
+
+impl Display for MarkerKind {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Return(value) => write!(f, "return {value}"),
+			Self::Break => write!(f, "break"),
+			Self::Continue => write!(f, "continue")
+		}
 	}
 }

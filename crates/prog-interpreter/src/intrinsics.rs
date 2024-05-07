@@ -66,7 +66,7 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 	let mut interpreter = crate::Interpreter::new(contents, path_str.to_owned());
 	context.clone_into(&mut interpreter.context);
 
-	let result = interpreter.execute(ast)?;
+	let result = interpreter.execute(ast, false)?;
 
 	*context = interpreter.context;
 
