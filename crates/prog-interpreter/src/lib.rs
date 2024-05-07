@@ -184,22 +184,12 @@ impl Interpreter {
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_break(&mut self, statement: ast::Break) -> Result<RuntimeValue> {
-		self.create_error(
-			statement.position,
-			InterpretErrorKind::UnsupportedStatement(
-				errors::UnsupportedStatement(String::from("break"))
-			)
-		)
+	fn execute_break(&mut self, _statement: ast::Break) -> Result<RuntimeValue> {
+		Ok(RuntimeValue::Marker(values::MarkerKind::Break))
 	}
 
-	fn execute_continue(&mut self, statement: ast::Continue) -> Result<RuntimeValue> {
-		self.create_error(
-			statement.position,
-			InterpretErrorKind::UnsupportedStatement(
-				errors::UnsupportedStatement(String::from("continue"))
-			)
-		)
+	fn execute_continue(&mut self, _statement: ast::Continue) -> Result<RuntimeValue> {
+		Ok(RuntimeValue::Marker(values::MarkerKind::Continue))
 	}
 
 	fn execute_if(&mut self, statement: ast::If) -> Result<RuntimeValue> {
