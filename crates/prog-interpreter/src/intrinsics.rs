@@ -104,6 +104,17 @@ fn input_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>
 	Ok(RuntimeValue::String(result))
 }
 
+fn raw_print_function(_context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, _call_site: CallSite) -> Result<RuntimeValue> {
+	use std::io;
+	use std::io::Write;
+	
+	let to_print = get_argument!(args => string: String);
+	print!("{to_print}");
+	io::stdout().flush().unwrap();
+
+	Ok(RuntimeValue::Empty)
+}
+
 pub fn create_value_table() -> HashMap<String, RuntimeValue> {
 	let mut map = HashMap::new();
 
@@ -133,6 +144,16 @@ pub fn create_value_table() -> HashMap<String, RuntimeValue> {
 			pointer: input_function,
 			arguments: ArgList::new(vec![
 				Arg::Optional("message", RuntimeValueKind::String)
+			])
+		})
+	);
+
+	map.insert(
+		String::from("raw_print"),
+		RuntimeValue::IntrinsicFunction(IntrinsicFunction {
+			pointer: raw_print_function,
+			arguments: ArgList::new(vec![
+				Arg::Optional("string", RuntimeValueKind::String)
 			])
 		})
 	);
