@@ -3,10 +3,12 @@ use anyhow::{Result, bail};
 
 use prog_macros::get_argument;
 
-use crate::values::{IntrinsicFunction, RuntimeValue, RuntimeValueKind, CallSite};
+use crate::values::*;
 use crate::arg_parser::{ArgList, Arg, ParsedArg};
 use crate::context::RuntimeContext;
 use crate::errors;
+
+use primitives::RuntimePrimitive;
 
 fn print_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, _call_site: CallSite) -> Result<RuntimeValue> {
 	let to_print = get_argument!(args => varargs: ...)
@@ -37,7 +39,9 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 		));
 	}
 
-	let path_str = get_argument!(args => path: String);
+	let path_str = get_argument!(args => path: primitives::RuntimeString)
+		.uv();
+
 	let mut path = std::path::Path::new(&path_str).to_path_buf();
 
 	// If specified path is a directory, try to get the core file
@@ -88,7 +92,9 @@ fn input_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>
 		));
 	}
 
-	let message = get_argument!(args => message: String?);
+	let message = get_argument!(args => message: primitives::RuntimeString?)
+		.and_then(|arg| Some(arg.uv()));
+
 	if let Some(message) = message {
 		print!("{}", &message[..]);
 	}
@@ -101,14 +107,14 @@ fn input_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>
 
 	context.stdin.push_str(&format!("{result}\n")[..]);
 
-	Ok(RuntimeValue::String(result))
+	Ok(RuntimeValue::String(result.into()))
 }
 
 fn raw_print_function(_context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, _call_site: CallSite) -> Result<RuntimeValue> {
 	use std::io;
 	use std::io::Write;
 	
-	let to_print = get_argument!(args => string: String);
+	let to_print = get_argument!(args => string: primitives::RuntimeString);
 	print!("{to_print}");
 	io::stdout().flush().unwrap();
 

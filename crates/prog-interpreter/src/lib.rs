@@ -13,6 +13,8 @@ use values::{RuntimeFunction, Identifier, CallSite};
 use prog_parser::ast;
 use anyhow::{Result, bail};
 
+use crate::values::primitives::RuntimePrimitive;
+
 fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
 	match term {
 		ast::expressions::Term::Identifier(value, _) => Some(value.to_owned()),
@@ -32,11 +34,11 @@ fn is_value_truthy(rv: &RuntimeValue) -> bool {
 	use RuntimeValue as Rv;
 	
 	match rv {
-		Rv::Boolean(value) => *value,
-		Rv::String(value) => !value.is_empty(),
-		Rv::Number(value) => value != &0.0,
-		Rv::List(value) => !value.is_empty(),
-		Rv::Object(value) => !value.is_empty(),
+		Rv::Boolean(value) => value.0,
+		Rv::String(value) => !value.0.is_empty(),
+		Rv::Number(value) => value.0 != 0.0,
+		Rv::List(value) => !value.0.is_empty(),
+		Rv::Object(value) => !value.0.is_empty(),
 
 		Rv::Function(_) => true,
 		Rv::IntrinsicFunction(..) => true,
@@ -290,10 +292,10 @@ impl Interpreter {
 			value => return self.create_error(position, InterpretErrorKind::ExpressionNotAssignable(
 				errors::ExpressionNotAssignable(Some(value.kind()))
 			))
-		};
+		}.uv();
 
 		let index = match self.evaluate_term(lhs.clone(), false)? {
-			RuntimeValue::Number(index) => index as i64,
+			RuntimeValue::Number(index) => index.uv() as i64,
 			value => return self.create_error(position, InterpretErrorKind::CannotIndexValue(
 				errors::CannotIndexValue {
 					kind: (RuntimeValueKind::List, rhs.position()),
@@ -323,7 +325,7 @@ impl Interpreter {
 
 		inner_list[index] = value;
 
-		if self.context.update_value(list_name.clone(), RuntimeValue::List(inner_list)).is_err() {
+		if self.context.update_value(list_name.clone(), RuntimeValue::List(inner_list.into())).is_err() {
 			return self.create_error(rhs.position(), InterpretErrorKind::ValueDoesntExist(
 				errors::ValueDoesntExist(list_name)
 			));
@@ -347,11 +349,11 @@ impl Interpreter {
 			value => return self.create_error(position, InterpretErrorKind::ExpressionNotAssignable(
 				errors::ExpressionNotAssignable(Some(value.kind()))
 			))
-		};
+		}.uv();
 
 		let entry_name = match self.evaluate_term(rhs.clone(), true)? {
 			RuntimeValue::Identifier(value) => value.0,
-			RuntimeValue::String(value) => value,
+			RuntimeValue::String(value) => value.uv(),
 
 			value => return self.create_error(position, InterpretErrorKind::CannotIndexValue(
 				errors::CannotIndexValue {
@@ -365,7 +367,7 @@ impl Interpreter {
 
 		inner_object.insert(entry_name, value);
 
-		if self.context.update_value(object_name.clone(), RuntimeValue::Object(inner_object)).is_err() {
+		if self.context.update_value(object_name.clone(), RuntimeValue::Object(inner_object.into())).is_err() {
 			return self.create_error(lhs.position(), InterpretErrorKind::ValueDoesntExist(
 				errors::ValueDoesntExist(object_name)
 			));
@@ -397,15 +399,15 @@ impl Interpreter {
 		let evaluated_operand = self.evaluate_term(operand.clone(), stop_on_ident)?;
 
 		match (operator.0, evaluated_operand) {
-			(Op::Minus, Rv::Number(value)) => Ok(Rv::Number(-value)),
+			(Op::Minus, Rv::Number(value)) => Ok(Rv::Number((-value.uv()).into())),
 
-			(Op::Not, Rv::Boolean(value)) => Ok(Rv::Boolean(!value)),
-			(Op::Not, Rv::String(value)) => Ok(Rv::Boolean(value.is_empty())),
-			(Op::Not, Rv::Number(value)) => Ok(Rv::Boolean(value == 0.0)),
-			(Op::Not, Rv::List(value)) => Ok(Rv::Boolean(value.is_empty())),
-			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(false)),
-			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(false)),
-			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(true)),
+			(Op::Not, Rv::Boolean(value)) => Ok(Rv::Boolean((!value.uv()).into())),
+			(Op::Not, Rv::String(value)) => Ok(Rv::Boolean((value.uv().is_empty()).into())),
+			(Op::Not, Rv::Number(value)) => Ok(Rv::Boolean((value.uv() == 0.0).into())),
+			(Op::Not, Rv::List(value)) => Ok(Rv::Boolean((value.uv().is_empty()).into())),
+			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(false.into())),
+			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(false.into())),
+			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(true.into())),
 
 			// `self.create_error` first argument isn't used in `UnsupportedUnary`
 			(_, evaluated_operand) => return self.create_error(0..0, InterpretErrorKind::UnsupportedUnary(
@@ -437,59 +439,62 @@ impl Interpreter {
 		};
 
 		match (operator.0, evaluated_lhs, evaluated_rhs) {
-			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs + rhs)),
-			(Op::Minus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs - rhs)),
-			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs / rhs)),
-			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs * rhs)),
-			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs % rhs)),
-			(Op::Gt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs > rhs)),
-			(Op::Lt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs < rhs)),
-			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs >= rhs)),
-			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs <= rhs)),
+			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() + rhs.uv()).into())),
+			(Op::Minus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() - rhs.uv()).into())),
+			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() / rhs.uv()).into())),
+			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() * rhs.uv()).into())),
+			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() % rhs.uv()).into())),
+			(Op::Gt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() > rhs.uv()).into())),
+			(Op::Lt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() < rhs.uv()).into())),
+			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() >= rhs.uv()).into())),
+			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() <= rhs.uv()).into())),
 
-			(Op::Plus, Rv::String(lhs), rhs) => Ok(Rv::String(format!("{lhs}{rhs}"))),
+			(Op::Plus, Rv::String(lhs), rhs) => Ok(Rv::String(format!("{lhs}{rhs}").into())),
 
-			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs && rhs)),
-			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs || rhs)),
+			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.uv() && rhs.uv()).into())),
+			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.uv() || rhs.uv()).into())),
 
-			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
-			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
-			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
-			(Op::EqEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
-			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
-			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
-			(Op::EqEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(true)),
+			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.uv() == rhs.uv()).into())),
+			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean((lhs.uv() == rhs.uv()).into())),
+			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() == rhs.uv()).into())),
+			(Op::EqEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean((lhs.uv() == rhs.uv()).into())),
+			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean((lhs == rhs).into())),
+			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean((lhs == rhs).into())),
+			(Op::EqEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(true.into())),
 
-			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
-			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
-			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
-			(Op::NotEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
-			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(lhs != rhs)),
-			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(lhs == rhs)),
-			(Op::NotEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(false)),
+			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.uv() != rhs.uv()).into())),
+			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean((lhs.uv() != rhs.uv()).into())),
+			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() != rhs.uv()).into())),
+			(Op::NotEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean((lhs != rhs).into())),
+			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean((lhs != rhs).into())),
+			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean((lhs != rhs).into())),
+			(Op::NotEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(false.into())),
 
 			(Op::ListAccess, Rv::Number(lhs), Rv::List(rhs)) => Ok(
 				rhs
-					.get(lhs as usize)
+					.uv()
+					.get(lhs.uv() as usize)
 					.unwrap_or(&RuntimeValue::Empty)
 					.to_owned()
 			),
 
 			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => Ok(
 				lhs
+					.uv()
 					.get(&rhs.0)
 					.unwrap_or(&RuntimeValue::Empty)
 					.to_owned()
 			),
 			(Op::ObjectAccess, Rv::Object(lhs), Rv::String(rhs)) => Ok(
 				lhs
-					.get(&rhs)
+					.uv()
+					.get(&rhs.uv())
 					.unwrap_or(&RuntimeValue::Empty)
 					.to_owned()
 			),
 
-			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
-			(Op::NotEq, _, _) => Ok(Rv::Boolean(true)),
+			(Op::EqEq, _, _) => Ok(Rv::Boolean(false.into())),
+			(Op::NotEq, _, _) => Ok(Rv::Boolean(true.into())),
 
 			// `self.create_error` first argument isn't used in `UnsupportedBinary`
 			(_, evaluated_lhs, evaluated_rhs) => return self.create_error(0..0, InterpretErrorKind::UnsupportedBinary(
@@ -562,7 +567,7 @@ impl Interpreter {
 			position_map.insert(name, entry.position);
 		}
 
-		Ok(RuntimeValue::Object(value_map))
+		Ok(RuntimeValue::Object(value_map.into()))
 	}
 
 	fn evaluate_list(&mut self, list: ast::expressions::List) -> Result<RuntimeValue> {
@@ -573,7 +578,7 @@ impl Interpreter {
 			values.push(value);
 		}
 
-		Ok(RuntimeValue::List(values))
+		Ok(RuntimeValue::List(values.into()))
 	}
 
 	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<RuntimeValue> {

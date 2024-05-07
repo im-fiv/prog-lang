@@ -52,10 +52,10 @@ pub(crate) fn expand_optional(input: GetArgumentInput) -> pm2::TokenStream {
 			::std::convert::TryInto::<#inner_type>
 				::try_into(inner_arg)
 				.unwrap_or_else(
-					|_| ::std::unreachable!("Argument '{}' cannot be converted into '{}'", arg_name, ::std::stringify!(#inner_type))
+					|_| ::std::unreachable!("Argument `{}` cannot be converted to `{}`", arg_name, ::std::stringify!(#inner_type))
 				)
 		} else {
-			::std::unreachable!("Argument '{}' is not a regular argument", arg_name)
+			::std::unreachable!("Argument `{}` is not a regular argument", arg_name)
 		})
 	}}
 }
@@ -66,7 +66,7 @@ pub(crate) fn expand_required(input: GetArgumentInput) -> pm2::TokenStream {
 
 	quote! {
 		#body
-		.unwrap_or_else(|| ::std::unreachable!("Argument '{}' does not exist", ::std::stringify!(#arg_name)))
+		.unwrap_or_else(|| ::std::unreachable!("Argument `{}` does not exist", ::std::stringify!(#arg_name)))
 	}
 }
 
@@ -84,7 +84,7 @@ pub(crate) fn expand_variadic(input: GetArgumentInput) -> pm2::TokenStream {
 		parsed_arg.map(|parsed_arg| if let ParsedArg::Variadic(var_args) = parsed_arg.to_owned() {
 			var_args
 		} else {
-			::std::unreachable!("Argument '{}' is not a regular argument", arg_name)
-		}).unwrap_or_else(|| ::std::unreachable!("Argument '{}' does not exist", ::std::stringify!(arg_name)))
+			::std::unreachable!("Argument `{}` is not a regular argument", arg_name)
+		}).unwrap_or_else(|| ::std::unreachable!("Argument `{}` does not exist", ::std::stringify!(arg_name)))
 	}}
 }
