@@ -426,23 +426,15 @@ impl Interpreter {
 	) -> Result<RuntimeValue> {
 		use ast::expressions::operators::BinaryOperator as Op;
 		use RuntimeValue as Rv;
-		
-		let mut evaluated_lhs = self.evaluate_term(lhs.clone(), stop_on_ident)?;
-		let evaluated_lhs_forced = self.evaluate_term(lhs.clone(), false)?;
 
-		let is_object_access = matches!(
-			(&evaluated_lhs_forced, operator.0),
-			(RuntimeValue::Object(_), Op::ObjectAccess)
-		);
+		let lhs_position = lhs.position();
+		let rhs_position = rhs.position();
 
-		let evaluated_rhs = match (is_object_access, identifier_from_term(&rhs)) {
-			(true, Some(value)) => RuntimeValue::Identifier(Identifier(value)),
-			_ => self.evaluate_term(rhs.clone(), false)?
+		let evaluated_lhs = self.evaluate_term(lhs.clone(), stop_on_ident)?;
+		let evaluated_rhs = match (operator.0 == Op::ObjectAccess, identifier_from_term(&rhs)) {
+			(true, Some(ident)) => RuntimeValue::Identifier(Identifier(ident)),
+			_ => self.evaluate_term(rhs, stop_on_ident)?
 		};
-
-		if is_object_access {
-			evaluated_lhs = evaluated_lhs_forced;
-		}
 
 		match (operator.0, evaluated_lhs, evaluated_rhs) {
 			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(lhs + rhs)),
@@ -499,13 +491,12 @@ impl Interpreter {
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false)),
 			(Op::NotEq, _, _) => Ok(Rv::Boolean(true)),
 
-			// (operator, lhs, rhs) => bail!("Cannot perform an unsupported binary operation `{} {} {}`", lhs.kind(), operator, rhs.kind())
 			// `self.create_error` first argument isn't used in `UnsupportedBinary`
 			(_, evaluated_lhs, evaluated_rhs) => return self.create_error(0..0, InterpretErrorKind::UnsupportedBinary(
 				errors::UnsupportedBinary {
-					lhs: (evaluated_lhs.kind(), lhs.position()),
+					lhs: (evaluated_lhs.kind(), lhs_position),
 					operator,
-					rhs: (evaluated_rhs.kind(), rhs.position())
+					rhs: (evaluated_rhs.kind(), rhs_position)
 				}
 			))
 		}
