@@ -610,11 +610,16 @@ impl<'inp> Parser<'inp> {
 		assert_rule!(pair == string_literal in pair);
 
 		let position = span_to_pos(pair.as_span());
+
 		let literal = pair.as_str().to_owned();
-		let clean_literal = literal.trim_start_matches(&['\'', '\"'][..]).trim_end_matches(&['\'', '\"'][..]);
+		let clean_literal = literal
+			.trim_start_matches(&['\'', '\"'][..])
+			.trim_end_matches(&['\'', '\"'][..]);
+
+		let interpreted_literal = utils::interpret_special_chars(clean_literal);
 	
 		expressions::Literal::String(
-			clean_literal.to_owned(),
+			interpreted_literal,
 			position
 		)
 	}

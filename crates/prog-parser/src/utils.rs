@@ -59,3 +59,38 @@ pub(crate) fn get_bin_operator_from_pair(pair: &Pair<'_, Rule>) -> expressions::
 		pair.as_str().to_owned()
 	).unwrap()
 }
+
+pub(crate) fn interpret_special_chars(input: &str) -> String {
+	let mut result = String::new();
+	let mut chars = input.chars();
+
+	while let Some(c) = chars.next() {
+		if c != '\\' {
+			result.push(c);
+			continue;
+		}
+
+		let next_char = chars.next();
+
+		if next_char.is_none() {
+			result.push('\\');
+			continue;
+		}
+
+		match next_char.unwrap() {
+			'n' => result.push('\n'),
+			'r' => result.push('\r'),
+			't' => result.push('\t'),
+			'"' => result.push('"'),
+			'\\' => result.push('\\'),
+
+			// Unknown escape sequence, treat it as a literal
+			next_char => {
+				result.push('\\');
+				result.push(next_char);
+			}
+		}
+	}
+
+	result
+}
