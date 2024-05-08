@@ -1,8 +1,8 @@
-def sum = func(list, len) do
+def sum = func(list) do
 	def result = 0
 	def counter = 0
 
-	while counter < len do
+	while counter < () -> list.len do
 		def entry = counter => list
 
 		result = result + entry
@@ -13,14 +13,14 @@ def sum = func(list, len) do
 end
 
 def list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-def len = 10
+def len = () -> list.len
 
-def resulting_sum = (list, len) -> sum
+def resulting_sum = (list) -> sum
 def old_list = list
 
 // doubling 9th element
 (len - 1)=>list = (len - 1)=>list * 2
-def new_resulting_sum = (list, len) -> sum
+def new_resulting_sum = (list) -> sum
 
 ("old sum: ", resulting_sum) -> print
 ("new sum: ", new_resulting_sum) -> print
