@@ -20,3 +20,16 @@ pub fn read_file<P: AsRef<Path>>(path: P) -> String {
 
 	contents.replace("\r\n", "\n")
 }
+
+#[macro_export]
+macro_rules! impl_basic_conv {
+	(from $from:ty => $for:ty as $variant:ident $({ $preproc:path })?) => {
+		impl From<$from> for $for {
+			fn from(value: $from) -> Self {
+				Self::$variant(
+					$( $preproc )? (value)
+				)
+			}
+		}
+	};
+}

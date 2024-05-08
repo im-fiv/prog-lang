@@ -1,7 +1,7 @@
 use std::fmt::Display;
+use prog_utils::impl_basic_conv;
 
 use super::*;
-use crate::impl_basic_conv;
 
 //* Others *//
 

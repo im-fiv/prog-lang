@@ -2,7 +2,7 @@ use super::Position;
 use super::expressions::{Expression, Call};
 use super::misc::ConditionBranch;
 
-use crate::impl_basic_conv;
+use prog_utils::impl_basic_conv;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
