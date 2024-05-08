@@ -4,7 +4,7 @@ pub mod errors;
 pub mod intrinsics;
 pub mod values;
 
-pub use values::{RuntimeValue, RuntimeValueKind};
+pub use values::{RuntimePrimitive, RuntimeValue, RuntimeValueKind};
 pub use errors::{InterpretError, InterpretErrorKind};
 
 use context::RuntimeContext;
@@ -12,8 +12,6 @@ use values::{RuntimeFunction, Identifier, CallSite};
 
 use prog_parser::ast;
 use anyhow::{Result, bail};
-
-use crate::values::primitives::RuntimePrimitive;
 
 fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
 	match term {
@@ -320,7 +318,7 @@ impl Interpreter {
 		let index: usize = index.try_into()?;
 
 		if index >= inner_list.len() {
-			inner_list.resize(index + 50, RuntimeValue::Empty);
+			inner_list.resize(index + 1, RuntimeValue::Empty);
 		}
 
 		inner_list[index] = value;
@@ -438,6 +436,27 @@ impl Interpreter {
 			_ => self.evaluate_term(rhs, stop_on_ident)?
 		};
 
+		macro_rules! primitive_object_access {
+			($lhs:expr, $key:expr) => {{
+				let map = $lhs.dispatch_map();
+				let function = map.get(&$key);
+
+				if function.is_none() {
+					return self.create_error(lhs_position, InterpretErrorKind::FieldDoesntExist(
+						errors::FieldDoesntExist($key, rhs_position)
+					));
+				}
+
+				let mut function = function
+					.unwrap()
+					.to_owned();
+
+				function.this = Some(Box::new($lhs.into()));
+
+				Ok(RuntimeValue::IntrinsicFunction(function))
+			}};
+		}
+
 		match (operator.0, evaluated_lhs, evaluated_rhs) {
 			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() + rhs.uv()).into())),
 			(Op::Minus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() - rhs.uv()).into())),
@@ -454,17 +473,17 @@ impl Interpreter {
 			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.uv() && rhs.uv()).into())),
 			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.uv() || rhs.uv()).into())),
 
-			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.uv() == rhs.uv()).into())),
-			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean((lhs.uv() == rhs.uv()).into())),
-			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() == rhs.uv()).into())),
-			(Op::EqEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean((lhs.uv() == rhs.uv()).into())),
+			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs == rhs).into())),
+			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean((lhs == rhs).into())),
+			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs == rhs).into())),
+			(Op::EqEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean((lhs == rhs).into())),
 			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean((lhs == rhs).into())),
 			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean((lhs == rhs).into())),
 			(Op::EqEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(true.into())),
 
-			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.uv() != rhs.uv()).into())),
-			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean((lhs.uv() != rhs.uv()).into())),
-			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() != rhs.uv()).into())),
+			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs != rhs).into())),
+			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean((lhs != rhs).into())),
+			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs != rhs).into())),
 			(Op::NotEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean((lhs != rhs).into())),
 			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean((lhs != rhs).into())),
 			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean((lhs != rhs).into())),
@@ -478,6 +497,7 @@ impl Interpreter {
 					.to_owned()
 			),
 
+			// TODO: implement behavior for when an object has a user-defined function with the same name
 			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => Ok(
 				lhs
 					.uv()
@@ -492,6 +512,16 @@ impl Interpreter {
 					.unwrap_or(&RuntimeValue::Empty)
 					.to_owned()
 			),
+
+			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs.0),
+			(Op::ObjectAccess, Rv::String(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs.0),
+			(Op::ObjectAccess, Rv::Number(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs.0),
+			(Op::ObjectAccess, Rv::List(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs.0),
+
+			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.cv()),
+			(Op::ObjectAccess, Rv::String(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.cv()),
+			(Op::ObjectAccess, Rv::Number(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.cv()),
+			(Op::ObjectAccess, Rv::List(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.cv()),
 
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false.into())),
 			(Op::NotEq, _, _) => Ok(Rv::Boolean(true.into())),
@@ -605,11 +635,7 @@ impl Interpreter {
 		if let RuntimeValue::IntrinsicFunction(function) = function_expression {
 			let convert_error = |e: arg_parser::ArgumentParseError| {
 				match e {
-					arg_parser::ArgumentParseError::CountMismatch {
-						expected,
-						end_boundary,
-						got
-					} => self.create_error(
+					arg_parser::ArgumentParseError::CountMismatch { expected, end_boundary, got } => self.create_error(
 						call_arguments_pos,
 						InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
 							expected,
@@ -620,11 +646,7 @@ impl Interpreter {
 						})
 					).unwrap_err(),
 
-					arg_parser::ArgumentParseError::IncorrectType {
-						index,
-						expected,
-						got
-					} => {
+					arg_parser::ArgumentParseError::IncorrectType { index, expected, got } => {
 						let argument = call
 							.arguments
 							.0
@@ -647,7 +669,7 @@ impl Interpreter {
 				.map_err(convert_error)?;
 			
 			self.context.deeper();
-			let result = (function.pointer)(&mut self.context, call_arguments, call_site);
+			let result = function.call(&mut self.context, call_arguments, call_site);
 			self.context.shallower();
 
 			return result;

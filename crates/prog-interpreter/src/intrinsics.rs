@@ -8,9 +8,7 @@ use crate::arg_parser::{ArgList, Arg, ParsedArg};
 use crate::context::RuntimeContext;
 use crate::errors;
 
-use primitives::RuntimePrimitive;
-
-fn print_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, _call_site: CallSite) -> Result<RuntimeValue> {
+fn print_function(_this: Option<Box<RuntimeValue>>, context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, _call_site: CallSite) -> Result<RuntimeValue> {
 	let to_print = get_argument!(args => varargs: ...)
 		.into_iter()
 		.map(|arg| format!("{}", arg))
@@ -26,7 +24,7 @@ fn print_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>
 	Ok(RuntimeValue::Empty)
 }
 
-fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, call_site: CallSite) -> Result<RuntimeValue> {
+fn import_function(_this: Option<Box<RuntimeValue>>, context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, call_site: CallSite) -> Result<RuntimeValue> {
 	if !context.imports_allowed {
 		bail!(errors::InterpretError::new(
 			call_site.source,
@@ -39,8 +37,7 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 		));
 	}
 
-	let path_str = get_argument!(args => path: primitives::RuntimeString)
-		.uv();
+	let path_str = get_argument!(args => path: RuntimeString).uv();
 
 	let mut path = std::path::Path::new(&path_str).to_path_buf();
 
@@ -77,7 +74,7 @@ fn import_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg
 	Ok(result)
 }
 
-fn input_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, call_site: CallSite) -> Result<RuntimeValue> {
+fn input_function(_this: Option<Box<RuntimeValue>>, context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, call_site: CallSite) -> Result<RuntimeValue> {
 	use text_io::read;
 
 	if !context.input_allowed {
@@ -92,7 +89,7 @@ fn input_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>
 		));
 	}
 
-	let message = get_argument!(args => message: primitives::RuntimeString?)
+	let message = get_argument!(args => message: RuntimeString?)
 		.and_then(|arg| Some(arg.uv()));
 
 	if let Some(message) = message {
@@ -110,11 +107,11 @@ fn input_function(context: &mut RuntimeContext, args: HashMap<String, ParsedArg>
 	Ok(RuntimeValue::String(result.into()))
 }
 
-fn raw_print_function(_context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, _call_site: CallSite) -> Result<RuntimeValue> {
+fn raw_print_function(_this: Option<Box<RuntimeValue>>, _context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, _call_site: CallSite) -> Result<RuntimeValue> {
 	use std::io;
 	use std::io::Write;
 	
-	let to_print = get_argument!(args => string: primitives::RuntimeString);
+	let to_print = get_argument!(args => string: RuntimeString);
 	print!("{to_print}");
 	io::stdout().flush().unwrap();
 
@@ -124,45 +121,33 @@ fn raw_print_function(_context: &mut RuntimeContext, args: HashMap<String, Parse
 pub fn create_value_table() -> HashMap<String, RuntimeValue> {
 	let mut map = HashMap::new();
 
-	map.insert(
-		String::from("print"),
-		RuntimeValue::IntrinsicFunction(IntrinsicFunction {
-			pointer: print_function,
-			arguments: ArgList::new(vec![
-				Arg::Variadic("varargs")
-			])
-		})
-	);
+	map.insert(String::from("print"), IntrinsicFunction::new(
+		print_function,
+		ArgList::new(vec![
+			Arg::Variadic("varargs")
+		])
+	).into());
 
-	map.insert(
-		String::from("import"),
-		RuntimeValue::IntrinsicFunction(IntrinsicFunction {
-			pointer: import_function,
-			arguments: ArgList::new(vec![
-				Arg::Required("path", RuntimeValueKind::String)
-			])
-		})
-	);
+	map.insert(String::from("import"), IntrinsicFunction::new(
+		import_function,
+		ArgList::new(vec![
+			Arg::Required("path", RuntimeValueKind::String)
+		])
+	).into());
 
-	map.insert(
-		String::from("input"),
-		RuntimeValue::IntrinsicFunction(IntrinsicFunction {
-			pointer: input_function,
-			arguments: ArgList::new(vec![
-				Arg::Optional("message", RuntimeValueKind::String)
-			])
-		})
-	);
+	map.insert(String::from("input"), IntrinsicFunction::new(
+		input_function,
+		ArgList::new(vec![
+			Arg::Optional("message", RuntimeValueKind::String)
+		])
+	).into());
 
-	map.insert(
-		String::from("raw_print"),
-		RuntimeValue::IntrinsicFunction(IntrinsicFunction {
-			pointer: raw_print_function,
-			arguments: ArgList::new(vec![
-				Arg::Optional("string", RuntimeValueKind::String)
-			])
-		})
-	);
+	map.insert(String::from("raw_print"), IntrinsicFunction::new(
+		raw_print_function,
+		ArgList::new(vec![
+			Arg::Optional("string", RuntimeValueKind::String)
+		])
+	).into());
 
 	map
 }

@@ -5,6 +5,7 @@ mod context_disallowed;
 mod duplicate_object_entry;
 mod expression_not_assignable;
 mod expression_not_callable;
+mod field_doesnt_exist;
 mod unsupported_binary;
 mod unsupported_statement;
 mod unsupported_unary;
@@ -18,6 +19,7 @@ pub use context_disallowed::*;
 pub use duplicate_object_entry::*;
 pub use expression_not_assignable::*;
 pub use expression_not_callable::*;
+pub use field_doesnt_exist::*;
 pub use unsupported_binary::*;
 pub use unsupported_statement::*;
 pub use unsupported_unary::*;
@@ -40,6 +42,7 @@ pub enum InterpretErrorKind {
 	DuplicateObjectEntry(DuplicateObjectEntry),
 	ExpressionNotAssignable(ExpressionNotAssignable),
 	ExpressionNotCallable(ExpressionNotCallable),
+	FieldDoesntExist(FieldDoesntExist),
 	UnsupportedBinary(UnsupportedBinary),
 	UnsupportedStatement(UnsupportedStatement),
 	UnsupportedUnary(UnsupportedUnary),

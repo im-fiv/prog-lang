@@ -1,33 +1,61 @@
-pub mod primitives;
+mod boolean;
+mod string;
+mod number;
+mod list;
+mod object;
+mod function;
+mod intrinsic_function;
+mod identifier;
+mod marker;
+
+pub use boolean::*;
+pub use string::*;
+pub use number::*;
+pub use list::*;
+pub use object::*;
+pub use function::*;
+pub use intrinsic_function::*;
+pub use identifier::*;
+pub use marker::*;
 
 use std::fmt::Display;
 use std::collections::HashMap;
 
-use anyhow::Result;
 use serde::Serialize;
 
 use prog_parser::ast;
+use prog_utils::impl_basic_conv;
 use prog_macros::{VariantUnwrap, EnumKind};
 
-use crate::arg_parser::{ArgList, ParsedArg};
-use crate::context::RuntimeContext;
+pub trait RuntimePrimitive {
+	type Inner;
+
+	/// Unwraps inner value of the primitive, consuming it
+	fn uv(self) -> Self::Inner;
+
+	/// Unwraps inner value of the primitive without consuming it
+	fn cv(&self) -> Self::Inner;
+
+	/// Returns an associated function dispatch map for the type
+	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction>;
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, VariantUnwrap, EnumKind)]
 pub enum RuntimeValue {
 	#[serde(serialize_with = "s_use_display")]
-	Boolean(primitives::RuntimeBoolean),
+	Boolean(RuntimeBoolean),
 
 	#[serde(serialize_with = "s_use_display")]
-	String(primitives::RuntimeString),
+	String(RuntimeString),
 
 	#[serde(serialize_with = "s_use_display")]
-	Number(primitives::RuntimeNumber),
+	Number(RuntimeNumber),
 
 	#[serde(serialize_with = "s_use_display")]
-	List(primitives::RuntimeList),
+	List(RuntimeList),
 
 	#[serde(serialize_with = "s_use_display")]
-	Object(primitives::RuntimeObject),
+	Object(RuntimeObject),
 
 	#[serde(serialize_with = "s_use_display")]
 	Function(RuntimeFunction),
@@ -49,43 +77,15 @@ fn s_use_display<T: Display, S: serde::Serializer>(value: &T, serializer: S) -> 
 	serializer.collect_str(value)
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct RuntimeFunction {
-	pub ast: Box<ast::expressions::Function>,
-	pub source: String,
-	pub file: String
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct IntrinsicFunction {
-	pub pointer: IntrinsicFunctionPtr,
-	pub arguments: ArgList
-}
-
-pub type IntrinsicFunctionPtr = fn(
-	context: &mut RuntimeContext,
-	args: HashMap<String, ParsedArg>,
-	call_site: CallSite
-) -> Result<RuntimeValue>;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct CallSite {
-	pub source: String,
-	pub file: String,
-	pub position: ast::Position
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Identifier(pub String);
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum MarkerKind {
-	Return(Box<RuntimeValue>),
-	Break,
-	Continue
-}
-
-//* From<T> *//
+impl_basic_conv!(from RuntimeBoolean => RuntimeValue as Boolean);
+impl_basic_conv!(from RuntimeString => RuntimeValue as String);
+impl_basic_conv!(from RuntimeNumber => RuntimeValue as Number);
+impl_basic_conv!(from RuntimeList => RuntimeValue as List);
+impl_basic_conv!(from RuntimeObject => RuntimeValue as Object);
+impl_basic_conv!(from RuntimeFunction => RuntimeValue as Function);
+impl_basic_conv!(from IntrinsicFunction => RuntimeValue as IntrinsicFunction);
+impl_basic_conv!(from Identifier => RuntimeValue as Identifier);
+impl_basic_conv!(from MarkerKind => RuntimeValue as Marker);
 
 impl From<ast::expressions::Literal> for RuntimeValue {
 	fn from(value: ast::expressions::Literal) -> Self {
@@ -99,14 +99,6 @@ impl From<ast::expressions::Literal> for RuntimeValue {
 	}
 }
 
-impl From<String> for Identifier {
-	fn from(value: String) -> Self {
-		Self(value)
-	}
-}
-
-//* Display *//
-
 impl Display for RuntimeValue {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
@@ -119,39 +111,8 @@ impl Display for RuntimeValue {
 			Self::IntrinsicFunction(value) => write!(f, "{value}"),
 			Self::Empty => write!(f, ""),
 
-			Self::Identifier(value) => write!(f, "{}", value.0),
+			Self::Identifier(value) => write!(f, "{value}"),
 			Self::Marker(value) => write!(f, "Marker({value})")
-		}
-	}
-}
-
-impl Display for RuntimeFunction {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let arguments_str = self
-			.ast
-			.arguments
-			.iter()
-			.map(|(a, _)| a.to_owned())
-			.collect::<Vec<_>>()
-			.join(", ");
-
-		let formatted = format!("Function({arguments_str})");
-		write!(f, "{formatted}")
-	}
-}
-
-impl Display for IntrinsicFunction {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "func({:?})", self.pointer)
-	}
-}
-
-impl Display for MarkerKind {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Return(value) => write!(f, "return {value}"),
-			Self::Break => write!(f, "break"),
-			Self::Continue => write!(f, "continue")
 		}
 	}
 }

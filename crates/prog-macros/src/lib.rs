@@ -2,6 +2,7 @@ extern crate proc_macro;
 
 mod conversion_inner;
 mod get_argument_inner;
+mod get_this_inner;
 mod impl_ariadne_compatible_inner;
 mod utils;
 
@@ -141,7 +142,7 @@ pub fn impl_ariadne_compatible(input: pm::TokenStream) -> pm::TokenStream {
 	}
 }
 
-/// Used for safely unwrapping a [`prog_interpreter::arg_parser::ParsedArg`].
+/// Used for safe unwrapping of a [`prog_interpreter::arg_parser::ParsedArg`].
 #[proc_macro]
 pub fn get_argument(input: pm::TokenStream) -> pm::TokenStream {
 	let input = parse_macro_input!(input as get_argument_inner::GetArgumentInput);
@@ -155,4 +156,22 @@ pub fn get_argument(input: pm::TokenStream) -> pm::TokenStream {
 	}
 
 	get_argument_inner::expand_required(input).into()
+}
+
+/// Used for safe unwrapping of a [`prog_interpreter::values::IntrinsicFunction`] `this` arg
+#[proc_macro]
+pub fn get_this(input: pm::TokenStream) -> pm::TokenStream {
+	let input = parse_macro_input!(input as get_this_inner::GetThisInput);
+	let get_this_inner::GetThisInput { this_arg_name, variant } = input;
+
+	// Note: double curly braces are extremely important
+	quote! {{
+		let this = #this_arg_name.unwrap_or_else(|| ::std::unreachable!("`this` argument is `None`"));
+
+		if let crate::values::RuntimeValue::#variant(inner_this) = *this {
+			inner_this
+		} else {
+			::std::unreachable!("`this` argument is not of variant `{}`", stringify!(#variant))
+		}
+	}}.into()
 }
