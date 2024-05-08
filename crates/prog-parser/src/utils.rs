@@ -27,24 +27,22 @@ macro_rules! assert_rule {
 }
 
 macro_rules! get_pair_safe {
-	(from $pairs:ident expect $rule:ident $(| $rest:ident)* in $main_pair:expr) => {
-		{
-			let expected_str = assert_rule!(format_expected $rule $( $rest ),*);
+	(from $pairs:ident expect $rule:ident $(| $rest:ident)* in $main_pair:expr) => {{
+		let expected_str = assert_rule!(format_expected $rule $( $rest ),*);
 
-			let next_pair = $pairs
-				.next()
-				.unwrap_or_else(|| error!(
-					"pair of type {} is missing in `{:?}`",
-					$main_pair.as_span(),
-					expected_str,
-					$main_pair.as_rule()
-				));
-			
-			assert_rule!(next_pair == $rule $(| $rest)* in $main_pair);
+		let next_pair = $pairs
+			.next()
+			.unwrap_or_else(|| error!(
+				"pair of type {} is missing in `{:?}`",
+				$main_pair.as_span(),
+				expected_str,
+				$main_pair.as_rule()
+			));
+		
+		assert_rule!(next_pair == $rule $(| $rest)* in $main_pair);
 
-			next_pair
-		}
-	};
+		next_pair
+	}};
 }
 
 pub(crate) use assert_rule;
