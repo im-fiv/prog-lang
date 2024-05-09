@@ -8,7 +8,7 @@ pub use values::{RuntimePrimitive, RuntimeValue, RuntimeValueKind};
 pub use errors::{InterpretError, InterpretErrorKind};
 
 use context::RuntimeContext;
-use values::{RuntimeFunction, Identifier, CallSite};
+use values::{RuntimeFunction, CallSite};
 
 use prog_parser::ast;
 use anyhow::{Result, bail};
@@ -279,7 +279,7 @@ impl Interpreter {
 		let ast::expressions::Binary { lhs, rhs, operator: _, position } = expression;
 
 		let list_name = match self.evaluate_term(rhs.clone(), true)? {
-			RuntimeValue::Identifier(identifier) => identifier.0,
+			RuntimeValue::Identifier(identifier) => identifier,
 			_ => return self.create_error(position, InterpretErrorKind::ExpressionNotAssignable(
 				errors::ExpressionNotAssignable(None)
 			))
@@ -336,7 +336,7 @@ impl Interpreter {
 		let ast::expressions::Binary { lhs, rhs, operator: _, position } = expression.clone();
 
 		let object_name = match self.evaluate_term(lhs.clone(), true)? {
-			RuntimeValue::Identifier(identifier) => identifier.0,
+			RuntimeValue::Identifier(identifier) => identifier,
 			_ => return self.create_error(position, InterpretErrorKind::ExpressionNotAssignable(
 				errors::ExpressionNotAssignable(None)
 			))
@@ -350,7 +350,7 @@ impl Interpreter {
 		}.uv();
 
 		let entry_name = match self.evaluate_term(rhs.clone(), true)? {
-			RuntimeValue::Identifier(value) => value.0,
+			RuntimeValue::Identifier(value) => value,
 			RuntimeValue::String(value) => value.uv(),
 
 			value => return self.create_error(position, InterpretErrorKind::CannotIndexValue(
@@ -432,7 +432,7 @@ impl Interpreter {
 
 		let evaluated_lhs = self.evaluate_term(lhs.clone(), stop_on_ident)?;
 		let evaluated_rhs = match (operator.0 == Op::ObjectAccess, identifier_from_term(&rhs)) {
-			(true, Some(ident)) => RuntimeValue::Identifier(Identifier(ident)),
+			(true, Some(ident)) => RuntimeValue::Identifier(ident),
 			_ => self.evaluate_term(rhs, stop_on_ident)?
 		};
 
@@ -501,7 +501,7 @@ impl Interpreter {
 			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => Ok(
 				lhs
 					.uv()
-					.get(&rhs.0)
+					.get(&rhs)
 					.unwrap_or(&RuntimeValue::Empty)
 					.to_owned()
 			),
@@ -513,10 +513,10 @@ impl Interpreter {
 					.to_owned()
 			),
 
-			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs.0),
-			(Op::ObjectAccess, Rv::String(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs.0),
-			(Op::ObjectAccess, Rv::Number(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs.0),
-			(Op::ObjectAccess, Rv::List(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs.0),
+			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
+			(Op::ObjectAccess, Rv::String(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
+			(Op::ObjectAccess, Rv::Number(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
+			(Op::ObjectAccess, Rv::List(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
 
 			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.cv()),
 			(Op::ObjectAccess, Rv::String(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.cv()),

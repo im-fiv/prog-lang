@@ -5,7 +5,6 @@ mod list;
 mod object;
 mod function;
 mod intrinsic_function;
-mod identifier;
 mod marker;
 
 pub use boolean::*;
@@ -15,7 +14,6 @@ pub use list::*;
 pub use object::*;
 pub use function::*;
 pub use intrinsic_function::*;
-pub use identifier::*;
 pub use marker::*;
 
 use std::fmt::Display;
@@ -65,9 +63,8 @@ pub enum RuntimeValue {
 
 	Empty,
 
-	// It is of type `Identifier` mainly to avoid `TryInto<String>` conflicts with `String` variant in `Conversion` derive macro
 	#[serde(skip)]
-	Identifier(Identifier),
+	Identifier(String),
 
 	#[serde(skip)]
 	Marker(MarkerKind)
@@ -84,7 +81,6 @@ impl_basic_conv!(from RuntimeList => RuntimeValue as List);
 impl_basic_conv!(from RuntimeObject => RuntimeValue as Object);
 impl_basic_conv!(from RuntimeFunction => RuntimeValue as Function);
 impl_basic_conv!(from IntrinsicFunction => RuntimeValue as IntrinsicFunction);
-impl_basic_conv!(from Identifier => RuntimeValue as Identifier);
 impl_basic_conv!(from MarkerKind => RuntimeValue as Marker);
 
 impl From<ast::expressions::Literal> for RuntimeValue {
