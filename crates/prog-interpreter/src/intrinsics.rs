@@ -8,7 +8,12 @@ use crate::arg_parser::{ArgList, Arg, ParsedArg};
 use crate::context::RuntimeContext;
 use crate::errors;
 
-fn print_function(_this: Option<Box<RuntimeValue>>, context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, _call_site: CallSite) -> Result<RuntimeValue> {
+fn print_function(
+	_this: Option<Box<RuntimeValue>>,
+	context: &mut RuntimeContext,
+	args: HashMap<String, ParsedArg>,
+	_call_site: CallSite
+) -> Result<RuntimeValue> {
 	let to_print = get_argument!(args => varargs: ...)
 		.into_iter()
 		.map(|arg| format!("{}", arg))
@@ -24,7 +29,12 @@ fn print_function(_this: Option<Box<RuntimeValue>>, context: &mut RuntimeContext
 	Ok(RuntimeValue::Empty)
 }
 
-fn import_function(_this: Option<Box<RuntimeValue>>, context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, call_site: CallSite) -> Result<RuntimeValue> {
+fn import_function(
+	_this: Option<Box<RuntimeValue>>,
+	context: &mut RuntimeContext,
+	args: HashMap<String, ParsedArg>,
+	call_site: CallSite
+) -> Result<RuntimeValue> {
 	if !context.imports_allowed {
 		bail!(errors::InterpretError::new(
 			call_site.source,
@@ -74,7 +84,12 @@ fn import_function(_this: Option<Box<RuntimeValue>>, context: &mut RuntimeContex
 	Ok(result)
 }
 
-fn input_function(_this: Option<Box<RuntimeValue>>, context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, call_site: CallSite) -> Result<RuntimeValue> {
+fn input_function(
+	_this: Option<Box<RuntimeValue>>,
+	context: &mut RuntimeContext,
+	args: HashMap<String, ParsedArg>,
+	call_site: CallSite
+) -> Result<RuntimeValue> {
 	use text_io::read;
 
 	if !context.input_allowed {
@@ -107,7 +122,12 @@ fn input_function(_this: Option<Box<RuntimeValue>>, context: &mut RuntimeContext
 	Ok(RuntimeValue::String(result.into()))
 }
 
-fn raw_print_function(_this: Option<Box<RuntimeValue>>, _context: &mut RuntimeContext, args: HashMap<String, ParsedArg>, _call_site: CallSite) -> Result<RuntimeValue> {
+fn raw_print_function(
+	_this: Option<Box<RuntimeValue>>,
+	_context: &mut RuntimeContext,
+	args: HashMap<String, ParsedArg>,
+	_call_site: CallSite
+) -> Result<RuntimeValue> {
 	use std::io;
 	use std::io::Write;
 	

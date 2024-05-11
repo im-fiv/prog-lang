@@ -11,7 +11,7 @@ use super::{RuntimePrimitive, RuntimeValue, RuntimeValueKind, RuntimeNumber, Cal
 pub struct RuntimeString(pub String);
 
 impl RuntimeString {
-	pub fn sub(
+	fn sub(
 		this: Option<Box<RuntimeValue>>,
 		_context: &mut RuntimeContext,
 		args: HashMap<String, ParsedArg>,
@@ -47,7 +47,7 @@ impl RuntimeString {
 		Ok(RuntimeValue::String(substring.into()))
 	}
 
-	pub fn len(
+	fn len(
 		this: Option<Box<RuntimeValue>>,
 		_context: &mut RuntimeContext,
 		_args: HashMap<String, ParsedArg>,
