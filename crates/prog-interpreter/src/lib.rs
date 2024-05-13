@@ -290,10 +290,10 @@ impl Interpreter {
 			value => return self.create_error(position, InterpretErrorKind::ExpressionNotAssignable(
 				errors::ExpressionNotAssignable(Some(value.kind()))
 			))
-		}.uv();
+		}.owned();
 
 		let index = match self.evaluate_term(lhs.clone(), false)? {
-			RuntimeValue::Number(index) => index.uv() as i64,
+			RuntimeValue::Number(index) => index.owned() as i64,
 			value => return self.create_error(position, InterpretErrorKind::CannotIndexValue(
 				errors::CannotIndexValue {
 					kind: (RuntimeValueKind::List, rhs.position()),
@@ -347,11 +347,11 @@ impl Interpreter {
 			value => return self.create_error(position, InterpretErrorKind::ExpressionNotAssignable(
 				errors::ExpressionNotAssignable(Some(value.kind()))
 			))
-		}.uv();
+		}.owned();
 
 		let entry_name = match self.evaluate_term(rhs.clone(), true)? {
 			RuntimeValue::Identifier(value) => value,
-			RuntimeValue::String(value) => value.uv(),
+			RuntimeValue::String(value) => value.owned(),
 
 			value => return self.create_error(position, InterpretErrorKind::CannotIndexValue(
 				errors::CannotIndexValue {
@@ -397,12 +397,12 @@ impl Interpreter {
 		let evaluated_operand = self.evaluate_term(operand.clone(), stop_on_ident)?;
 
 		match (operator.0, evaluated_operand) {
-			(Op::Minus, Rv::Number(value)) => Ok(Rv::Number((-value.uv()).into())),
+			(Op::Minus, Rv::Number(value)) => Ok(Rv::Number((-value.owned()).into())),
 
-			(Op::Not, Rv::Boolean(value)) => Ok(Rv::Boolean((!value.uv()).into())),
-			(Op::Not, Rv::String(value)) => Ok(Rv::Boolean((value.uv().is_empty()).into())),
-			(Op::Not, Rv::Number(value)) => Ok(Rv::Boolean((value.uv() == 0.0).into())),
-			(Op::Not, Rv::List(value)) => Ok(Rv::Boolean((value.uv().is_empty()).into())),
+			(Op::Not, Rv::Boolean(value)) => Ok(Rv::Boolean((!value.owned()).into())),
+			(Op::Not, Rv::String(value)) => Ok(Rv::Boolean((value.owned().is_empty()).into())),
+			(Op::Not, Rv::Number(value)) => Ok(Rv::Boolean((value.owned() == 0.0).into())),
+			(Op::Not, Rv::List(value)) => Ok(Rv::Boolean((value.owned().is_empty()).into())),
 			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(false.into())),
 			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(false.into())),
 			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(true.into())),
@@ -458,20 +458,20 @@ impl Interpreter {
 		}
 
 		match (operator.0, evaluated_lhs, evaluated_rhs) {
-			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() + rhs.uv()).into())),
-			(Op::Minus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() - rhs.uv()).into())),
-			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() / rhs.uv()).into())),
-			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() * rhs.uv()).into())),
-			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.uv() % rhs.uv()).into())),
-			(Op::Gt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() > rhs.uv()).into())),
-			(Op::Lt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() < rhs.uv()).into())),
-			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() >= rhs.uv()).into())),
-			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.uv() <= rhs.uv()).into())),
+			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.owned() + rhs.owned()).into())),
+			(Op::Minus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.owned() - rhs.owned()).into())),
+			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.owned() / rhs.owned()).into())),
+			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.owned() * rhs.owned()).into())),
+			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number((lhs.owned() % rhs.owned()).into())),
+			(Op::Gt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.owned() > rhs.owned()).into())),
+			(Op::Lt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.owned() < rhs.owned()).into())),
+			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.owned() >= rhs.owned()).into())),
+			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean((lhs.owned() <= rhs.owned()).into())),
 
 			(Op::Plus, Rv::String(lhs), rhs) => Ok(Rv::String(format!("{lhs}{rhs}").into())),
 
-			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.uv() && rhs.uv()).into())),
-			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.uv() || rhs.uv()).into())),
+			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.owned() && rhs.owned()).into())),
+			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs.owned() || rhs.owned()).into())),
 
 			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean((lhs == rhs).into())),
 			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean((lhs == rhs).into())),
@@ -491,8 +491,8 @@ impl Interpreter {
 
 			(Op::ListAccess, Rv::Number(lhs), Rv::List(rhs)) => Ok(
 				rhs
-					.uv()
-					.get(lhs.uv() as usize)
+					.value()
+					.get(lhs.owned() as usize)
 					.unwrap_or(&RuntimeValue::Empty)
 					.to_owned()
 			),
@@ -500,15 +500,15 @@ impl Interpreter {
 			// TODO: implement behavior for when an object has a user-defined function with the same name
 			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => Ok(
 				lhs
-					.uv()
+					.value()
 					.get(&rhs)
 					.unwrap_or(&RuntimeValue::Empty)
 					.to_owned()
 			),
 			(Op::ObjectAccess, Rv::Object(lhs), Rv::String(rhs)) => Ok(
 				lhs
-					.uv()
-					.get(&rhs.uv())
+					.value()
+					.get(&rhs.owned())
 					.unwrap_or(&RuntimeValue::Empty)
 					.to_owned()
 			),
@@ -518,10 +518,10 @@ impl Interpreter {
 			(Op::ObjectAccess, Rv::Number(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
 			(Op::ObjectAccess, Rv::List(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
 
-			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.cv()),
-			(Op::ObjectAccess, Rv::String(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.cv()),
-			(Op::ObjectAccess, Rv::Number(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.cv()),
-			(Op::ObjectAccess, Rv::List(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.cv()),
+			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
+			(Op::ObjectAccess, Rv::String(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
+			(Op::ObjectAccess, Rv::Number(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
+			(Op::ObjectAccess, Rv::List(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
 
 			(Op::EqEq, _, _) => Ok(Rv::Boolean(false.into())),
 			(Op::NotEq, _, _) => Ok(Rv::Boolean(true.into())),

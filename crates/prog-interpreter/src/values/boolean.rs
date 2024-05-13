@@ -9,12 +9,8 @@ pub struct RuntimeBoolean(pub bool);
 impl RuntimePrimitive for RuntimeBoolean {
 	type Inner = bool;
 
-	fn uv(self) -> Self::Inner {
-		self.0
-	}
-
-	fn cv(&self) -> Self::Inner {
-		self.0
+	fn value(&self) -> &Self::Inner {
+		&self.0
 	}
 
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> {

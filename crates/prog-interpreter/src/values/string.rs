@@ -17,11 +17,11 @@ impl RuntimeString {
 		args: HashMap<String, ParsedArg>,
 		_call_site: CallSite
 	) -> Result<RuntimeValue> {
-		let this = get_this!(this => String).uv();
+		let this = get_this!(this => String).owned();
 		
-		let start_index = get_argument!(args => start: RuntimeNumber).uv() as usize;
+		let start_index = get_argument!(args => start: RuntimeNumber).owned() as usize;
 		let end_index = get_argument!(args => end: RuntimeNumber?)
-			.and_then(|value| Some(value.uv() as usize))
+			.and_then(|value| Some(value.owned() as usize))
 			.unwrap_or(this.len());
 
 		if end_index <= start_index {
@@ -53,20 +53,18 @@ impl RuntimeString {
 		_args: HashMap<String, ParsedArg>,
 		_call_site: CallSite
 	) -> Result<RuntimeValue> {
-		let this = get_this!(this => String).uv();
-		Ok(RuntimeValue::Number(this.len().into()))
+		let this = get_this!(this => String);
+		let len = this.value().len();
+
+		Ok(RuntimeValue::Number(len.into()))
 	}
 }
 
 impl RuntimePrimitive for RuntimeString {
 	type Inner = String;
 
-	fn uv(self) -> Self::Inner {
-		self.0
-	}
-
-	fn cv(&self) -> Self::Inner {
-		self.0.to_owned()
+	fn value(&self) -> &Self::Inner {
+		&self.0
 	}
 
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> {

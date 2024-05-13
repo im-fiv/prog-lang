@@ -9,12 +9,8 @@ pub struct RuntimeObject(pub HashMap<String, RuntimeValue>);
 impl RuntimePrimitive for RuntimeObject {
 	type Inner = HashMap<String, RuntimeValue>;
 
-	fn uv(self) -> Self::Inner {
-		self.0
-	}
-
-	fn cv(&self) -> Self::Inner {
-		self.0.to_owned()
+	fn value(&self) -> &Self::Inner {
+		&self.0
 	}
 
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> {

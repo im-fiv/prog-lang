@@ -26,13 +26,15 @@ use prog_utils::impl_basic_conv;
 use prog_macros::{VariantUnwrap, EnumKind};
 
 pub trait RuntimePrimitive {
-	type Inner;
+	type Inner: Clone;
 
-	/// Unwraps inner value of the primitive, consuming it
-	fn uv(self) -> Self::Inner;
+	/// Gets the inner value of the primitive
+	fn value(&self) -> &Self::Inner;
 
-	/// Unwraps inner value of the primitive without consuming it
-	fn cv(&self) -> Self::Inner;
+	/// Clones the inner value of the primitive
+	fn owned(&self) -> Self::Inner {
+		self.value().to_owned()
+	}
 
 	/// Returns an associated function dispatch map for the type
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction>;

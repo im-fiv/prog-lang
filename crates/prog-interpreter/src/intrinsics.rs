@@ -47,7 +47,7 @@ fn import_function(
 		));
 	}
 
-	let path_str = get_argument!(args => path: RuntimeString).uv();
+	let path_str = get_argument!(args => path: RuntimeString).owned();
 
 	let mut path = std::path::Path::new(&path_str).to_path_buf();
 
@@ -105,7 +105,7 @@ fn input_function(
 	}
 
 	let message = get_argument!(args => message: RuntimeString?)
-		.and_then(|arg| Some(arg.uv()));
+		.and_then(|arg| Some(arg.owned()));
 
 	if let Some(message) = message {
 		print!("{}", &message[..]);
