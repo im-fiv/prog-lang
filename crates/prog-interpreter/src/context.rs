@@ -2,6 +2,7 @@ use anyhow::{Result, bail};
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::cell::RefCell;
 
 use crate::RuntimeValue;
 
@@ -17,7 +18,7 @@ pub struct RuntimeContext {
 	pub input_allowed: bool,
 
 	pub value_table: HashMap<String, RuntimeValue>,
-	temp_table: Vec<HashMap<String, RuntimeValue>>
+	temp_table: HashMap<usize, RefCell<HashMap<String, RuntimeValue>>>
 }
 
 impl Default for RuntimeContext {
@@ -39,27 +40,35 @@ impl RuntimeContext {
 			input_allowed: true,
 
 			value_table: super::intrinsics::create_value_table(),
-			temp_table: vec![HashMap::new()]
+			temp_table: HashMap::from([
+				(0, RefCell::new(HashMap::new()))
+			])
 		}
 	}
 
 	pub fn deeper(&mut self) -> usize {
 		self.level += 1;
 
-		if self.temp_table.get(self.level).is_none() {
-			self.temp_table.insert(self.level, HashMap::new())
-		}
+		self
+			.temp_table
+			.entry(self.level)
+			.or_insert_with(||
+				RefCell::new(HashMap::new())
+			);
 
 		self.level
 	}
 
 	pub fn shallower(&mut self) -> usize {
 		self.level -= 1;
-		self.temp_table.remove(self.level + 1);
+		self.temp_table.remove(&(self.level + 1));
 
-		if self.temp_table.get(self.level).is_none() {
-			self.temp_table.insert(self.level, HashMap::new())
-		}
+		self
+			.temp_table
+			.entry(self.level)
+			.or_insert_with(||
+				RefCell::new(HashMap::new())
+			);
 
 		self.level
 	}
@@ -73,16 +82,12 @@ impl RuntimeContext {
 	}
 
 	pub fn key_temp(&self, key: &String) -> bool {
-		let mut reversed_temp_table = self.temp_table.clone();
-		reversed_temp_table.reverse();
-
-		for map in reversed_temp_table {
-			if map.contains_key(key) {
-				return true;
-			}
-		}
-
-		false
+		self
+			.temp_table
+			.values()
+			.any(|map|
+				map.borrow().contains_key(key)
+			)
 	}
 
 	pub fn get_value(&self, key: &String) -> Result<RuntimeValue> {
@@ -90,11 +95,16 @@ impl RuntimeContext {
 			bail!("Value with name '{key}' does not exist");
 		}
 
-		let mut reversed_temp_table = self.temp_table.clone();
-		reversed_temp_table.reverse();
+		// Iterating through temp table maps in reverse order
+		for map_index in (0..self.temp_table.len()).rev() {
+			// Getting a reference to the RefCell of the map
+			let map = self
+				.temp_table
+				.get(&map_index)
+				.unwrap_or_else(|| unreachable!("Temp table map at index `{map_index}` does not exist"));
 
-		for map in reversed_temp_table {
-			if let Some(value) = map.get(key) {
+			// Getting the value from it
+			if let Some(value) = map.borrow().get(key) {
 				return Ok(value.to_owned());
 			}
 		}
@@ -106,19 +116,53 @@ impl RuntimeContext {
 		unreachable!()
 	}
 
+	pub fn get_value_mut(&mut self, key: &String) -> Result<&mut RuntimeValue> {
+		if !self.key_real(key) && !self.key_temp(key) {
+			bail!("Value with name '{key}' does not exist");
+		}
+		
+		// Iterating through temp table maps in reverse order
+		for map_index in (0..self.temp_table.len()).rev() {
+			// Getting a mutable reference to the RefCell of the map
+			let map = self
+				.temp_table
+				.get_mut(&map_index)
+				.unwrap_or_else(|| unreachable!("Temp table map at index `{map_index}` does not exist"));
+
+			// Getting a mutable reference to the map itself
+			let mut borrowed_map = map.borrow_mut();
+
+			// Getting the value from it
+			if let Some(value) = borrowed_map.get_mut(key) {
+				// Warning: dark magic ahead!
+				// Extending the lifetime of the mutable borrow
+				return Ok(unsafe {
+					&mut *(value as *mut _)
+				});
+			}
+		}
+
+		if let Some(value) = self.value_table.get_mut(key) {
+			return Ok(value);
+		}
+
+		unreachable!()
+	}
+
 	pub fn insert_value(&mut self, key: String, value: RuntimeValue) -> Result<()> {
 		if self.key_real(&key) && self.key_temp(&key) {
 			bail!("Value with name '{key}' already exists");
 		}
 
+		// Determining which table to write to
 		if self.is_temp_write() {
-			let mut map = self.temp_table
-				.get(self.level)
-				.unwrap()
-				.to_owned();
+			// Getting a mutable reference to the RefCell of the map
+			let map = self
+				.temp_table
+				.get_mut(&self.level)
+				.unwrap_or_else(|| unreachable!("Temp table map at index `{}` does not exist", self.level));
 
-			map.insert(key, value);
-			self.temp_table[self.level] = map;
+			map.borrow_mut().insert(key, value);
 		} else {
 			self.value_table.insert(key, value);
 		}
@@ -131,16 +175,23 @@ impl RuntimeContext {
 			bail!("Value with name '{key}' does not exist");
 		}
 
-		Ok(if self.is_temp_write() && self.key_temp(&key) {
-			let mut reversed_temp_table = self.temp_table.clone();
-			reversed_temp_table.reverse();
+		// Determining which table to write to
+		let old_value = if self.is_temp_write() && self.key_temp(&key) {
+			// Iterating through temp table maps in reverse order
+			for map_index in (0..self.temp_table.len()).rev() {
+				// Getting a mutable reference to the RefCell of the map
+				let map = self
+					.temp_table
+					.get_mut(&map_index)
+					.unwrap_or_else(|| unreachable!("Temp table map at index `{map_index}` does not exist"));
 
-			for (index, mut map) in reversed_temp_table.into_iter().enumerate() {
-				if let Entry::Occupied(mut e) = map.entry(key.clone()) {
+				// Getting a mutable reference to the map itself
+				let mut borrowed_map = map.borrow_mut();
+
+				// Getting an entry from the mutable map reference
+				if let Entry::Occupied(mut e) = borrowed_map.entry(key.clone()) {
+					// Updating the entry
 					let result = Ok(e.insert(value));
-
-					let target_index = self.temp_table.len() - 1 - index;
-					self.temp_table[target_index] = map;
 
 					return result;
 				}
@@ -149,6 +200,8 @@ impl RuntimeContext {
 			None
 		} else {
 			self.value_table.insert(key, value)
-		}.unwrap_or(RuntimeValue::Empty))
+		};
+
+		Ok(old_value.unwrap_or(RuntimeValue::Empty))
 	}
 }

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::cell::RefCell;
 use anyhow::{Result, bail};
 
 use prog_macros::get_argument;
@@ -47,7 +48,9 @@ fn import_function(
 		));
 	}
 
-	let path_str = get_argument!(args => path: RuntimeString).owned();
+	let path_str = get_argument!(args => path: RefCell<RuntimeString>)
+		.borrow()
+		.owned();
 
 	let mut path = std::path::Path::new(&path_str).to_path_buf();
 
@@ -104,8 +107,10 @@ fn input_function(
 		));
 	}
 
-	let message = get_argument!(args => message: RuntimeString?)
-		.and_then(|arg| Some(arg.owned()));
+	let message = get_argument!(args => message: RefCell<RuntimeString>?)
+		.and_then(|arg| Some(
+			arg.borrow().owned()
+		));
 
 	if let Some(message) = message {
 		print!("{}", &message[..]);
@@ -119,7 +124,9 @@ fn input_function(
 
 	context.stdin.push_str(&format!("{result}\n")[..]);
 
-	Ok(RuntimeValue::String(result.into()))
+	Ok(RuntimeValue::String(
+		RuntimeString::from(result).into()
+	))
 }
 
 fn raw_print_function(
@@ -131,7 +138,10 @@ fn raw_print_function(
 	use std::io;
 	use std::io::Write;
 	
-	let to_print = get_argument!(args => string: RuntimeString);
+	let to_print = get_argument!(args => string: RefCell<RuntimeString>)
+		.borrow()
+		.owned();
+
 	print!("{to_print}");
 	io::stdout().flush().unwrap();
 

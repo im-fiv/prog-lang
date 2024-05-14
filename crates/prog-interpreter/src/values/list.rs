@@ -5,7 +5,7 @@ use prog_macros::get_this;
 
 use crate::arg_parser::{ArgList, ParsedArg};
 use crate::RuntimeContext;
-use super::{RuntimePrimitive, RuntimeValue, IntrinsicFunction, CallSite};
+use super::{RuntimePrimitive, RuntimeValue, RuntimeNumber, IntrinsicFunction, CallSite};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeList(pub Vec<RuntimeValue>);
@@ -18,9 +18,14 @@ impl RuntimeList {
 		_call_site: CallSite
 	) -> Result<RuntimeValue> {
 		let this = get_this!(this => List);
-		let len = this.value().len();
+		let len = this
+			.borrow()
+			.value()
+			.len();
 
-		Ok(RuntimeValue::Number(len.into()))
+		Ok(RuntimeValue::Number(
+			RuntimeNumber::from(len).into()
+		))
 	}
 }
 

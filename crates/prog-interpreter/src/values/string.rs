@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::cell::RefCell;
 use anyhow::Result;
 use prog_macros::{get_argument, get_this};
 
 use crate::arg_parser::{ArgList, ParsedArg, Arg};
 use crate::RuntimeContext;
-use super::{RuntimePrimitive, RuntimeValue, RuntimeValueKind, RuntimeNumber, CallSite, IntrinsicFunction};
+use super::{RuntimePrimitive, RuntimeValue, RuntimeValueKind, RuntimeNumber, IntrinsicFunction, CallSite};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeString(pub String);
@@ -17,34 +18,49 @@ impl RuntimeString {
 		args: HashMap<String, ParsedArg>,
 		_call_site: CallSite
 	) -> Result<RuntimeValue> {
-		let this = get_this!(this => String).owned();
+		let this = get_this!(this => String)
+			.borrow()
+			.owned();
+
+		let this_len = this.len();
 		
-		let start_index = get_argument!(args => start: RuntimeNumber).owned() as usize;
-		let end_index = get_argument!(args => end: RuntimeNumber?)
-			.and_then(|value| Some(value.owned() as usize))
-			.unwrap_or(this.len());
+		let start_index = get_argument!(args => start: RefCell<RuntimeNumber>)
+			.borrow()
+			.owned()
+			as usize;
+
+		let end_index = get_argument!(args => end: RefCell<RuntimeNumber>?)
+			.and_then(|value| Some(value
+				.borrow()
+				.owned()
+				as usize
+			))
+			.unwrap_or(this_len);
 
 		if end_index <= start_index {
-			return Ok(RuntimeValue::String("".into()));
+			return Ok(RuntimeValue::String(
+				Self::from("").into()
+			));
 		}
 
 		let mut indices = this.char_indices();
 		let unwrap_index = |(index, _)| index;
-		let string_len = this.len();
 
 		let start = indices
 			.nth(start_index)
-			.map_or(string_len, &unwrap_index);
+			.map_or(this_len, unwrap_index);
 
 		let end = indices
 			.nth(end_index - start_index - 1)
-			.map_or(string_len, &unwrap_index);
+			.map_or(this_len, unwrap_index);
 
 		let substring = unsafe {
 			this.get_unchecked(start..end)
 		};
 
-		Ok(RuntimeValue::String(substring.into()))
+		Ok(RuntimeValue::String(
+			Self::from(substring).into()
+		))
 	}
 
 	fn len(
@@ -54,9 +70,14 @@ impl RuntimeString {
 		_call_site: CallSite
 	) -> Result<RuntimeValue> {
 		let this = get_this!(this => String);
-		let len = this.value().len();
+		let len = this
+			.borrow()
+			.value()
+			.len();
 
-		Ok(RuntimeValue::Number(len.into()))
+		Ok(RuntimeValue::Number(
+			RuntimeNumber::from(len).into()
+		))
 	}
 }
 

@@ -39,11 +39,11 @@ impl IntrinsicFunction {
 
 	pub fn call(
 		&self,
-		mut context: &mut RuntimeContext,
+		context: &mut RuntimeContext,
 		args: HashMap<String, ParsedArg>,
 		call_site: CallSite
 	) -> Result<RuntimeValue> {
-		(self.pointer)(self.this.to_owned(), &mut context, args, call_site)
+		(self.pointer)(self.this.to_owned(), context, args, call_site)
 	}
 }
 

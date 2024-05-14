@@ -30,9 +30,7 @@ impl AriadneCompatible for FieldDoesntExist {
 				.with_order(0),
 			
 			Label::new((file, position))
-				.with_message(format!(
-					"this object"
-				))
+				.with_message(String::from("this object"))
 				.with_color(color_object)
 				.with_order(1),
 		]
