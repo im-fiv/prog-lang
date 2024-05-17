@@ -80,7 +80,7 @@ pub(crate) fn expand_variadic(input: GetArgumentInput) -> pm2::TokenStream {
 		parsed_arg.map(|parsed_arg| if let ParsedArg::Variadic(var_args) = parsed_arg.to_owned() {
 			var_args
 		} else {
-			::std::unreachable!("Argument `{}` is not a regular argument", arg_name)
+			::std::unreachable!("Argument `{}` is not a variadic argument", arg_name)
 		}).unwrap_or_else(|| ::std::unreachable!("Argument `{}` does not exist", ::std::stringify!(arg_name)))
 	}}
 }
