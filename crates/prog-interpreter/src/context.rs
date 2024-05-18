@@ -17,8 +17,8 @@ pub struct RuntimeContext {
 	pub imports_allowed: bool,
 	pub input_allowed: bool,
 
-	pub value_table: HashMap<String, RuntimeValue>,
-	temp_table: HashMap<usize, RefCell<HashMap<String, RuntimeValue>>>
+	pub global_table: HashMap<String, RuntimeValue>,
+	sub_table: HashMap<usize, RefCell<HashMap<String, RuntimeValue>>>
 }
 
 impl Default for RuntimeContext {
@@ -29,6 +29,13 @@ impl Default for RuntimeContext {
 
 impl RuntimeContext {
 	pub fn new() -> Self {
+		let mut this = Self::new_clean();
+		this.global_table = super::intrinsics::create_value_table();
+
+		this
+	}
+
+	pub fn new_clean() -> Self {
 		Self {
 			level: 0,
 
@@ -39,8 +46,8 @@ impl RuntimeContext {
 			imports_allowed: true,
 			input_allowed: true,
 
-			value_table: super::intrinsics::create_value_table(),
-			temp_table: HashMap::from([
+			global_table: HashMap::new(),
+			sub_table: HashMap::from([
 				(0, RefCell::new(HashMap::new()))
 			])
 		}
@@ -50,7 +57,7 @@ impl RuntimeContext {
 		self.level += 1;
 
 		self
-			.temp_table
+			.sub_table
 			.entry(self.level)
 			.or_insert_with(||
 				RefCell::new(HashMap::new())
@@ -60,11 +67,16 @@ impl RuntimeContext {
 	}
 
 	pub fn shallower(&mut self) -> usize {
+		if !self.is_subcontext() {
+			eprintln!("Warning: `shallower` was called while not in any subcontext (`level` < 1)");
+			return self.level;
+		}
+
 		self.level -= 1;
-		self.temp_table.remove(&(self.level + 1));
+		self.sub_table.remove(&(self.level + 1));
 
 		self
-			.temp_table
+			.sub_table
 			.entry(self.level)
 			.or_insert_with(||
 				RefCell::new(HashMap::new())
@@ -73,17 +85,17 @@ impl RuntimeContext {
 		self.level
 	}
 
-	pub fn is_temp_write(&self) -> bool {
+	pub fn is_subcontext(&self) -> bool {
 		self.level > 0
 	}
 
-	pub fn key_real(&self, key: &String) -> bool {
-		self.value_table.contains_key(key)
+	fn key_in_global(&self, key: &String) -> bool {
+		self.global_table.contains_key(key)
 	}
 
-	pub fn key_temp(&self, key: &String) -> bool {
+	fn key_in_subctx(&self, key: &String) -> bool {
 		self
-			.temp_table
+			.sub_table
 			.values()
 			.any(|map|
 				map.borrow().contains_key(key)
@@ -91,17 +103,17 @@ impl RuntimeContext {
 	}
 
 	pub fn get_value(&self, key: &String) -> Result<RuntimeValue> {
-		if !self.key_real(key) && !self.key_temp(key) {
-			bail!("Value with name '{key}' does not exist");
+		if !self.key_in_global(key) && !self.key_in_subctx(key) {
+			bail!("Value with name `{key}` does not exist");
 		}
 
 		// Iterating through temp table maps in reverse order
-		for map_index in (0..self.temp_table.len()).rev() {
+		for map_index in (0..self.sub_table.len()).rev() {
 			// Getting a reference to the RefCell of the map
 			let map = self
-				.temp_table
+				.sub_table
 				.get(&map_index)
-				.unwrap_or_else(|| unreachable!("Temp table map at index `{map_index}` does not exist"));
+				.unwrap_or_else(|| unreachable!("Subcontext in map at index `{map_index}` does not exist"));
 
 			// Getting the value from it
 			if let Some(value) = map.borrow().get(key) {
@@ -109,7 +121,7 @@ impl RuntimeContext {
 			}
 		}
 
-		if let Some(value) = self.value_table.get(key) {
+		if let Some(value) = self.global_table.get(key) {
 			return Ok(value.to_owned());
 		}
 
@@ -117,17 +129,17 @@ impl RuntimeContext {
 	}
 
 	pub fn get_value_mut(&mut self, key: &String) -> Result<&mut RuntimeValue> {
-		if !self.key_real(key) && !self.key_temp(key) {
+		if !self.key_in_global(key) && !self.key_in_subctx(key) {
 			bail!("Value with name '{key}' does not exist");
 		}
 		
 		// Iterating through temp table maps in reverse order
-		for map_index in (0..self.temp_table.len()).rev() {
+		for map_index in (0..self.sub_table.len()).rev() {
 			// Getting a mutable reference to the RefCell of the map
 			let map = self
-				.temp_table
+				.sub_table
 				.get_mut(&map_index)
-				.unwrap_or_else(|| unreachable!("Temp table map at index `{map_index}` does not exist"));
+				.unwrap_or_else(|| unreachable!("Subcontext in map at index `{map_index}` does not exist"));
 
 			// Getting a mutable reference to the map itself
 			let mut borrowed_map = map.borrow_mut();
@@ -142,7 +154,7 @@ impl RuntimeContext {
 			}
 		}
 
-		if let Some(value) = self.value_table.get_mut(key) {
+		if let Some(value) = self.global_table.get_mut(key) {
 			return Ok(value);
 		}
 
@@ -150,40 +162,40 @@ impl RuntimeContext {
 	}
 
 	pub fn insert_value(&mut self, key: String, value: RuntimeValue) -> Result<()> {
-		if self.key_real(&key) && self.key_temp(&key) {
-			bail!("Value with name '{key}' already exists");
+		if self.key_in_global(&key) && self.key_in_subctx(&key) {
+			bail!("Value with name `{key}` already exists");
 		}
 
 		// Determining which table to write to
-		if self.is_temp_write() {
+		if self.is_subcontext() {
 			// Getting a mutable reference to the RefCell of the map
 			let map = self
-				.temp_table
+				.sub_table
 				.get_mut(&self.level)
-				.unwrap_or_else(|| unreachable!("Temp table map at index `{}` does not exist", self.level));
+				.unwrap_or_else(|| unreachable!("Subcontext in map at index `{}` does not exist", self.level));
 
 			map.borrow_mut().insert(key, value);
 		} else {
-			self.value_table.insert(key, value);
+			self.global_table.insert(key, value);
 		}
 
 		Ok(())
 	}
 
 	pub fn update_value(&mut self, key: String, value: RuntimeValue) -> Result<RuntimeValue> {
-		if !self.key_real(&key) && !self.key_temp(&key) {
-			bail!("Value with name '{key}' does not exist");
+		if !self.key_in_global(&key) && !self.key_in_subctx(&key) {
+			bail!("Value with name `{key}` does not exist");
 		}
 
 		// Determining which table to write to
-		let old_value = if self.is_temp_write() && self.key_temp(&key) {
+		let old_value = if self.is_subcontext() && self.key_in_subctx(&key) {
 			// Iterating through temp table maps in reverse order
-			for map_index in (0..self.temp_table.len()).rev() {
+			for map_index in (0..self.sub_table.len()).rev() {
 				// Getting a mutable reference to the RefCell of the map
 				let map = self
-					.temp_table
+					.sub_table
 					.get_mut(&map_index)
-					.unwrap_or_else(|| unreachable!("Temp table map at index `{map_index}` does not exist"));
+					.unwrap_or_else(|| unreachable!("Subcontext in map at index `{map_index}` does not exist"));
 
 				// Getting a mutable reference to the map itself
 				let mut borrowed_map = map.borrow_mut();
@@ -199,7 +211,7 @@ impl RuntimeContext {
 
 			None
 		} else {
-			self.value_table.insert(key, value)
+			self.global_table.insert(key, value)
 		};
 
 		Ok(old_value.unwrap_or(RuntimeValue::Empty))
