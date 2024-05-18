@@ -3,7 +3,6 @@ use pest::iterators::Pair;
 use super::expressions;
 use super::Rule;
 
-// TODO: check if any of the expected rules are `term` and perform `is_term` check on them instead
 macro_rules! assert_rule {
 	($var:ident == $rule:ident $(| $rest:ident)* in $main_pair:expr) => {
 		if !matches!($var.as_rule(), Rule::$rule $(| Rule::$rest)*) {
