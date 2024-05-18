@@ -117,7 +117,7 @@ fn getting_arguments() {
 
 #[test]
 #[should_panic]
-fn getting_non_existing_arguments() {
+fn getting_nonexistent_arguments() {
 	let arg_list = ArgList::new(vec![
 		Arg::Required("arg1", RuntimeValueKind::Boolean)
 	]);
