@@ -11,6 +11,7 @@ use super::{RuntimePrimitive, RuntimeValue, IntrinsicFunction, CallSite};
 pub struct RuntimeBoolean(pub bool);
 
 impl RuntimeBoolean {
+	// TODO: this is here just to test the OOP-style mutability for values
 	fn invert(
 		this: Option<Box<RuntimeValue>>,
 		_context: &mut RuntimeContext,
