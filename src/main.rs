@@ -71,9 +71,9 @@ fn execute_serve_command(args: cli::ServeCommand) {
 		};
 
 		let mut interpreter = Interpreter::new(req_body, String::from("stdin"));
-		interpreter.context.con_stdout_allowed = false;
-		interpreter.context.imports_allowed = false;
-		interpreter.context.input_allowed = false;
+		interpreter.context.flags.con_stdout_allowed = false;
+		interpreter.context.flags.imports_allowed = false;
+		interpreter.context.flags.inputs_allowed = false;
 
 		let result = match interpreter.execute(ast, false) {
 			Ok(result) => result,

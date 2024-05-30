@@ -23,7 +23,7 @@ fn print_function(
 
 	context.stdout.push_str(&format!("{}\n", to_print)[..]);
 
-	if context.con_stdout_allowed {
+	if context.flags.con_stdout_allowed {
 		println!("{to_print}");
 	}
 
@@ -36,7 +36,7 @@ fn import_function(
 	args: HashMap<String, ParsedArg>,
 	call_site: CallSite
 ) -> Result<RuntimeValue> {
-	if !context.imports_allowed {
+	if !context.flags.imports_allowed {
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
@@ -95,7 +95,7 @@ fn input_function(
 ) -> Result<RuntimeValue> {
 	use text_io::read;
 
-	if !context.input_allowed {
+	if !context.flags.inputs_allowed {
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,

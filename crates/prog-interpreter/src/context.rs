@@ -6,6 +6,23 @@ use std::cell::RefCell;
 
 use crate::RuntimeValue;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RuntimeContextFlags {
+	pub con_stdout_allowed: bool,
+	pub imports_allowed: bool,
+	pub inputs_allowed: bool
+}
+
+impl Default for RuntimeContextFlags {
+	fn default() -> Self {
+		Self {
+			con_stdout_allowed: true,
+			imports_allowed: true,
+			inputs_allowed: true
+		}
+	}
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeContext {
 	pub level: usize,
@@ -13,18 +30,11 @@ pub struct RuntimeContext {
 	pub stdin: String,
 	pub stdout: String,
 
-	pub con_stdout_allowed: bool,
-	pub imports_allowed: bool,
-	pub input_allowed: bool,
+	pub flags: RuntimeContextFlags,
+	pub current_func: Option<Box<crate::values::RuntimeFunction>>,
 
 	pub global_table: HashMap<String, RuntimeValue>,
-	sub_table: HashMap<usize, RefCell<HashMap<String, RuntimeValue>>>
-}
-
-impl Default for RuntimeContext {
-	fn default() -> Self {
-		Self::new()
-	}
+	pub(crate) sub_table: HashMap<usize, RefCell<HashMap<String, RuntimeValue>>>
 }
 
 impl RuntimeContext {
@@ -42,9 +52,8 @@ impl RuntimeContext {
 			stdin: String::new(),
 			stdout: String::new(),
 
-			con_stdout_allowed: true,
-			imports_allowed: true,
-			input_allowed: true,
+			flags: RuntimeContextFlags::default(),
+			current_func: None,
 
 			global_table: HashMap::new(),
 			sub_table: HashMap::from([
@@ -215,5 +224,11 @@ impl RuntimeContext {
 		};
 
 		Ok(old_value.unwrap_or(RuntimeValue::Empty))
+	}
+}
+
+impl Default for RuntimeContext {
+	fn default() -> Self {
+		Self::new_clean()
 	}
 }
