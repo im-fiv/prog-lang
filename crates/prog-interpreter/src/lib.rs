@@ -640,8 +640,6 @@ impl Interpreter {
 	}
 
 	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<RuntimeValue> {
-		use std::iter::zip;
-
 		let call_site = CallSite {
 			source: self.source.clone(),
 			file: self.file.clone(),
@@ -755,8 +753,8 @@ impl Interpreter {
 				self.source = function.source;
 				self.file = function.file;
 
-				for ((arg_name, _), arg_value) in zip(function.ast.arguments, call_arguments) {
-					self.context.insert_value(arg_name.clone(), arg_value)?;
+				for ((arg_name, _), arg_value) in function.ast.arguments.into_iter().zip(call_arguments) {
+					self.context.insert_value(arg_name, arg_value)?;
 				}
 
 				let result = self.execute(ast::Program {
