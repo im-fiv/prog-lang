@@ -31,7 +31,6 @@ pub struct RuntimeContext {
 	pub stdout: String,
 
 	pub flags: RuntimeContextFlags,
-	pub current_func: Option<Box<crate::values::RuntimeFunction>>,
 
 	pub global_table: HashMap<String, RuntimeValue>,
 	pub(crate) sub_table: HashMap<usize, RefCell<HashMap<String, RuntimeValue>>>
@@ -53,7 +52,6 @@ impl RuntimeContext {
 			stdout: String::new(),
 
 			flags: RuntimeContextFlags::default(),
-			current_func: None,
 
 			global_table: HashMap::new(),
 			sub_table: HashMap::from([
