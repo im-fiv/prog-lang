@@ -11,12 +11,12 @@ use context::RuntimeContext;
 use values::{RuntimeFunction, CallSite};
 
 use prog_parser::ast;
-use anyhow::{Result, bail};
+use anyhow::Result;
 
 /// Only to be used inside the interpreter impl
 macro_rules! create_error {
 	($self:expr, $position:expr, $kind:expr) => {
-		bail!(errors::InterpretError::new(
+		anyhow::bail!(errors::InterpretError::new(
 			$self.source.clone(),
 			$self.file.clone(),
 			$position,
