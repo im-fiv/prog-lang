@@ -476,8 +476,8 @@ impl Interpreter {
 		}
 
 		match (operator.0, evaluated_lhs, evaluated_rhs) {
-			(Op::Plus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() + rhs.borrow().owned()).into())),
-			(Op::Minus, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() - rhs.borrow().owned()).into())),
+			(Op::Add, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() + rhs.borrow().owned()).into())),
+			(Op::Subtract, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() - rhs.borrow().owned()).into())),
 			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() / rhs.borrow().owned()).into())),
 			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() * rhs.borrow().owned()).into())),
 			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() % rhs.borrow().owned()).into())),
@@ -486,7 +486,7 @@ impl Interpreter {
 			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs.borrow().owned() >= rhs.borrow().owned()).into())),
 			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs.borrow().owned() <= rhs.borrow().owned()).into())),
 
-			(Op::Plus, Rv::String(lhs), rhs) => Ok(Rv::String(values::RuntimeString::from(format!("{}{}", lhs.borrow(), rhs)).into())),
+			(Op::Add, Rv::String(lhs), rhs) => Ok(Rv::String(values::RuntimeString::from(format!("{}{}", lhs.borrow(), rhs)).into())),
 
 			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs.borrow().owned() && rhs.borrow().owned()).into())),
 			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs.borrow().owned() || rhs.borrow().owned()).into())),

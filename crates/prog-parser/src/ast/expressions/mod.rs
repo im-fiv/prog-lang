@@ -81,8 +81,8 @@ pub mod operators {
 
 	#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 	pub enum BinaryOperator {
-		Plus,
-		Minus,
+		Add,
+		Subtract,
 		Divide,
 		Multiply,
 		Modulo,

@@ -44,7 +44,7 @@ impl operators::BinaryOperator {
 	pub fn get_precedence(&self) -> u8 {
 		match self {
 			Self::EqEq | Self::NotEq | Self::And | Self::Or | Self::Gt | Self::Lt | Self::Gte | Self::Lte => 1,
-			Self::Plus | Self::Minus => 2,
+			Self::Add | Self::Subtract => 2,
 			Self::Multiply | Self::Divide | Self::Modulo => 3,
 			Self::ListAccess | Self::ObjectAccess => 4
 		}
@@ -78,8 +78,8 @@ impl TryFrom<String> for operators::BinaryOperator {
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		match &value[..] {
-			"+" => Ok(Self::Plus),
-			"-" => Ok(Self::Minus),
+			"+" => Ok(Self::Add),
+			"-" => Ok(Self::Subtract),
 			"/" => Ok(Self::Divide),
 			"*" => Ok(Self::Multiply),
 			"%" => Ok(Self::Modulo),
@@ -117,8 +117,8 @@ impl TryFrom<String> for operators::UnaryOperator {
 impl Display for operators::BinaryOperator {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Plus => write!(f, "+"),
-			Self::Minus => write!(f, "-"),
+			Self::Add => write!(f, "+"),
+			Self::Subtract => write!(f, "-"),
 			Self::Divide => write!(f, "/"),
 			Self::Multiply => write!(f, "*"),
 			Self::Modulo => write!(f, "%"),
