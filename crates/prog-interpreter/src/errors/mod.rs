@@ -6,6 +6,7 @@ mod duplicate_object_entry;
 mod expression_not_assignable;
 mod expression_not_callable;
 mod field_doesnt_exist;
+mod function_panicked;
 mod unsupported_binary;
 mod unsupported_statement;
 mod unsupported_unary;
@@ -20,6 +21,7 @@ pub use duplicate_object_entry::*;
 pub use expression_not_assignable::*;
 pub use expression_not_callable::*;
 pub use field_doesnt_exist::*;
+pub use function_panicked::*;
 pub use unsupported_binary::*;
 pub use unsupported_statement::*;
 pub use unsupported_unary::*;
@@ -43,6 +45,7 @@ pub enum InterpretErrorKind {
 	ExpressionNotAssignable(ExpressionNotAssignable),
 	ExpressionNotCallable(ExpressionNotCallable),
 	FieldDoesntExist(FieldDoesntExist),
+	FunctionPanicked(FunctionPanicked),
 	UnsupportedBinary(UnsupportedBinary),
 	UnsupportedStatement(UnsupportedStatement),
 	UnsupportedUnary(UnsupportedUnary),

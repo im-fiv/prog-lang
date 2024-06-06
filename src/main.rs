@@ -45,9 +45,12 @@ fn execute_run_command(args: cli::RunCommand) {
 
 	let mut interpreter = Interpreter::new(contents, args.file_path);
 
-	let result = interpreter.execute(ast, false).unwrap();
+	let result = interpreter.execute(ast, false);
 
-	dbg!(result);
+	match result {
+		Ok(r) => println!("{r}"),
+		Err(e) => eprintln!("{e}")
+	};
 }
 
 fn execute_serve_command(args: cli::ServeCommand) {

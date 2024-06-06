@@ -12,7 +12,7 @@ pub trait AriadneCompatible {
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PrettyError<Kind: Clone + AriadneCompatible + Serialize> {
 	pub file: String,
 	pub source: String,

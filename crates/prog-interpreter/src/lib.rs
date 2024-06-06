@@ -731,9 +731,27 @@ impl Interpreter {
 					self.context.insert_value(arg_name, arg_value)?;
 				}
 
-				let result = self.execute(ast::Program {
+				let exec_result = self.execute(ast::Program {
 					statements: function.ast.statements
 				}, false);
+
+				let result = exec_result.map_err(|err| {
+					// downcast `anyhow` error into `InterpretError`
+					let downcasted = err
+						.downcast::<InterpretError>()
+						.unwrap_or_else(|_| panic!("Function execution returned a non-`InterpretError` error"));
+
+					// print it
+					downcasted.print();
+
+					// replace the original error with a new one
+					anyhow::anyhow!(errors::InterpretError::new(
+						source.clone(),
+						file.clone(),
+						call_site.position,
+						InterpretErrorKind::FunctionPanicked(errors::FunctionPanicked)
+					))
+				});
 
 				self.context.shallower();
 				self.source = source;
