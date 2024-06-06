@@ -52,7 +52,7 @@ pub enum InterpretErrorKind {
 	UnsupportedStatement(UnsupportedStatement),
 	UnsupportedUnary(UnsupportedUnary),
 	ValueAlreadyExists(ValueAlreadyExists),
-	ValueDoesntExist(ValueDoesntExist),
+	ValueDoesntExist(ValueDoesntExist)
 }
 
 impl PrettyErrorKind for InterpretErrorKind {}
