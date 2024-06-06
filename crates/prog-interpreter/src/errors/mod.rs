@@ -1,5 +1,6 @@
 mod argument_count_mismatch;
 mod argument_type_mismatch;
+mod assertion_failed;
 mod cannot_index_value;
 mod context_disallowed;
 mod duplicate_object_entry;
@@ -15,6 +16,7 @@ mod value_doesnt_exist;
 
 pub use argument_count_mismatch::*;
 pub use argument_type_mismatch::*;
+pub use assertion_failed::*;
 pub use cannot_index_value::*;
 pub use context_disallowed::*;
 pub use duplicate_object_entry::*;
@@ -38,6 +40,7 @@ pub type InterpretError = PrettyError<InterpretErrorKind>;
 pub enum InterpretErrorKind {
 	ArgumentCountMismatch(ArgumentCountMismatch),
 	ArgumentTypeMismatch(ArgumentTypeMismatch),
+	AssertionFailed(AssertionFailed),
 	CannotIndexValue(CannotIndexValue),
 	ContextDisallowed(ContextDisallowed),
 	DuplicateObjectEntry(DuplicateObjectEntry),

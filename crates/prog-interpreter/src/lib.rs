@@ -49,27 +49,6 @@ fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
 	}
 }
 
-fn is_value_truthy(rv: &RuntimeValue) -> bool {
-	use RuntimeValue as Rv;
-	
-	match rv {
-		// Values that are inexpensive to clone can be cloned
-		Rv::Boolean(value) => value.owned(),
-		Rv::String(value) => !value.value().is_empty(),
-		Rv::Number(value) => value.owned() != 0.0,
-		Rv::List(value) => !value.value().is_empty(),
-		Rv::Object(value) => !value.value().is_empty(),
-
-		Rv::Function(_) => true,
-		Rv::IntrinsicFunction(..) => true,
-
-		Rv::Empty => false,
-
-		Rv::Identifier(..) => unreachable!("RuntimeValue of kind Identifier"),
-		Rv::Marker(..) => unreachable!("RuntimeValue of kind Marker")
-	}
-}
-
 #[derive(Debug)]
 pub struct Interpreter {
 	pub context: RuntimeContext,
@@ -173,7 +152,7 @@ impl Interpreter {
 	fn execute_while_loop(&mut self, statement: ast::WhileLoop) -> Result<RuntimeValue> {
 		let mut evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
 
-		while is_value_truthy(&evaluated) {
+		while evaluated.is_truthy() {
 			self.context.deeper();
 			let result = self.execute(ast::Program {
 				statements: statement.statements.clone()
@@ -208,7 +187,7 @@ impl Interpreter {
 	fn execute_if(&mut self, statement: ast::If) -> Result<RuntimeValue> {
 		let evaluated = self.evaluate_expression(statement.condition, false)?;
 
-		if is_value_truthy(&evaluated) {
+		if evaluated.is_truthy() {
 			self.context.deeper();
 			let result = self.execute(ast::Program {
 				statements: statement.statements
@@ -225,7 +204,7 @@ impl Interpreter {
 		for branch in statement.elseif_branches {
 			let evaluated = self.evaluate_expression(branch.condition, false)?; 
 
-			if is_value_truthy(&evaluated) {
+			if evaluated.is_truthy() {
 				self.context.deeper();
 				let result = self.execute(ast::Program {
 					statements: branch.statements
@@ -623,27 +602,30 @@ impl Interpreter {
 		let call_site = CallSite {
 			source: self.source.clone(),
 			file: self.file.clone(),
-			position: call.position
+			
+			args_pos: call.arguments.1,
+			func_pos: call.function.position(),
+			whole_pos: call.position
 		};
 
-		let call_arguments_pos = call.arguments.1;
-		let call_arguments = call.arguments.0
+		let call_args_pos = call_site.args_pos.clone();
+		let call_args = call.arguments.0
 			.clone()
 			.into_iter()
 			.map(|arg| self.evaluate_expression(arg, false))
 			.collect::<Result<Vec<_>>>()?;
 
-		let original_expression = *call.function.clone();
-		let function_pos = original_expression.position();
+		let original_expr = *call.function.clone();
+		let function_pos = original_expr.position();
 
-		let function_expression = self.evaluate_expression(*call.function, false)?;
+		let function_expr = self.evaluate_expression(*call.function, false)?;
 
-		if let RuntimeValue::IntrinsicFunction(function) = function_expression {
+		if let RuntimeValue::IntrinsicFunction(function) = function_expr {
 			let convert_error = |e: arg_parser::ArgumentParseError| {
 				match e {
 					arg_parser::ArgumentParseError::CountMismatch { expected, end_boundary, got } => create_error!(
 						self,
-						call_arguments_pos,
+						call_args_pos,
 						InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
 							expected,
 							end_boundary,
@@ -673,20 +655,20 @@ impl Interpreter {
 				}
 			};
 
-			let call_arguments = function
+			let call_args = function
 				.arguments
-				.verify(&call_arguments)
+				.verify(&call_args)
 				.map_err(convert_error)?;
 			
 			self.context.deeper();
-			let result = function.call(&mut self.context, call_arguments, call_site);
+			let result = function.call(&mut self.context, call_args, call_site);
 			self.context.shallower();
 
 			return result;
 		}
 
-		if let RuntimeValue::Function(function) = function_expression {
-			let got_len = call_arguments.len();
+		if let RuntimeValue::Function(function) = function_expr {
+			let got_len = call_args.len();
 			let expected_len = function.ast.arguments.len();
 			
 			if got_len != expected_len {
@@ -707,7 +689,7 @@ impl Interpreter {
 					(first_arg.1.start)..(last_arg.1.end)
 				);
 
-				create_error!(self, call_arguments_pos, InterpretErrorKind::ArgumentCountMismatch(
+				create_error!(self, call_args_pos, InterpretErrorKind::ArgumentCountMismatch(
 					errors::ArgumentCountMismatch {
 						expected: expected_len..expected_len,
 						end_boundary: true,
@@ -727,7 +709,7 @@ impl Interpreter {
 				self.source = function.source;
 				self.file = function.file;
 
-				for ((arg_name, _), arg_value) in function.ast.arguments.into_iter().zip(call_arguments) {
+				for ((arg_name, _), arg_value) in function.ast.arguments.into_iter().zip(call_args) {
 					self.context.insert_value(arg_name, arg_value)?;
 				}
 
@@ -748,7 +730,7 @@ impl Interpreter {
 					anyhow::anyhow!(errors::InterpretError::new(
 						source.clone(),
 						file.clone(),
-						call_site.position,
+						call_site.whole_pos,
 						InterpretErrorKind::FunctionPanicked(errors::FunctionPanicked)
 					))
 				});
@@ -762,9 +744,9 @@ impl Interpreter {
 		} else {
 			create_error!(
 				self,
-				original_expression.position(),
+				original_expr.position(),
 				InterpretErrorKind::ExpressionNotCallable(
-					errors::ExpressionNotCallable(function_expression.kind())
+					errors::ExpressionNotCallable(function_expr.kind())
 				)
 			)
 		}

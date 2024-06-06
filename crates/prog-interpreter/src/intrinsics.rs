@@ -39,7 +39,7 @@ fn import_function(
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
-			call_site.position,
+			call_site.func_pos,
 			errors::InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
 				thing: String::from("imports"),
 				plural: true
@@ -96,7 +96,7 @@ fn input_function(
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
-			call_site.position,
+			call_site.func_pos,
 			errors::InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
 				thing: String::from("user input"),
 				plural: false
@@ -141,6 +141,30 @@ fn raw_print_function(
 	Ok(RuntimeValue::Empty)
 }
 
+fn assert_function(
+	_this: Option<RuntimeValue>,
+	_context: &mut RuntimeContext,
+	args: HashMap<String, ParsedArg>,
+	call_site: CallSite
+) -> Result<RuntimeValue> {
+	let value = get_argument!(args => value: RuntimeValue);
+	let message = get_argument!(args => message: RuntimeString?)
+		.map(|str| str.owned());
+
+	if !value.is_truthy() {
+		bail!(crate::InterpretError::new(
+			call_site.source,
+			call_site.file,
+			call_site.args_pos,
+			errors::InterpretErrorKind::AssertionFailed(
+				errors::AssertionFailed(message)
+			)
+		));
+	}
+
+	Ok(RuntimeValue::Empty)
+}
+
 pub fn create_value_table() -> HashMap<String, RuntimeValue> {
 	let mut map = HashMap::new();
 
@@ -169,6 +193,14 @@ pub fn create_value_table() -> HashMap<String, RuntimeValue> {
 		raw_print_function,
 		ArgList::new(vec![
 			Arg::Optional("string", RuntimeValueKind::String)
+		])
+	).into());
+
+	map.insert(String::from("assert"), IntrinsicFunction::new(
+		assert_function,
+		ArgList::new(vec![
+			Arg::Required("value", RuntimeValueKind::Boolean),
+			Arg::Optional("message", RuntimeValueKind::String)
 		])
 	).into());
 

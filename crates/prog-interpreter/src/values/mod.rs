@@ -106,6 +106,27 @@ fn s_use_display<T: Display + Clone, S: serde::Serializer>(value: &T, serializer
 	serializer.collect_str(&value)
 }
 
+impl RuntimeValue {
+	pub fn is_truthy(&self) -> bool {
+		match self {
+			// Values that are inexpensive to clone can be cloned
+			Self::Boolean(v) => v.owned(),
+			Self::String(v) => !v.value().is_empty(),
+			Self::Number(v) => v.owned() != 0.0,
+			Self::List(v) => !v.value().is_empty(),
+			Self::Object(v) => !v.value().is_empty(),
+	
+			Self::Function(_) => true,
+			Self::IntrinsicFunction(..) => true,
+	
+			Self::Empty => false,
+	
+			Self::Identifier(..) => panic!("RuntimeValue of kind Identifier"),
+			Self::Marker(..) => panic!("RuntimeValue of kind Marker")
+		}
+	}
+}
+
 impl_basic_conv!(from RuntimeBoolean => RuntimeValue as Boolean);
 impl_basic_conv!(from RuntimeString => RuntimeValue as String);
 impl_basic_conv!(from RuntimeNumber => RuntimeValue as Number);

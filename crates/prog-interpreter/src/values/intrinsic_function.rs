@@ -25,7 +25,10 @@ pub type IntrinsicFunctionPtr = fn(
 pub struct CallSite {
 	pub source: String,
 	pub file: String,
-	pub position: ast::Position
+	
+	pub args_pos: ast::Position,
+	pub func_pos: ast::Position,
+	pub whole_pos: ast::Position
 }
 
 impl IntrinsicFunction {
