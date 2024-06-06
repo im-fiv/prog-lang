@@ -3,8 +3,13 @@ name = "prog-utils"
 version = "0.0.0"
 edition = "2021"
 
+[features]
+default = []
+serialize = ["serde", "serde_json"]
+
 [dependencies]
 anyhow = { workspace = true }
 ariadne = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
+
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }

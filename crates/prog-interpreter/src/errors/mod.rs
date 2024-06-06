@@ -28,14 +28,13 @@ pub use unsupported_unary::*;
 pub use value_already_exists::*;
 pub use value_doesnt_exist::*;
 
-use serde::Serialize;
-
 use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 use prog_macros::ImplAriadneCompatible;
 
 pub type InterpretError = PrettyError<InterpretErrorKind>;
 
-#[derive(Debug, Clone, Serialize, ImplAriadneCompatible)]
+#[derive(Debug, Clone, ImplAriadneCompatible)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
 pub enum InterpretErrorKind {
 	ArgumentCountMismatch(ArgumentCountMismatch),
 	ArgumentTypeMismatch(ArgumentTypeMismatch),

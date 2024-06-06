@@ -2,15 +2,12 @@ pub mod cli;
 
 use cli::Cli;
 use prog_parser::Parser as ProgParser;
-use prog_interpreter::{Interpreter, RuntimeValue};
+use prog_interpreter::Interpreter;
 use prog_utils::read_file;
 
-use actix_web::{App, HttpResponse, HttpServer, Responder, post};
-use actix_cors::Cors;
-
-use serde::Serialize;
 use clap::Parser;
 
+#[cfg(feature = "serving")]
 fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
 	let interpret_error = anyhow_error
 		.downcast_ref::<
@@ -53,7 +50,13 @@ fn execute_run_command(args: cli::RunCommand) {
 	};
 }
 
+#[cfg(feature = "serving")]
 fn execute_serve_command(args: cli::ServeCommand) {
+	use actix_web::{App, HttpResponse, HttpServer, Responder, post};
+	use actix_cors::Cors;
+
+	use prog_interpreter::RuntimeValue;
+
 	fn handle_anyhow_error(error: anyhow::Error) -> HttpResponse {
 		let json = match serialize_anyhow(error) {
 			Ok(s) => s,
@@ -83,7 +86,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 			Err(error) => return handle_anyhow_error(error)
 		};
 
-		#[derive(Debug, Serialize)]
+		#[derive(Debug, serde::Serialize)]
 		struct Result {
 			value: RuntimeValue,
 			stdin: String,
@@ -127,6 +130,7 @@ fn main() {
 
 	match args.subcommand {
 		cli::CLISubcommand::Run(command) => execute_run_command(command),
+		#[cfg(feature = "serving")]
 		cli::CLISubcommand::Serve(command) => execute_serve_command(command)
 	}
 }

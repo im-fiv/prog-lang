@@ -1,11 +1,12 @@
 use ariadne::{ColorGenerator, Label, Fmt};
-use serde::Serialize;
 
 use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
 use prog_parser::ast::expressions::operators::BinaryOperator;
+
 use crate::RuntimeValueKind;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
 pub struct UnsupportedBinary {
 	pub lhs: (RuntimeValueKind, Position),
 	pub operator: (BinaryOperator, Position),

@@ -1,5 +1,4 @@
 use ariadne::{Label, Report, ReportKind, Source};
-use serde::Serialize;
 
 use std::fmt;
 use std::io;
@@ -7,7 +6,10 @@ use std::io;
 pub type Position = std::ops::Range<usize>;
 pub type Span<'a> = (&'a str, Position);
 
-pub trait PrettyErrorKind: Clone + AriadneCompatible + Serialize {}
+#[cfg(feature = "serialize")]
+pub trait PrettyErrorKind: Clone + AriadneCompatible + serde::Serialize {}
+#[cfg(not(feature = "serialize"))]
+pub trait PrettyErrorKind: Clone + AriadneCompatible {}
 
 pub trait AriadneCompatible {
 	fn message(&self) -> String;
@@ -76,7 +78,8 @@ impl<Kind: PrettyErrorKind> fmt::Display for PrettyError<Kind> {
 	}
 }
 
-impl<Kind: PrettyErrorKind> Serialize for PrettyError<Kind> {
+#[cfg(feature = "serialize")]
+impl<Kind: PrettyErrorKind> serde::Serialize for PrettyError<Kind> {
 	fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		use serde::ser::SerializeStruct;
 

@@ -3,11 +3,16 @@ name = "prog-interpreter"
 version = "0.0.0"
 edition = "2021"
 
+[features]
+default = []
+serialize = ["serde"]
+
 [dependencies]
 text_io = "0.1.12"
-serde = { workspace = true }
 anyhow = { workspace = true }
 ariadne = { workspace = true }
 prog-parser = { workspace = true }
 prog-utils = { workspace = true }
 prog-macros = { workspace = true }
+
+serde = { workspace = true, optional = true }

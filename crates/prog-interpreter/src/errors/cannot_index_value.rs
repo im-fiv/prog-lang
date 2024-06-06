@@ -1,10 +1,10 @@
 use ariadne::{ColorGenerator, Label, Fmt};
-use serde::Serialize;
-
 use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
+
 use crate::RuntimeValueKind;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
 pub struct CannotIndexValue {
 	pub kind: (RuntimeValueKind, Position),
 	pub expected_index_kind: RuntimeValueKind,

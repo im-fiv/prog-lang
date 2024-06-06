@@ -1,10 +1,10 @@
 use ariadne::{ColorGenerator, Label, Fmt};
-use serde::Serialize;
 use std::ops::Range;
 
 use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
 pub struct ArgumentCountMismatch {
 	pub expected: Range<usize>,
 	pub end_boundary: bool,

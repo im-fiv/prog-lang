@@ -1,9 +1,8 @@
 use ariadne::{ColorGenerator, Label};
-use serde::Serialize;
-
 use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
 pub struct ExpectedRules(
 	pub Vec<crate::Rule>
 );
@@ -34,7 +33,8 @@ impl AriadneCompatible for ExpectedRules {
 	}
 }
 
-impl Serialize for crate::Rule {
+#[cfg(feature = "serialize")]
+impl serde::Serialize for crate::Rule {
 	fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		serializer.serialize_str(&format!("{:?}", self))
 	}

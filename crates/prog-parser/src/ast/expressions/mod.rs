@@ -77,9 +77,8 @@ pub enum Literal {
 }
 
 pub mod operators {
-	use serde::Serialize;
-
-	#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+	#[derive(Debug, Clone, Copy, PartialEq)]
+	#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
 	pub enum BinaryOperator {
 		Add,
 		Subtract,
@@ -98,7 +97,8 @@ pub mod operators {
 		ObjectAccess
 	}
 
-	#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+	#[derive(Debug, Clone, Copy, PartialEq)]
+	#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
 	pub enum UnaryOperator {
 		Minus,
 		Not

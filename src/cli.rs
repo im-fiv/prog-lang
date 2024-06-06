@@ -16,6 +16,7 @@ pub enum CLISubcommand {
 	/// Interpret a file
 	Run(RunCommand),
 
+	#[cfg(feature = "serving")]
 	/// Launch REST server
 	Serve(ServeCommand)
 }

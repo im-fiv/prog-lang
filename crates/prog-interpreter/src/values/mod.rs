@@ -19,11 +19,12 @@ pub use marker::*;
 use std::fmt::Display;
 use std::collections::HashMap;
 
-use serde::Serialize;
-
 use prog_parser::ast;
 use prog_utils::impl_basic_conv;
 use prog_macros::{VariantUnwrap, EnumKind};
+
+#[cfg(feature = "serialize")]
+use serde::Serialize;
 
 pub trait RuntimePrimitive {
 	type Inner: Clone;
@@ -40,38 +41,67 @@ pub trait RuntimePrimitive {
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction>;
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, VariantUnwrap, EnumKind)]
+#[derive(Debug, Clone, PartialEq, VariantUnwrap, EnumKind)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
 pub enum RuntimeValue {
-	#[serde(serialize_with = "s_use_display")]
+	#[cfg_attr(
+		feature = "serialize",
+		serde(serialize_with = "s_use_display")
+	)]
 	Boolean(RuntimeBoolean),
 
-	#[serde(serialize_with = "s_use_display")]
+	#[cfg_attr(
+		feature = "serialize",
+		serde(serialize_with = "s_use_display")
+	)]
 	String(RuntimeString),
 
-	#[serde(serialize_with = "s_use_display")]
+	#[cfg_attr(
+		feature = "serialize",
+		serde(serialize_with = "s_use_display")
+	)]
 	Number(RuntimeNumber),
 
-	#[serde(serialize_with = "s_use_display")]
+	#[cfg_attr(
+		feature = "serialize",
+		serde(serialize_with = "s_use_display")
+	)]
 	List(RuntimeList),
 
-	#[serde(serialize_with = "s_use_display")]
+	#[cfg_attr(
+		feature = "serialize",
+		serde(serialize_with = "s_use_display")
+	)]
 	Object(RuntimeObject),
 
-	#[serde(serialize_with = "s_use_display")]
+	#[cfg_attr(
+		feature = "serialize",
+		serde(serialize_with = "s_use_display")
+	)]
 	Function(RuntimeFunction),
 	
-	#[serde(serialize_with = "s_use_display")]
+	#[cfg_attr(
+		feature = "serialize",
+		serde(serialize_with = "s_use_display")
+	)]
 	IntrinsicFunction(IntrinsicFunction),
 
 	Empty,
 
-	#[serde(skip)]
+	#[cfg_attr(
+		feature = "serialize",
+		serde(skip)
+	)]
 	Identifier(String),
 
-	#[serde(skip)]
+	#[cfg_attr(
+		feature = "serialize",
+		serde(skip)
+	)]
 	Marker(MarkerKind)
 }
 
+#[cfg(feature = "serialize")]
 fn s_use_display<T: Display + Clone, S: serde::Serializer>(value: &T, serializer: S) -> std::result::Result<S::Ok, S::Error> {
 	serializer.collect_str(&value)
 }

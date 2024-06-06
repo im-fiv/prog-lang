@@ -1,9 +1,8 @@
 use ariadne::{ColorGenerator, Label};
-use serde::Serialize;
-
 use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
 pub struct FunctionPanicked;
 
 impl AriadneCompatible for FunctionPanicked {

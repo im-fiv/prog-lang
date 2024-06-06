@@ -1,11 +1,12 @@
 use ariadne::{ColorGenerator, Label, Fmt};
-use serde::Serialize;
 
 use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
 use prog_parser::ast::expressions::operators::UnaryOperator;
+
 use crate::RuntimeValueKind;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
 pub struct UnsupportedUnary {
 	pub operator: (UnaryOperator, Position),
 	pub operand: (RuntimeValueKind, Position)
