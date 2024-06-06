@@ -10,7 +10,7 @@ export default {
 	],
 
 	intrinsics: [
-		'print', 'import', 'input', 'raw_print'
+		'print', 'import', 'input', 'raw_print', 'assert'
 	],
 
 	operators: [

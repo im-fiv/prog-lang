@@ -39,7 +39,7 @@
 			"name": "constant.language.prog-lang"
 		},
 		{
-			"match": "\\b(print|import|input|raw_print)\\b",
+			"match": "\\b(print|import|input|raw_print|assert)\\b",
 			"name": "entity.name.function.prog-lang"
 		}
 	],
