@@ -3,7 +3,7 @@ pub use expected_rules::ExpectedRules;
 
 use serde::Serialize;
 
-use prog_utils::pretty_errors::PrettyError;
+use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 use prog_macros::ImplAriadneCompatible;
 
 pub type ParseError = PrettyError<ParseErrorKind>;
@@ -12,3 +12,5 @@ pub type ParseError = PrettyError<ParseErrorKind>;
 pub enum ParseErrorKind {
 	ExpectedRules(ExpectedRules)
 }
+
+impl PrettyErrorKind for ParseErrorKind {}

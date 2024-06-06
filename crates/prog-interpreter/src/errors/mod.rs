@@ -30,7 +30,7 @@ pub use value_doesnt_exist::*;
 
 use serde::Serialize;
 
-use prog_utils::pretty_errors::PrettyError;
+use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 use prog_macros::ImplAriadneCompatible;
 
 pub type InterpretError = PrettyError<InterpretErrorKind>;
@@ -52,3 +52,5 @@ pub enum InterpretErrorKind {
 	ValueAlreadyExists(ValueAlreadyExists),
 	ValueDoesntExist(ValueDoesntExist),
 }
+
+impl PrettyErrorKind for InterpretErrorKind {}

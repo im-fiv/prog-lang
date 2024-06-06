@@ -7,6 +7,8 @@ use std::io;
 pub type Position = std::ops::Range<usize>;
 pub type Span<'a> = (&'a str, Position);
 
+pub trait PrettyErrorKind: Clone + AriadneCompatible + Serialize {}
+
 pub trait AriadneCompatible {
 	fn message(&self) -> String;
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>>;
@@ -20,7 +22,7 @@ pub struct PrettyError<Kind: Clone + AriadneCompatible + Serialize> {
 	pub kind: Kind
 }
 
-impl<Kind: Clone + AriadneCompatible + Serialize> PrettyError<Kind> {
+impl<Kind: PrettyErrorKind> PrettyError<Kind> {
 	pub fn new(source: String, file: String, position: Position, kind: Kind) -> Self {
 		Self { source, file, position, kind }
 	}
@@ -56,7 +58,7 @@ impl<Kind: Clone + AriadneCompatible + Serialize> PrettyError<Kind> {
 	}
 }
 
-impl<Kind: Clone + AriadneCompatible + Serialize> fmt::Display for PrettyError<Kind> {
+impl<Kind: PrettyErrorKind> fmt::Display for PrettyError<Kind> {
 	fn fmt<'fmtref>(&self, f: &'fmtref mut fmt::Formatter<'_>) -> fmt::Result {
 		use io::Write;
 
@@ -74,7 +76,7 @@ impl<Kind: Clone + AriadneCompatible + Serialize> fmt::Display for PrettyError<K
 	}
 }
 
-impl<Kind: Clone + AriadneCompatible + Serialize> Serialize for PrettyError<Kind> {
+impl<Kind: PrettyErrorKind> Serialize for PrettyError<Kind> {
 	fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		use serde::ser::SerializeStruct;
 
