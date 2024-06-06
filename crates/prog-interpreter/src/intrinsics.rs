@@ -118,9 +118,7 @@ fn input_function(
 
 	context.stdin.push_str(&format!("{result}\n")[..]);
 
-	Ok(RuntimeValue::String(
-		RuntimeString::from(result).into()
-	))
+	Ok(RuntimeValue::String(result.into()))
 }
 
 fn raw_print_function(

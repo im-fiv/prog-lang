@@ -29,9 +29,7 @@ impl RuntimeString {
 			.unwrap_or(this_len);
 
 		if end_index <= start_index {
-			return Ok(RuntimeValue::String(
-				Self::from("").into()
-			));
+			return Ok(RuntimeValue::String("".into()));
 		}
 
 		let mut indices = this.char_indices();

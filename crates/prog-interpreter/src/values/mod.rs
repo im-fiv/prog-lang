@@ -90,9 +90,9 @@ impl From<ast::expressions::Literal> for RuntimeValue {
 		use ast::expressions::Literal;
 
 		match value {
-			Literal::Boolean(value, _) => Self::Boolean(RuntimeBoolean::from(value).into()),
-			Literal::String(value, _) => Self::String(RuntimeString::from(value).into()),
-			Literal::Number(value, _) => Self::Number(RuntimeNumber::from(value).into())
+			Literal::Boolean(v, _) => Self::Boolean(v.into()),
+			Literal::String(v, _) => Self::String(v.into()),
+			Literal::Number(v, _) => Self::Number(v.into())
 		}
 	}
 }

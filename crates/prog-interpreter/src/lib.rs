@@ -575,9 +575,7 @@ impl Interpreter {
 			file: self.file.to_owned()
 		};
 
-		Ok(RuntimeValue::Function(
-			converted.into()
-		))
+		Ok(RuntimeValue::Function(converted))
 	}
 
 	fn evaluate_object(&mut self, object: ast::expressions::Object) -> Result<RuntimeValue> {
@@ -607,9 +605,7 @@ impl Interpreter {
 			position_map.insert(name, entry.position);
 		}
 
-		Ok(RuntimeValue::Object(
-			values::RuntimeObject::from(value_map).into()
-		))
+		Ok(RuntimeValue::Object(value_map.into()))
 	}
 
 	fn evaluate_list(&mut self, list: ast::expressions::List) -> Result<RuntimeValue> {
@@ -620,9 +616,7 @@ impl Interpreter {
 			values.push(value);
 		}
 
-		Ok(RuntimeValue::List(
-			values::RuntimeList::from(values).into()
-		))
+		Ok(RuntimeValue::List(values.into()))
 	}
 
 	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<RuntimeValue> {
