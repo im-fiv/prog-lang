@@ -15,7 +15,7 @@ pub trait AriadneCompatible {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PrettyError<Kind: Clone + AriadneCompatible + Serialize> {
+pub struct PrettyError<Kind: PrettyErrorKind> {
 	pub file: String,
 	pub source: String,
 	pub position: Position,
