@@ -15,7 +15,7 @@ pub struct IntrinsicFunction {
 }
 
 pub type IntrinsicFunctionPtr = fn(
-	this: Option<Box<RuntimeValue>>,
+	this: Option<RuntimeValue>,
 	context: &mut RuntimeContext,
 	args: HashMap<String, ParsedArg>,
 	call_site: CallSite
@@ -38,12 +38,17 @@ impl IntrinsicFunction {
 	}
 
 	pub fn call(
-		&self,
+		self,
 		context: &mut RuntimeContext,
 		args: HashMap<String, ParsedArg>,
 		call_site: CallSite
 	) -> Result<RuntimeValue> {
-		(self.pointer)(self.this.to_owned(), context, args, call_site)
+		(self.pointer)(
+			self.this.map(|this| *this),
+			context,
+			args,
+			call_site
+		)
 	}
 }
 

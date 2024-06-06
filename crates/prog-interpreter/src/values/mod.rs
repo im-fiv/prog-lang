@@ -18,7 +18,6 @@ pub use marker::*;
 
 use std::fmt::Display;
 use std::collections::HashMap;
-use std::cell::RefCell;
 
 use serde::Serialize;
 
@@ -44,25 +43,25 @@ pub trait RuntimePrimitive {
 #[derive(Debug, Clone, PartialEq, Serialize, VariantUnwrap, EnumKind)]
 pub enum RuntimeValue {
 	#[serde(serialize_with = "s_use_display")]
-	Boolean(RefCell<RuntimeBoolean>),
+	Boolean(RuntimeBoolean),
 
 	#[serde(serialize_with = "s_use_display")]
-	String(RefCell<RuntimeString>),
+	String(RuntimeString),
 
 	#[serde(serialize_with = "s_use_display")]
-	Number(RefCell<RuntimeNumber>),
+	Number(RuntimeNumber),
 
 	#[serde(serialize_with = "s_use_display")]
-	List(RefCell<RuntimeList>),
+	List(RuntimeList),
 
 	#[serde(serialize_with = "s_use_display")]
-	Object(RefCell<RuntimeObject>),
+	Object(RuntimeObject),
 
 	#[serde(serialize_with = "s_use_display")]
-	Function(RefCell<RuntimeFunction>),
+	Function(RuntimeFunction),
 	
 	#[serde(serialize_with = "s_use_display")]
-	IntrinsicFunction(RefCell<IntrinsicFunction>),
+	IntrinsicFunction(IntrinsicFunction),
 
 	Empty,
 
@@ -73,24 +72,17 @@ pub enum RuntimeValue {
 	Marker(MarkerKind)
 }
 
-fn s_use_display<T: Display + Clone, S: serde::Serializer>(value: &RefCell<T>, serializer: S) -> std::result::Result<S::Ok, S::Error> {
-	let owned = value.borrow().to_owned();
-	serializer.collect_str(&owned)
+fn s_use_display<T: Display + Clone, S: serde::Serializer>(value: &T, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+	serializer.collect_str(&value)
 }
 
-impl_basic_conv!(from RefCell<RuntimeBoolean> => RuntimeValue as Boolean);
-impl_basic_conv!(from RefCell<RuntimeString> => RuntimeValue as String);
-impl_basic_conv!(from RefCell<RuntimeNumber> => RuntimeValue as Number);
-impl_basic_conv!(from RefCell<RuntimeList> => RuntimeValue as List);
-impl_basic_conv!(from RefCell<RuntimeObject> => RuntimeValue as Object);
-
-impl_basic_conv!(from RuntimeBoolean => RuntimeValue as Boolean { RefCell::new });
-impl_basic_conv!(from RuntimeString => RuntimeValue as String { RefCell::new });
-impl_basic_conv!(from RuntimeNumber => RuntimeValue as Number { RefCell::new });
-impl_basic_conv!(from RuntimeList => RuntimeValue as List { RefCell::new });
-impl_basic_conv!(from RuntimeObject => RuntimeValue as Object { RefCell::new });
-impl_basic_conv!(from RuntimeFunction => RuntimeValue as Function { RefCell::new });
-impl_basic_conv!(from IntrinsicFunction => RuntimeValue as IntrinsicFunction { RefCell::new });
+impl_basic_conv!(from RuntimeBoolean => RuntimeValue as Boolean);
+impl_basic_conv!(from RuntimeString => RuntimeValue as String);
+impl_basic_conv!(from RuntimeNumber => RuntimeValue as Number);
+impl_basic_conv!(from RuntimeList => RuntimeValue as List);
+impl_basic_conv!(from RuntimeObject => RuntimeValue as Object);
+impl_basic_conv!(from RuntimeFunction => RuntimeValue as Function);
+impl_basic_conv!(from IntrinsicFunction => RuntimeValue as IntrinsicFunction);
 impl_basic_conv!(from MarkerKind => RuntimeValue as Marker);
 
 impl From<ast::expressions::Literal> for RuntimeValue {
@@ -106,20 +98,15 @@ impl From<ast::expressions::Literal> for RuntimeValue {
 }
 
 impl Display for RuntimeValue {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		fn borrow_and_write<T: Display>(f: &mut std::fmt::Formatter<'_>, value: &RefCell<T>) -> std::fmt::Result {
-			let inner = value.borrow();
-			write!(f, "{inner}")
-		}
-			
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {	
 		match self {
-			Self::Boolean(value) => borrow_and_write(f, value),
-			Self::String(value) => borrow_and_write(f, value),
-			Self::Number(value) => borrow_and_write(f, value),
-			Self::List(value) => borrow_and_write(f, value),
-			Self::Object(value) => borrow_and_write(f, value),
-			Self::Function(value) => borrow_and_write(f, value),
-			Self::IntrinsicFunction(value) => borrow_and_write(f, value),
+			Self::Boolean(value) => write!(f, "{value}"),
+			Self::String(value) => write!(f, "{value}"),
+			Self::Number(value) => write!(f, "{value}"),
+			Self::List(value) => write!(f, "{value}"),
+			Self::Object(value) => write!(f, "{value}"),
+			Self::Function(value) => write!(f, "{value}"),
+			Self::IntrinsicFunction(value) => write!(f, "{value}"),
 			Self::Empty => write!(f, ""),
 
 			Self::Identifier(value) => write!(f, "{value}"),

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::cell::RefCell;
 use anyhow::{Result, bail};
 
 use prog_macros::get_argument;
@@ -10,7 +9,7 @@ use crate::context::RuntimeContext;
 use crate::errors;
 
 fn print_function(
-	_this: Option<Box<RuntimeValue>>,
+	_this: Option<RuntimeValue>,
 	context: &mut RuntimeContext,
 	args: HashMap<String, ParsedArg>,
 	_call_site: CallSite
@@ -31,7 +30,7 @@ fn print_function(
 }
 
 fn import_function(
-	_this: Option<Box<RuntimeValue>>,
+	_this: Option<RuntimeValue>,
 	context: &mut RuntimeContext,
 	args: HashMap<String, ParsedArg>,
 	call_site: CallSite
@@ -48,9 +47,7 @@ fn import_function(
 		));
 	}
 
-	let path_str = get_argument!(args => path: RefCell<RuntimeString>)
-		.borrow()
-		.owned();
+	let path_str = get_argument!(args => path: RuntimeString).owned();
 
 	let mut path = std::path::Path::new(&path_str).to_path_buf();
 
@@ -88,7 +85,7 @@ fn import_function(
 }
 
 fn input_function(
-	_this: Option<Box<RuntimeValue>>,
+	_this: Option<RuntimeValue>,
 	context: &mut RuntimeContext,
 	args: HashMap<String, ParsedArg>,
 	call_site: CallSite
@@ -107,13 +104,10 @@ fn input_function(
 		));
 	}
 
-	let message = get_argument!(args => message: RefCell<RuntimeString>?)
-		.and_then(|arg| Some(
-			arg.borrow().owned()
-		));
+	let message = get_argument!(args => message: RuntimeString?);
 
 	if let Some(message) = message {
-		print!("{}", &message[..]);
+		print!("{}", message.value());
 	}
 
 	let mut result: String = read!("{}\n");
@@ -130,7 +124,7 @@ fn input_function(
 }
 
 fn raw_print_function(
-	_this: Option<Box<RuntimeValue>>,
+	_this: Option<RuntimeValue>,
 	_context: &mut RuntimeContext,
 	args: HashMap<String, ParsedArg>,
 	_call_site: CallSite
@@ -138,11 +132,9 @@ fn raw_print_function(
 	use std::io;
 	use std::io::Write;
 	
-	let to_print = get_argument!(args => string: RefCell<RuntimeString>)
-		.borrow()
-		.owned();
+	let message = get_argument!(args => string: RuntimeString);
 
-	print!("{to_print}");
+	print!("{}", message.value());
 	io::stdout().flush().unwrap();
 
 	Ok(RuntimeValue::Empty)

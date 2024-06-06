@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::cell::RefCell;
 use anyhow::Result;
 use prog_macros::{get_argument, get_this};
 
@@ -13,28 +12,20 @@ pub struct RuntimeString(pub String);
 
 impl RuntimeString {
 	fn sub(
-		this: Option<Box<RuntimeValue>>,
+		this: Option<RuntimeValue>,
 		_context: &mut RuntimeContext,
 		args: HashMap<String, ParsedArg>,
 		_call_site: CallSite
 	) -> Result<RuntimeValue> {
-		let this = get_this!(this => String)
-			.borrow()
-			.owned();
+		let this = get_this!(this => String);
+		let this = this.value();
 
 		let this_len = this.len();
 		
-		let start_index = get_argument!(args => start: RefCell<RuntimeNumber>)
-			.borrow()
-			.owned()
-			as usize;
+		let start_index = get_argument!(args => start: RuntimeNumber).owned() as usize;
 
-		let end_index = get_argument!(args => end: RefCell<RuntimeNumber>?)
-			.and_then(|value| Some(value
-				.borrow()
-				.owned()
-				as usize
-			))
+		let end_index = get_argument!(args => end: RuntimeNumber?)
+			.and_then(|value| Some(value.owned() as usize))
 			.unwrap_or(this_len);
 
 		if end_index <= start_index {
@@ -58,26 +49,19 @@ impl RuntimeString {
 			this.get_unchecked(start..end)
 		};
 
-		Ok(RuntimeValue::String(
-			Self::from(substring).into()
-		))
+		Ok(Self::from(substring).into())
 	}
 
 	fn len(
-		this: Option<Box<RuntimeValue>>,
+		this: Option<RuntimeValue>,
 		_context: &mut RuntimeContext,
 		_args: HashMap<String, ParsedArg>,
 		_call_site: CallSite
 	) -> Result<RuntimeValue> {
 		let this = get_this!(this => String);
-		let len = this
-			.borrow()
-			.value()
-			.len();
+		let len = this.value().len();
 
-		Ok(RuntimeValue::Number(
-			RuntimeNumber::from(len).into()
-		))
+		Ok(RuntimeNumber::from(len).into())
 	}
 }
 

@@ -54,11 +54,11 @@ fn is_value_truthy(rv: &RuntimeValue) -> bool {
 	
 	match rv {
 		// Values that are inexpensive to clone can be cloned
-		Rv::Boolean(value) => value.borrow().owned(),
-		Rv::String(value) => !value.borrow().value().is_empty(),
-		Rv::Number(value) => value.borrow().owned() != 0.0,
-		Rv::List(value) => !value.borrow().value().is_empty(),
-		Rv::Object(value) => !value.borrow().value().is_empty(),
+		Rv::Boolean(value) => value.owned(),
+		Rv::String(value) => !value.value().is_empty(),
+		Rv::Number(value) => value.owned() != 0.0,
+		Rv::List(value) => !value.value().is_empty(),
+		Rv::Object(value) => !value.value().is_empty(),
 
 		Rv::Function(_) => true,
 		Rv::IntrinsicFunction(..) => true,
@@ -301,7 +301,7 @@ impl Interpreter {
 		};
 
 		let index = match self.evaluate_term(lhs.clone(), false)? {
-			RuntimeValue::Number(index) => index.borrow().owned() as i64,
+			RuntimeValue::Number(index) => index.owned() as i64,
 			value => create_error!(self, position, InterpretErrorKind::CannotIndexValue(
 				errors::CannotIndexValue {
 					kind: (RuntimeValueKind::List, rhs.position()),
@@ -331,13 +331,11 @@ impl Interpreter {
 			))
 		};
 
-		let mut inner_list_borrowed = inner_list.borrow_mut();
-
-		if index >= inner_list_borrowed.0.len() {
-			inner_list_borrowed.0.resize(index + 1, RuntimeValue::Empty);
+		if index >= inner_list.value().len() {
+			inner_list.0.resize(index + 1, RuntimeValue::Empty);
 		}
 
-		inner_list_borrowed.0[index] = value;
+		inner_list.0[index] = value;
 
 		Ok(RuntimeValue::Empty)
 	}
@@ -354,7 +352,7 @@ impl Interpreter {
 
 		let entry_name = match self.evaluate_term(rhs.clone(), true)? {
 			RuntimeValue::Identifier(value) => value,
-			RuntimeValue::String(value) => value.borrow().owned(),
+			RuntimeValue::String(value) => value.owned(),
 
 			value => create_error!(self, position, InterpretErrorKind::CannotIndexValue(
 				errors::CannotIndexValue {
@@ -374,8 +372,7 @@ impl Interpreter {
 			))
 		};
 
-		let mut inner_object_borrowed = inner_object.borrow_mut();
-		inner_object_borrowed.0.insert(entry_name, value);
+		inner_object.0.insert(entry_name, value);
 
 		Ok(RuntimeValue::Empty)
 	}
@@ -407,16 +404,15 @@ impl Interpreter {
 		let evaluated_operand = self.evaluate_term(operand.clone(), stop_on_ident)?;
 
 		match (operator.0, evaluated_operand) {
-			(Op::Minus, Rv::Number(value)) => Ok(Rv::Number(values::RuntimeNumber::from(-value.borrow().owned()).into())),
+			(Op::Minus, Rv::Number(v)) => Ok(Rv::Number((-v.owned()).into())),
 
-			// TODO: yucky code, should find a way to clean this up
-			(Op::Not, Rv::Boolean(value)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(!value.borrow().owned()).into())),
-			(Op::Not, Rv::String(value)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(value.borrow().owned().is_empty()).into())),
-			(Op::Not, Rv::Number(value)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(value.borrow().owned() == 0.0).into())),
-			(Op::Not, Rv::List(value)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(value.borrow().owned().is_empty()).into())),
-			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(false).into())),
-			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(false).into())),
-			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(values::RuntimeBoolean::from(true).into())),
+			(Op::Not, Rv::Boolean(v)) => Ok(Rv::Boolean((!v.value()).into())),
+			(Op::Not, Rv::String(v)) => Ok(Rv::Boolean(v.value().is_empty().into())),
+			(Op::Not, Rv::Number(v)) => Ok(Rv::Boolean((v.owned() == 0.0).into())),
+			(Op::Not, Rv::List(v)) => Ok(Rv::Boolean(v.value().is_empty().into())),
+			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(false.into())),
+			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(false.into())),
+			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(true.into())),
 
 			(_, evaluated_operand) => create_error!(self, whole_pos, InterpretErrorKind::UnsupportedUnary(
 				errors::UnsupportedUnary {
@@ -452,7 +448,7 @@ impl Interpreter {
 
 		macro_rules! primitive_object_access {
 			($lhs:expr, $key:expr) => {{
-				let map = $lhs.borrow().dispatch_map();
+				let map = $lhs.dispatch_map();
 				let function = map.get(&$key);
 
 				if function.is_none() {
@@ -469,83 +465,71 @@ impl Interpreter {
 					$lhs.into()
 				));
 
-				Ok(RuntimeValue::IntrinsicFunction(
-					function.into()
-				))
+				RuntimeValue::IntrinsicFunction(function.into())
 			}};
 		}
 
-		match (operator.0, evaluated_lhs, evaluated_rhs) {
-			(Op::Add, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() + rhs.borrow().owned()).into())),
-			(Op::Subtract, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() - rhs.borrow().owned()).into())),
-			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() / rhs.borrow().owned()).into())),
-			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() * rhs.borrow().owned()).into())),
-			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Number(values::RuntimeNumber::from(lhs.borrow().owned() % rhs.borrow().owned()).into())),
-			(Op::Gt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs.borrow().owned() > rhs.borrow().owned()).into())),
-			(Op::Lt, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs.borrow().owned() < rhs.borrow().owned()).into())),
-			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs.borrow().owned() >= rhs.borrow().owned()).into())),
-			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs.borrow().owned() <= rhs.borrow().owned()).into())),
+		let evaluated_expr = match (operator.0, evaluated_lhs, evaluated_rhs) {
+			(Op::Add, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Number((lhs.owned() + rhs.owned()).into()),
+			(Op::Subtract, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Number((lhs.owned() - rhs.owned()).into()),
+			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Number((lhs.owned() / rhs.owned()).into()),
+			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Number((lhs.owned() * rhs.owned()).into()),
+			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Number((lhs.owned() % rhs.owned()).into()),
+			(Op::Gt, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs.owned() > rhs.owned()).into()),
+			(Op::Lt, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs.owned() < rhs.owned()).into()),
+			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs.owned() >= rhs.owned()).into()),
+			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs.owned() <= rhs.owned()).into()),
 
-			(Op::Add, Rv::String(lhs), rhs) => Ok(Rv::String(values::RuntimeString::from(format!("{}{}", lhs.borrow(), rhs)).into())),
+			(Op::Add, Rv::String(lhs), rhs) => Rv::String(format!("{}{}", lhs.value(), rhs).into()),
 
-			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs.borrow().owned() && rhs.borrow().owned()).into())),
-			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs.borrow().owned() || rhs.borrow().owned()).into())),
+			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Rv::Boolean((lhs.owned() && rhs.owned()).into()),
+			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Rv::Boolean((lhs.owned() || rhs.owned()).into()),
 
-			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs == rhs).into())),
-			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs == rhs).into())),
-			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs == rhs).into())),
-			(Op::EqEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs == rhs).into())),
-			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs == rhs).into())),
-			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs == rhs).into())),
-			(Op::EqEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(values::RuntimeBoolean::from(true).into())),
+			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Rv::Boolean((lhs == rhs).into()),
+			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Rv::Boolean((lhs == rhs).into()),
+			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs == rhs).into()),
+			(Op::EqEq, Rv::List(lhs), Rv::List(rhs)) => Rv::Boolean((lhs == rhs).into()),
+			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Rv::Boolean((lhs == rhs).into()),
+			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Rv::Boolean((lhs == rhs).into()),
+			(Op::EqEq, Rv::Empty, Rv::Empty) => Rv::Boolean(true.into()),
 
-			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs != rhs).into())),
-			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs != rhs).into())),
-			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs != rhs).into())),
-			(Op::NotEq, Rv::List(lhs), Rv::List(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs != rhs).into())),
-			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs != rhs).into())),
-			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Ok(Rv::Boolean(values::RuntimeBoolean::from(lhs != rhs).into())),
-			(Op::NotEq, Rv::Empty, Rv::Empty) => Ok(Rv::Boolean(values::RuntimeBoolean::from(false).into())),
+			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Rv::Boolean((lhs != rhs).into()),
+			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Rv::Boolean((lhs != rhs).into()),
+			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs != rhs).into()),
+			(Op::NotEq, Rv::List(lhs), Rv::List(rhs)) => Rv::Boolean((lhs != rhs).into()),
+			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Rv::Boolean((lhs != rhs).into()),
+			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Rv::Boolean((lhs != rhs).into()),
+			(Op::NotEq, Rv::Empty, Rv::Empty) => Rv::Boolean(false.into()),
 
-			(Op::ListAccess, Rv::Number(lhs), Rv::List(rhs)) => Ok(
-				rhs
-					.borrow()
-					.value()
-					.get(lhs.borrow().owned() as usize)
-					.unwrap_or(&RuntimeValue::Empty)
-					.to_owned()
-			),
+			(Op::ListAccess, Rv::Number(lhs), Rv::List(rhs)) => rhs
+				.value()
+				.get(lhs.owned() as usize)
+				.unwrap_or(&RuntimeValue::Empty)
+				.to_owned(),
 
-			// TODO: implement behavior for when an object has a user-defined function with the same name
-			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => Ok(
-				lhs
-					.borrow()
-					.value()
-					.get(&rhs)
-					.unwrap_or(&RuntimeValue::Empty)
-					.to_owned()
-			),
-			(Op::ObjectAccess, Rv::Object(lhs), Rv::String(rhs)) => Ok(
-				lhs
-					.borrow()
-					.value()
-					.get(&rhs.borrow().owned())
-					.unwrap_or(&RuntimeValue::Empty)
-					.to_owned()
-			),
+			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => lhs
+				.value()
+				.get(&rhs)
+				.unwrap_or(&RuntimeValue::Empty)
+				.to_owned(),
+			(Op::ObjectAccess, Rv::Object(lhs), Rv::String(rhs)) => lhs
+				.value()
+				.get(rhs.value())
+				.unwrap_or(&RuntimeValue::Empty)
+				.to_owned(),
 
 			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
 			(Op::ObjectAccess, Rv::String(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
 			(Op::ObjectAccess, Rv::Number(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
 			(Op::ObjectAccess, Rv::List(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
 
-			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.borrow().owned()),
-			(Op::ObjectAccess, Rv::String(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.borrow().owned()),
-			(Op::ObjectAccess, Rv::Number(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.borrow().owned()),
-			(Op::ObjectAccess, Rv::List(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.borrow().owned()),
+			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
+			(Op::ObjectAccess, Rv::String(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
+			(Op::ObjectAccess, Rv::Number(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
+			(Op::ObjectAccess, Rv::List(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
 
-			(Op::EqEq, _, _) => Ok(Rv::Boolean(values::RuntimeBoolean::from(false).into())),
-			(Op::NotEq, _, _) => Ok(Rv::Boolean(values::RuntimeBoolean::from(true).into())),
+			(Op::EqEq, _, _) => Rv::Boolean(false.into()),
+			(Op::NotEq, _, _) => Rv::Boolean(true.into()),
 
 			(_, evaluated_lhs, evaluated_rhs) => create_error!(self, whole_position, InterpretErrorKind::UnsupportedBinary(
 				errors::UnsupportedBinary {
@@ -554,7 +538,9 @@ impl Interpreter {
 					rhs: (evaluated_rhs.kind(), rhs_position)
 				}
 			))
-		}
+		};
+
+		Ok(evaluated_expr)
 	}
 
 	fn evaluate_term(&mut self, term: ast::expressions::Term, stop_on_ident: bool) -> Result<RuntimeValue> {
@@ -659,8 +645,6 @@ impl Interpreter {
 		let function_expression = self.evaluate_expression(*call.function, false)?;
 
 		if let RuntimeValue::IntrinsicFunction(function) = function_expression {
-			let function = function.borrow();
-
 			let convert_error = |e: arg_parser::ArgumentParseError| {
 				match e {
 					arg_parser::ArgumentParseError::CountMismatch { expected, end_boundary, got } => create_error!(
@@ -708,10 +692,6 @@ impl Interpreter {
 		}
 
 		if let RuntimeValue::Function(function) = function_expression {
-			let function = function
-				.borrow()
-				.to_owned();
-
 			let got_len = call_arguments.len();
 			let expected_len = function.ast.arguments.len();
 			

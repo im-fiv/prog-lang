@@ -62,10 +62,8 @@ fn get_value_mutable() {
 	let value_ref = context.get_value_mut(&String::from("some_value")).unwrap();
 
 	if let RuntimeValue::Boolean(inner_value) = value_ref {
-		let mut borrowed_inner_value = inner_value.borrow_mut();
-
 		// Inverting the value
-		*borrowed_inner_value = RuntimeBoolean(!borrowed_inner_value.0);
+		*inner_value = RuntimeBoolean(!inner_value.owned());
 	} else {
 		panic!("Value is not of type Boolean");
 	}

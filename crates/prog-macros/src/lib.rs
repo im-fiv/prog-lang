@@ -168,7 +168,7 @@ pub fn get_this(input: pm::TokenStream) -> pm::TokenStream {
 	quote! {{
 		let this = #this_arg_name.unwrap_or_else(|| ::std::unreachable!("`this` argument is `None`"));
 
-		if let crate::values::RuntimeValue::#variant(inner_this) = *this {
+		if let crate::values::RuntimeValue::#variant(inner_this) = this {
 			inner_this
 		} else {
 			::std::unreachable!("`this` argument is not of variant `{}`", stringify!(#variant))

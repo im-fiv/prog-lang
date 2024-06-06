@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use prog_interpreter::arg_parser::{ArgList, Arg, ParsedArg, ArgumentParseError};
 use prog_interpreter::values::*;
 use prog_macros::get_argument;
@@ -108,11 +106,11 @@ fn getting_arguments() {
 
 	let parsed = parsed.unwrap();
 
-	let arg1 = get_argument!(parsed => arg1: RefCell<RuntimeBoolean>);
-	let arg2 = get_argument!(parsed => arg2: RefCell<RuntimeNumber>);
+	let arg1 = get_argument!(parsed => arg1: RuntimeBoolean);
+	let arg2 = get_argument!(parsed => arg2: RuntimeNumber);
 
-	assert_eq!(arg1.borrow().0, true);
-	assert_eq!(arg2.borrow().0, 3.14);
+	assert_eq!(arg1.owned(), true);
+	assert_eq!(arg2.owned(), 3.14);
 }
 
 #[test]
@@ -130,8 +128,8 @@ fn getting_nonexistent_arguments() {
 
 	let parsed = parsed.unwrap();
 
-	get_argument!(parsed => arg1: RefCell<RuntimeBoolean>);
-	get_argument!(parsed => arg2: RefCell<RuntimeString>);
+	get_argument!(parsed => arg1: RuntimeBoolean);
+	get_argument!(parsed => arg2: RuntimeString);
 }
 
 #[test]

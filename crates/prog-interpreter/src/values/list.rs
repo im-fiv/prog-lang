@@ -12,20 +12,15 @@ pub struct RuntimeList(pub Vec<RuntimeValue>);
 
 impl RuntimeList {
 	fn len(
-		this: Option<Box<RuntimeValue>>,
+		this: Option<RuntimeValue>,
 		_context: &mut RuntimeContext,
 		_args: HashMap<String, ParsedArg>,
 		_call_site: CallSite
 	) -> Result<RuntimeValue> {
 		let this = get_this!(this => List);
-		let len = this
-			.borrow()
-			.value()
-			.len();
+		let len = this.value().len();
 
-		Ok(RuntimeValue::Number(
-			RuntimeNumber::from(len).into()
-		))
+		Ok(RuntimeNumber::from(len).into())
 	}
 }
 
