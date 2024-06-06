@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand, Args};
 
 pub const DEFAULT_INPUT_FP: &str = "input.prog";
-pub const DEFAULT_SERVER_PORT: u16 = 8080;
+pub const DEFAULT_SERVER_PORT: u16 = 80;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -28,6 +28,7 @@ pub struct RunCommand {
 	pub file_path: String
 }
 
+#[cfg(feature = "serving")]
 #[derive(Debug, Args)]
 pub struct ServeCommand {
 	#[arg(default_value_t = DEFAULT_SERVER_PORT)]
