@@ -53,9 +53,15 @@ fn execute_run_command(args: cli::RunCommand) {
 #[cfg(feature = "serving")]
 fn execute_serve_command(args: cli::ServeCommand) {
 	use actix_web::{App, HttpResponse, HttpServer, Responder, post};
+	use actix_web::middleware::Logger;
 	use actix_cors::Cors;
 
 	use prog_interpreter::RuntimeValue;
+
+	env_logger::init_from_env(
+		env_logger::Env::new()
+			.default_filter_or("info")
+	);
 
 	fn handle_anyhow_error(error: anyhow::Error) -> HttpResponse {
 		let json = match serialize_anyhow(error) {
@@ -68,8 +74,6 @@ fn execute_serve_command(args: cli::ServeCommand) {
 
 	#[post("/execute")]
 	async fn execute_str(req_body: String) -> impl Responder {
-		println!("New request with body: {req_body}");
-
 		let parser = ProgParser::new(&req_body, "stdin");
 		let ast = match parser.parse() {
 			Ok(ast) => ast,
@@ -109,17 +113,20 @@ fn execute_serve_command(args: cli::ServeCommand) {
 	
 	#[actix_web::main]
 	async fn run_server(port: u16) -> std::io::Result<()> {
-		HttpServer::new(|| {
+		let server = HttpServer::new(|| {
 			let cors = Cors::permissive();
 
 			App::new()
+				.wrap(Logger::default())
 				.wrap(cors)
 				.service(execute_str)
 				.service(actix_files::Files::new("/", "./website").show_files_listing())
-		})
-		.bind(("0.0.0.0", port))?
-		.run()
-		.await
+		});
+
+		server
+			.bind(("0.0.0.0", port))?
+			.run()
+			.await
 	}
 
 	run_server(args.port).unwrap();
