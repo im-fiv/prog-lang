@@ -742,7 +742,7 @@ impl Interpreter {
 						.unwrap_or_else(|_| panic!("Function execution returned a non-`InterpretError` error"));
 
 					// print it
-					downcasted.print();
+					downcasted.eprint();
 
 					// replace the original error with a new one
 					anyhow::anyhow!(errors::InterpretError::new(

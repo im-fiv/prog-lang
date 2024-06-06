@@ -46,13 +46,13 @@ impl<Kind: Clone + AriadneCompatible + Serialize> PrettyError<Kind> {
 		(&self.file[..], Source::from(&self.source[..]))
 	}
 
-	pub fn print(&self) {
+	pub fn eprint(&self) {
 		let report = self.create_report();
 		let cache = self.get_cache();
 
 		report
-			.print(cache)
-			.unwrap();
+			.eprint(cache)
+			.unwrap_or_else(|_| panic!("Failed to print error to stderr"));
 	}
 }
 
@@ -66,7 +66,7 @@ impl<Kind: Clone + AriadneCompatible + Serialize> fmt::Display for PrettyError<K
 		
 		report
 			.write(cache, &mut writer)
-			.map_err(move |_| fmt::Error)?;
+			.map_err(|_| fmt::Error)?;
 
 		writer
 			.flush()
