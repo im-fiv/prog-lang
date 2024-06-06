@@ -123,17 +123,20 @@ fn input_function(
 
 fn raw_print_function(
 	_this: Option<RuntimeValue>,
-	_context: &mut RuntimeContext,
+	context: &mut RuntimeContext,
 	args: HashMap<String, ParsedArg>,
 	_call_site: CallSite
 ) -> Result<RuntimeValue> {
 	use std::io;
 	use std::io::Write;
 	
-	let message = get_argument!(args => string: RuntimeString);
+	let text = get_argument!(args => string: RuntimeString).owned();
+	context.stdout.push_str(&text);
 
-	print!("{}", message.value());
-	io::stdout().flush().unwrap();
+	if context.flags.con_stdout_allowed {
+		print!("{text}");
+		io::stdout().flush().unwrap();
+	}
 
 	Ok(RuntimeValue::Empty)
 }
