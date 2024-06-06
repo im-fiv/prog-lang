@@ -33,6 +33,23 @@ impl Statement {
 			Self::ExpressionAssign(statement) => &statement.position
 		}
 	}
+
+	pub fn name(&self) -> String {
+		let name = match self {
+			Self::VariableDefine(_) => "VariableDefine",
+			Self::VariableAssign(_) => "VariableAssign",
+			Self::DoBlock(_) => "DoBlock",
+			Self::Return(_) => "Return",
+			Self::Call(_) => "Call",
+			Self::WhileLoop(_) => "WhileLoop",
+			Self::Break(_) => "Break",
+			Self::Continue(_) => "Continue",
+			Self::If(_) => "If",
+			Self::ExpressionAssign(_) => "ExpressionAssign"
+		};
+
+		name.to_owned()
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
