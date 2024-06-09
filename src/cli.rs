@@ -16,7 +16,7 @@ pub enum CLISubcommand {
 	/// Interpret a file
 	Run(RunCommand),
 
-	#[cfg(feature = "serving")]
+	#[cfg(feature = "api")]
 	/// Launch REST server
 	Serve(ServeCommand)
 }
@@ -28,7 +28,7 @@ pub struct RunCommand {
 	pub file_path: String
 }
 
-#[cfg(feature = "serving")]
+#[cfg(feature = "api")]
 #[derive(Debug, Args)]
 pub struct ServeCommand {
 	#[arg(default_value_t = DEFAULT_SERVER_PORT)]

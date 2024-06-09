@@ -1024,6 +1024,7 @@ dependencies = [
  "actix-files",
  "actix-web",
  "anyhow",
+ "cfg-if",
  "clap",
  "env_logger",
  "pest",

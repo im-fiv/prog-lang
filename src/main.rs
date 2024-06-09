@@ -7,7 +7,7 @@ use prog_utils::read_file;
 
 use clap::Parser;
 
-#[cfg(feature = "serving")]
+#[cfg(feature = "api")]
 fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
 	let interpret_error = anyhow_error
 		.downcast_ref::<
@@ -50,11 +50,12 @@ fn execute_run_command(args: cli::RunCommand) {
 	};
 }
 
-#[cfg(feature = "serving")]
+#[cfg(feature = "api")]
 fn execute_serve_command(args: cli::ServeCommand) {
 	use actix_web::{App, HttpResponse, HttpServer, Responder, post};
 	use actix_web::middleware::Logger;
 	use actix_cors::Cors;
+	use cfg_if::cfg_if;
 
 	use prog_interpreter::RuntimeValue;
 
@@ -114,13 +115,18 @@ fn execute_serve_command(args: cli::ServeCommand) {
 	#[actix_web::main]
 	async fn run_server(port: u16) -> std::io::Result<()> {
 		let server = HttpServer::new(|| {
-			let cors = Cors::permissive();
-
-			App::new()
+			let app = App::new()
 				.wrap(Logger::default())
-				.wrap(cors)
-				.service(execute_str)
-				.service(actix_files::Files::new("/", "./website").show_files_listing())
+				.wrap(Cors::permissive())
+				.service(execute_str);
+			
+			cfg_if! {
+				if #[cfg(feature = "website")] {
+					app.service(actix_files::Files::new("/", "./website").show_files_listing())
+				} else {
+					app
+				}
+			}
 		});
 
 		server
@@ -137,7 +143,7 @@ fn main() {
 
 	match args.subcommand {
 		cli::CLISubcommand::Run(command) => execute_run_command(command),
-		#[cfg(feature = "serving")]
+		#[cfg(feature = "api")]
 		cli::CLISubcommand::Serve(command) => execute_serve_command(command)
 	}
 }

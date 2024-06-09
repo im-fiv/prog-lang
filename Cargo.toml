@@ -6,16 +6,16 @@ edition = "2021"
 [features]
 default = []
 serialize = ["serde", "serde_json"]
-serving = [
+api = [
 	"serialize",
 	"prog-parser/serialize",
 	"prog-interpreter/serialize",
 	"prog-utils/serialize",
 	"actix-web",
 	"actix-cors",
-	"actix-files",
 	"env_logger"
 ]
+website = ["api", "actix-files"]
 
 [workspace]
 members = ["crates/*"]
@@ -33,6 +33,7 @@ prog-macros = { path = "./crates/prog-macros" }
 serde = { version = "1.0.199", features = ["derive"] }
 
 [dependencies]
+cfg-if = "1.0.0"
 clap = { version = "4.5.4", features = ["derive"] }
 pest = { workspace = true }
 anyhow = { workspace = true }
