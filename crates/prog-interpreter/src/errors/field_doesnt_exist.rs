@@ -1,17 +1,12 @@
-use ariadne::{ColorGenerator, Label, Fmt};
-use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
+use ariadne::{ColorGenerator, Fmt, Label};
+use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize))]
-pub struct FieldDoesntExist(
-	pub String,
-	pub Position
-);
+pub struct FieldDoesntExist(pub String, pub Position);
 
 impl AriadneCompatible for FieldDoesntExist {
-	fn message(&self) -> String {
-		String::from("field doesn't exist")
-	}
+	fn message(&self) -> String { String::from("field doesn't exist") }
 
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>> {
 		let mut colors = ColorGenerator::new();
@@ -27,7 +22,6 @@ impl AriadneCompatible for FieldDoesntExist {
 				))
 				.with_color(color_field)
 				.with_order(0),
-			
 			Label::new((file, position))
 				.with_message(String::from("this object"))
 				.with_color(color_object)

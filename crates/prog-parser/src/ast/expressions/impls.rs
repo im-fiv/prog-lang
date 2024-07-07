@@ -1,4 +1,5 @@
 use std::fmt::Display;
+
 use prog_utils::impl_basic_conv;
 
 use super::*;
@@ -11,7 +12,11 @@ impl Expression {
 			Self::Unary(value) => value.position.clone(),
 			Self::Binary(value) => value.position.clone(),
 			Self::Term(value) => value.position(),
-			Self::Empty(value) => value.to_owned().expect("Position of Expression::Empty is None")
+			Self::Empty(value) => {
+				value
+					.to_owned()
+					.expect("Position of Expression::Empty is None")
+			}
 		}
 	}
 }
@@ -36,14 +41,22 @@ impl Literal {
 			Self::Boolean(_, value) => value,
 			Self::String(_, value) => value,
 			Self::Number(_, value) => value
-		}.to_owned()
+		}
+		.to_owned()
 	}
 }
 
 impl operators::BinaryOperator {
 	pub fn get_precedence(&self) -> u8 {
 		match self {
-			Self::EqEq | Self::NotEq | Self::And | Self::Or | Self::Gt | Self::Lt | Self::Gte | Self::Lte => 1,
+			Self::EqEq
+			| Self::NotEq
+			| Self::And
+			| Self::Or
+			| Self::Gt
+			| Self::Lt
+			| Self::Gte
+			| Self::Lte => 1,
 			Self::Add | Self::Subtract => 2,
 			Self::Multiply | Self::Divide | Self::Modulo => 3,
 			Self::ListAccess | Self::ObjectAccess => 4
@@ -168,8 +181,9 @@ impl Display for Unary {
 impl Display for Binary {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self.operator.0 {
-			operators::BinaryOperator::ListAccess |
-			operators::BinaryOperator::ObjectAccess => write!(f, "{}{}{}", self.lhs, self.operator.0, self.rhs),
+			operators::BinaryOperator::ListAccess | operators::BinaryOperator::ObjectAccess => {
+				write!(f, "{}{}{}", self.lhs, self.operator.0, self.rhs)
+			}
 
 			_ => write!(f, "{} {} {}", self.lhs, self.operator.0, self.rhs)
 		}
@@ -185,7 +199,7 @@ impl Display for Term {
 			Self::Function(value) => write!(f, "{value}"),
 			Self::Literal(value) => write!(f, "{value}"),
 			Self::Identifier(value, _) => write!(f, "{value}"),
-			Self::Expression(value) => write!(f, "{value}"),
+			Self::Expression(value) => write!(f, "{value}")
 		}
 	}
 }
@@ -211,16 +225,14 @@ impl Display for List {
 			.map(|entry| entry.to_string())
 			.collect::<Vec<String>>()
 			.join(", ");
-		
+
 		write!(f, "[{formatted}]")
 	}
 }
 
 impl Display for Call {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let function = self
-			.function
-			.to_string();
+		let function = self.function.to_string();
 
 		let arguments = self
 			.arguments

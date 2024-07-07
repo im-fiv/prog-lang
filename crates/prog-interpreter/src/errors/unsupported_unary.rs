@@ -1,7 +1,6 @@
-use ariadne::{ColorGenerator, Label, Fmt};
-
-use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
+use ariadne::{ColorGenerator, Fmt, Label};
 use prog_parser::ast::expressions::operators::UnaryOperator;
+use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
 use crate::RuntimeValueKind;
 
@@ -13,9 +12,7 @@ pub struct UnsupportedUnary {
 }
 
 impl AriadneCompatible for UnsupportedUnary {
-	fn message(&self) -> String {
-		String::from("unsupported operation")
-	}
+	fn message(&self) -> String { String::from("unsupported operation") }
 
 	fn labels(self, file: &str, _position: Position) -> Vec<Label<Span>> {
 		let mut colors = ColorGenerator::new();
@@ -28,14 +25,13 @@ impl AriadneCompatible for UnsupportedUnary {
 				.with_message("this operation")
 				.with_color(color_operator)
 				.with_order(0),
-			
 			Label::new((file, self.operand.1))
 				.with_message(format!(
 					"cannot be performed on type {}",
 					self.operand.0.to_string().fg(color_operand)
 				))
 				.with_color(color_operand)
-				.with_order(1)
+				.with_order(1),
 		]
 	}
 }

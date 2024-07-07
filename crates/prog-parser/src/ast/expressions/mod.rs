@@ -1,6 +1,6 @@
 mod impls;
 
-use super::{Statement, Position};
+use super::{Position, Statement};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
@@ -37,10 +37,7 @@ pub enum Term {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Object(
-	pub Vec<ObjectEntry>,
-	pub Position
-);
+pub struct Object(pub Vec<ObjectEntry>, pub Position);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ObjectEntry {
@@ -50,10 +47,7 @@ pub struct ObjectEntry {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct List(
-	pub Vec<Expression>,
-	pub Position
-);
+pub struct List(pub Vec<Expression>, pub Position);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Call {

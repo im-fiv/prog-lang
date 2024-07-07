@@ -1,7 +1,6 @@
-use ariadne::{ColorGenerator, Label, Fmt};
-
-use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
+use ariadne::{ColorGenerator, Fmt, Label};
 use prog_parser::ast::expressions::operators::BinaryOperator;
+use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
 use crate::RuntimeValueKind;
 
@@ -14,9 +13,7 @@ pub struct UnsupportedBinary {
 }
 
 impl AriadneCompatible for UnsupportedBinary {
-	fn message(&self) -> String {
-		String::from("unsupported operation")
-	}
+	fn message(&self) -> String { String::from("unsupported operation") }
 
 	fn labels(self, file: &str, _position: Position) -> Vec<Label<Span>> {
 		let mut colors = ColorGenerator::new();
@@ -29,7 +26,6 @@ impl AriadneCompatible for UnsupportedBinary {
 				.with_message("this operation")
 				.with_color(color_operator)
 				.with_order(0),
-			
 			Label::new((file, self.lhs.1.start..self.rhs.1.end))
 				.with_message(format!(
 					"cannot be performed on types {} and {}",

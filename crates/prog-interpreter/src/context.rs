@@ -1,8 +1,8 @@
-use anyhow::{Result, bail};
-
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
 use std::cell::RefCell;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+
+use anyhow::{bail, Result};
 
 use crate::RuntimeValue;
 
@@ -54,21 +54,16 @@ impl RuntimeContext {
 			flags: RuntimeContextFlags::default(),
 
 			global_table: HashMap::new(),
-			sub_table: HashMap::from([
-				(0, RefCell::new(HashMap::new()))
-			])
+			sub_table: HashMap::from([(0, RefCell::new(HashMap::new()))])
 		}
 	}
 
 	pub fn deeper(&mut self) -> usize {
 		self.level += 1;
 
-		self
-			.sub_table
+		self.sub_table
 			.entry(self.level)
-			.or_insert_with(||
-				RefCell::new(HashMap::new())
-			);
+			.or_insert_with(|| RefCell::new(HashMap::new()));
 
 		self.level
 	}
@@ -82,31 +77,21 @@ impl RuntimeContext {
 		self.level -= 1;
 		self.sub_table.remove(&(self.level + 1));
 
-		self
-			.sub_table
+		self.sub_table
 			.entry(self.level)
-			.or_insert_with(||
-				RefCell::new(HashMap::new())
-			);
+			.or_insert_with(|| RefCell::new(HashMap::new()));
 
 		self.level
 	}
 
-	pub fn is_subcontext(&self) -> bool {
-		self.level > 0
-	}
+	pub fn is_subcontext(&self) -> bool { self.level > 0 }
 
-	fn key_in_global(&self, key: &String) -> bool {
-		self.global_table.contains_key(key)
-	}
+	fn key_in_global(&self, key: &String) -> bool { self.global_table.contains_key(key) }
 
 	fn key_in_subctx(&self, key: &String) -> bool {
-		self
-			.sub_table
+		self.sub_table
 			.values()
-			.any(|map|
-				map.borrow().contains_key(key)
-			)
+			.any(|map| map.borrow().contains_key(key))
 	}
 
 	pub fn get_value(&self, key: &String) -> Result<RuntimeValue> {
@@ -117,10 +102,9 @@ impl RuntimeContext {
 		// Iterating through temp table maps in reverse order
 		for map_index in (0..self.sub_table.len()).rev() {
 			// Getting a reference to the RefCell of the map
-			let map = self
-				.sub_table
-				.get(&map_index)
-				.unwrap_or_else(|| unreachable!("Subcontext in map at index `{map_index}` does not exist"));
+			let map = self.sub_table.get(&map_index).unwrap_or_else(|| {
+				unreachable!("Subcontext in map at index `{map_index}` does not exist")
+			});
 
 			// Getting the value from it
 			if let Some(value) = map.borrow().get(key) {
@@ -139,14 +123,13 @@ impl RuntimeContext {
 		if !self.key_in_global(key) && !self.key_in_subctx(key) {
 			bail!("Value with name '{key}' does not exist");
 		}
-		
+
 		// Iterating through temp table maps in reverse order
 		for map_index in (0..self.sub_table.len()).rev() {
 			// Getting a mutable reference to the RefCell of the map
-			let map = self
-				.sub_table
-				.get_mut(&map_index)
-				.unwrap_or_else(|| unreachable!("Subcontext in map at index `{map_index}` does not exist"));
+			let map = self.sub_table.get_mut(&map_index).unwrap_or_else(|| {
+				unreachable!("Subcontext in map at index `{map_index}` does not exist")
+			});
 
 			// Getting a mutable reference to the map itself
 			let mut borrowed_map = map.borrow_mut();
@@ -155,9 +138,7 @@ impl RuntimeContext {
 			if let Some(value) = borrowed_map.get_mut(key) {
 				// Warning: dark magic ahead!
 				// Extending the lifetime of the mutable borrow
-				return Ok(unsafe {
-					&mut *(value as *mut _)
-				});
+				return Ok(unsafe { &mut *(value as *mut _) });
 			}
 		}
 
@@ -176,10 +157,9 @@ impl RuntimeContext {
 		// Determining which table to write to
 		if self.is_subcontext() {
 			// Getting a mutable reference to the RefCell of the map
-			let map = self
-				.sub_table
-				.get_mut(&self.level)
-				.unwrap_or_else(|| unreachable!("Subcontext in map at index `{}` does not exist", self.level));
+			let map = self.sub_table.get_mut(&self.level).unwrap_or_else(|| {
+				unreachable!("Subcontext in map at index `{}` does not exist", self.level)
+			});
 
 			map.borrow_mut().insert(key, value);
 		} else {
@@ -199,10 +179,9 @@ impl RuntimeContext {
 			// Iterating through temp table maps in reverse order
 			for map_index in (0..self.sub_table.len()).rev() {
 				// Getting a mutable reference to the RefCell of the map
-				let map = self
-					.sub_table
-					.get_mut(&map_index)
-					.unwrap_or_else(|| unreachable!("Subcontext in map at index `{map_index}` does not exist"));
+				let map = self.sub_table.get_mut(&map_index).unwrap_or_else(|| {
+					unreachable!("Subcontext in map at index `{map_index}` does not exist")
+				});
 
 				// Getting a mutable reference to the map itself
 				let mut borrowed_map = map.borrow_mut();
@@ -226,7 +205,5 @@ impl RuntimeContext {
 }
 
 impl Default for RuntimeContext {
-	fn default() -> Self {
-		Self::new_clean()
-	}
+	fn default() -> Self { Self::new_clean() }
 }

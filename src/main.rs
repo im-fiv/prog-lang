@@ -1,34 +1,23 @@
 pub mod cli;
 
-use cli::Cli;
-use prog_parser::Parser as ProgParser;
-use prog_interpreter::Interpreter;
-use prog_utils::read_file;
-
 use clap::Parser;
+use cli::Cli;
+use prog_interpreter::Interpreter;
+use prog_parser::Parser as ProgParser;
+use prog_utils::read_file;
 
 #[cfg(feature = "api")]
 fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
-	let interpret_error = anyhow_error
-		.downcast_ref::<
-			prog_interpreter::InterpretError
-		>();
+	let interpret_error = anyhow_error.downcast_ref::<prog_interpreter::InterpretError>();
 
-	let parse_error = anyhow_error
-		.downcast_ref::<
-			prog_parser::ParseError
-		>();
+	let parse_error = anyhow_error.downcast_ref::<prog_parser::ParseError>();
 
 	if let Some(interpret_error) = interpret_error {
-		return serde_json
-			::to_string_pretty(interpret_error)
-			.map_err(|e| e.to_string());
+		return serde_json::to_string_pretty(interpret_error).map_err(|e| e.to_string());
 	}
 
 	if let Some(parse_error) = parse_error {
-		return serde_json
-			::to_string_pretty(parse_error)
-			.map_err(|e| e.to_string());
+		return serde_json::to_string_pretty(parse_error).map_err(|e| e.to_string());
 	}
 
 	Err(String::from("Failed to serialize anyhow error to JSON"))
@@ -52,17 +41,13 @@ fn execute_run_command(args: cli::RunCommand) {
 
 #[cfg(feature = "api")]
 fn execute_serve_command(args: cli::ServeCommand) {
-	use actix_web::{App, HttpResponse, HttpServer, Responder, post};
-	use actix_web::middleware::Logger;
 	use actix_cors::Cors;
+	use actix_web::middleware::Logger;
+	use actix_web::{post, App, HttpResponse, HttpServer, Responder};
 	use cfg_if::cfg_if;
-
 	use prog_interpreter::RuntimeValue;
 
-	env_logger::init_from_env(
-		env_logger::Env::new()
-			.default_filter_or("info")
-	);
+	env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
 	fn handle_anyhow_error(error: anyhow::Error) -> HttpResponse {
 		let json = match serialize_anyhow(error) {
@@ -111,7 +96,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 
 		HttpResponse::Ok().body(json)
 	}
-	
+
 	#[actix_web::main]
 	async fn run_server(port: u16) -> std::io::Result<()> {
 		let server = HttpServer::new(|| {
@@ -119,7 +104,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 				.wrap(Logger::default())
 				.wrap(Cors::permissive())
 				.service(execute_str);
-			
+
 			cfg_if! {
 				if #[cfg(feature = "website")] {
 					app.service(actix_files::Files::new("/", "./website").show_files_listing())
@@ -129,10 +114,7 @@ fn execute_serve_command(args: cli::ServeCommand) {
 			}
 		});
 
-		server
-			.bind(("0.0.0.0", port))?
-			.run()
-			.await
+		server.bind(("0.0.0.0", port))?.run().await
 	}
 
 	run_server(args.port).unwrap();

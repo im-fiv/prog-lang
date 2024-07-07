@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use anyhow::{Result, bail};
 
+use anyhow::{bail, Result};
 use prog_macros::get_argument;
 
-use crate::values::*;
-use crate::arg_parser::{ArgList, Arg, ParsedArg};
+use crate::arg_parser::{Arg, ArgList, ParsedArg};
 use crate::context::RuntimeContext;
 use crate::errors;
+use crate::values::*;
 
 fn print_function(
 	_this: Option<RuntimeValue>,
@@ -129,7 +129,7 @@ fn raw_print_function(
 ) -> Result<RuntimeValue> {
 	use std::io;
 	use std::io::Write;
-	
+
 	let text = get_argument!(args => string: RuntimeString).owned();
 	context.stdout.push_str(&text);
 
@@ -148,17 +148,14 @@ fn assert_function(
 	call_site: CallSite
 ) -> Result<RuntimeValue> {
 	let value = get_argument!(args => value: RuntimeValue);
-	let message = get_argument!(args => message: RuntimeString?)
-		.map(|str| str.owned());
+	let message = get_argument!(args => message: RuntimeString?).map(|str| str.owned());
 
 	if !value.is_truthy() {
 		bail!(crate::InterpretError::new(
 			call_site.source,
 			call_site.file,
 			call_site.args_pos,
-			errors::InterpretErrorKind::AssertionFailed(
-				errors::AssertionFailed(message)
-			)
+			errors::InterpretErrorKind::AssertionFailed(errors::AssertionFailed(message))
 		));
 	}
 
@@ -168,41 +165,49 @@ fn assert_function(
 pub fn create_value_table() -> HashMap<String, RuntimeValue> {
 	let mut map = HashMap::new();
 
-	map.insert(String::from("print"), IntrinsicFunction::new(
-		print_function,
-		ArgList::new(vec![
-			Arg::Variadic("varargs")
-		])
-	).into());
+	map.insert(
+		String::from("print"),
+		IntrinsicFunction::new(print_function, ArgList::new(vec![Arg::Variadic("varargs")])).into()
+	);
 
-	map.insert(String::from("import"), IntrinsicFunction::new(
-		import_function,
-		ArgList::new(vec![
-			Arg::Required("path", RuntimeValueKind::String)
-		])
-	).into());
+	map.insert(
+		String::from("import"),
+		IntrinsicFunction::new(
+			import_function,
+			ArgList::new(vec![Arg::Required("path", RuntimeValueKind::String)])
+		)
+		.into()
+	);
 
-	map.insert(String::from("input"), IntrinsicFunction::new(
-		input_function,
-		ArgList::new(vec![
-			Arg::Optional("message", RuntimeValueKind::String)
-		])
-	).into());
+	map.insert(
+		String::from("input"),
+		IntrinsicFunction::new(
+			input_function,
+			ArgList::new(vec![Arg::Optional("message", RuntimeValueKind::String)])
+		)
+		.into()
+	);
 
-	map.insert(String::from("raw_print"), IntrinsicFunction::new(
-		raw_print_function,
-		ArgList::new(vec![
-			Arg::Optional("string", RuntimeValueKind::String)
-		])
-	).into());
+	map.insert(
+		String::from("raw_print"),
+		IntrinsicFunction::new(
+			raw_print_function,
+			ArgList::new(vec![Arg::Optional("string", RuntimeValueKind::String)])
+		)
+		.into()
+	);
 
-	map.insert(String::from("assert"), IntrinsicFunction::new(
-		assert_function,
-		ArgList::new(vec![
-			Arg::Required("value", RuntimeValueKind::Boolean),
-			Arg::Optional("message", RuntimeValueKind::String)
-		])
-	).into());
+	map.insert(
+		String::from("assert"),
+		IntrinsicFunction::new(
+			assert_function,
+			ArgList::new(vec![
+				Arg::Required("value", RuntimeValueKind::Boolean),
+				Arg::Optional("message", RuntimeValueKind::String),
+			])
+		)
+		.into()
+	);
 
 	map
 }

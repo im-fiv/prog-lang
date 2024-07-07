@@ -14,6 +14,9 @@ impl syn::parse::Parse for GetThisInput {
 
 		let variant = input.parse::<Ident>()?;
 
-		Ok(Self { this_arg_name, variant })
+		Ok(Self {
+			this_arg_name,
+			variant
+		})
 	}
 }

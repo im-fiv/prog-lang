@@ -6,7 +6,9 @@ fn insert_and_get_value() {
 	let some_value = RuntimeValue::Boolean(RuntimeBoolean(true).into());
 
 	let mut context = RuntimeContext::new_clean();
-	context.insert_value(String::from("some_value"), some_value.clone()).unwrap();
+	context
+		.insert_value(String::from("some_value"), some_value.clone())
+		.unwrap();
 
 	let got_value = context.get_value(&String::from("some_value")).unwrap();
 
@@ -18,10 +20,14 @@ fn update_value() {
 	let some_value = RuntimeValue::Boolean(RuntimeBoolean(true).into());
 
 	let mut context = RuntimeContext::new_clean();
-	context.insert_value(String::from("some_value"), some_value.clone()).unwrap();
+	context
+		.insert_value(String::from("some_value"), some_value.clone())
+		.unwrap();
 
 	let new_value = RuntimeValue::Boolean(RuntimeBoolean(false).into());
-	let old_value = context.update_value(String::from("some_value"), new_value.clone()).unwrap();
+	let old_value = context
+		.update_value(String::from("some_value"), new_value.clone())
+		.unwrap();
 
 	let got_value = context.get_value(&String::from("some_value")).unwrap();
 
@@ -45,11 +51,17 @@ fn insert_twice() {
 	// in the global table, and some subcontext for it to panic during insertion.
 	// I don't want to change it due to how nicely shadowing works with the current logic
 	let mut context = RuntimeContext::new_clean();
-	context.insert_value(String::from("some_value"), some_value.clone()).unwrap();
+	context
+		.insert_value(String::from("some_value"), some_value.clone())
+		.unwrap();
 	context.deeper();
-	context.insert_value(String::from("some_value"), some_value.clone()).unwrap();
+	context
+		.insert_value(String::from("some_value"), some_value.clone())
+		.unwrap();
 
-	context.insert_value(String::from("some_value"), some_value).unwrap();
+	context
+		.insert_value(String::from("some_value"), some_value)
+		.unwrap();
 }
 
 #[test]
@@ -57,7 +69,9 @@ fn get_value_mutable() {
 	let some_value = RuntimeValue::Boolean(RuntimeBoolean(true).into());
 
 	let mut context = RuntimeContext::new_clean();
-	context.insert_value(String::from("some_value"), some_value.clone()).unwrap();
+	context
+		.insert_value(String::from("some_value"), some_value.clone())
+		.unwrap();
 
 	let value_ref = context.get_value_mut(&String::from("some_value")).unwrap();
 
@@ -69,7 +83,10 @@ fn get_value_mutable() {
 	}
 
 	let got_value = context.get_value(&String::from("some_value")).unwrap();
-	assert_eq!(got_value, RuntimeValue::Boolean(RuntimeBoolean(false).into()));
+	assert_eq!(
+		got_value,
+		RuntimeValue::Boolean(RuntimeBoolean(false).into())
+	);
 }
 
 #[test]
@@ -79,7 +96,9 @@ fn subcontexts() {
 	let mut context = RuntimeContext::new_clean();
 
 	context.deeper();
-	context.insert_value(String::from("some_value"), some_value).unwrap();
+	context
+		.insert_value(String::from("some_value"), some_value)
+		.unwrap();
 	context.shallower();
 
 	let result = context.get_value(&String::from("some_value"));

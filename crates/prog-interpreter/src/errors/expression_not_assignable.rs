@@ -1,18 +1,14 @@
-use ariadne::{ColorGenerator, Label, Fmt};
-use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
+use ariadne::{ColorGenerator, Fmt, Label};
+use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
 use crate::RuntimeValueKind;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize))]
-pub struct ExpressionNotAssignable(
-	pub Option<RuntimeValueKind>
-);
+pub struct ExpressionNotAssignable(pub Option<RuntimeValueKind>);
 
 impl AriadneCompatible for ExpressionNotAssignable {
-	fn message(&self) -> String {
-		String::from("expression cannot be assigned to")
-	}
+	fn message(&self) -> String { String::from("expression cannot be assigned to") }
 
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>> {
 		let mut colors = ColorGenerator::new();
@@ -35,10 +31,8 @@ impl AriadneCompatible for ExpressionNotAssignable {
 			)
 		};
 
-		vec![
-			Label::new((file, position))
-				.with_message(message)
-				.with_color(color_got)
-		]
+		vec![Label::new((file, position))
+			.with_message(message)
+			.with_color(color_got)]
 	}
 }

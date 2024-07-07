@@ -19,7 +19,7 @@ pub(crate) fn expand_fields_type(variant: &syn::Variant) -> syn::Result<pm2::Tok
 		1 => {
 			let temp_type = &unnamed_fields.unnamed[0].ty;
 			quote!(#temp_type)
-		},
+		}
 
 		_ => {
 			let mut field_types = vec![];
@@ -36,17 +36,13 @@ pub(crate) fn expand_fields_type(variant: &syn::Variant) -> syn::Result<pm2::Tok
 }
 
 /// Expands to a token stream to destructure a variant with unnamed fields
-pub(crate) fn expand_destructure_pattern(fields_len: usize) -> (pm2::TokenStream, pm2::TokenStream) {
+pub(crate) fn expand_destructure_pattern(
+	fields_len: usize
+) -> (pm2::TokenStream, pm2::TokenStream) {
 	if fields_len == 0 {
-		(
-			quote! { },
-			quote! { () }
-		)
+		(quote! {}, quote! { () })
 	} else if fields_len == 1 {
-		(
-			quote! { (value) },
-			quote! { value }
-		)
+		(quote! { (value) }, quote! { value })
 	} else {
 		let mut value_names = vec![];
 

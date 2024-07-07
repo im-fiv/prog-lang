@@ -1,4 +1,4 @@
-use super::{Statement, Expression, Position};
+use super::{Expression, Position, Statement};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {

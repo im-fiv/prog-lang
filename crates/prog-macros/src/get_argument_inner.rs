@@ -1,6 +1,6 @@
-use syn::{Type, Ident, Token};
 use proc_macro2 as pm2;
 use quote::quote;
+use syn::{Ident, Token, Type};
 
 #[derive(Debug)]
 pub(crate) struct GetArgumentInput {
@@ -32,7 +32,12 @@ impl syn::parse::Parse for GetArgumentInput {
 			input.parse::<Token![?]>()?;
 		}
 
-		Ok(Self { list_name, arg_name, inner_type, optional })
+		Ok(Self {
+			list_name,
+			arg_name,
+			inner_type,
+			optional
+		})
 	}
 }
 
@@ -71,7 +76,7 @@ pub(crate) fn expand_required(input: GetArgumentInput) -> pm2::TokenStream {
 pub(crate) fn expand_variadic(input: GetArgumentInput) -> pm2::TokenStream {
 	let arg_name = input.arg_name;
 	let list_name = input.list_name;
-	
+
 	// Note: double curly braces are extremely important
 	quote! {{
 		let arg_name = ::std::stringify!(#arg_name);

@@ -1,9 +1,8 @@
-use syn::{Result, Variant, Generics};
-
-use proc_macro2::{TokenStream, Ident};
+use proc_macro2::{Ident, TokenStream};
 use quote::quote;
+use syn::{Generics, Result, Variant};
 
-use super::utils::{expand_fields_type, expand_destructure_pattern};
+use super::utils::{expand_destructure_pattern, expand_fields_type};
 
 /// Expands to impl of `TryInto` for variant's unnamed fields type
 pub(crate) fn expand_variant(
@@ -17,11 +16,7 @@ pub(crate) fn expand_variant(
 	let (destructure_pattern, value_names) = expand_destructure_pattern(variant.fields.len());
 
 	// Splitting generics data
-	let (
-		impl_generics,
-		type_generics,
-		where_clause
-	) = generics.split_for_impl();
+	let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
 
 	Ok(quote! {
 		impl #impl_generics ::std::convert::TryInto<#fields_type> for #enum_name #type_generics #where_clause {

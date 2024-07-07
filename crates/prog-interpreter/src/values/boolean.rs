@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
-use super::{RuntimePrimitive, IntrinsicFunction};
+use super::{IntrinsicFunction, RuntimePrimitive};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeBoolean(pub bool);
@@ -9,19 +9,13 @@ pub struct RuntimeBoolean(pub bool);
 impl RuntimePrimitive for RuntimeBoolean {
 	type Inner = bool;
 
-	fn value(&self) -> &Self::Inner {
-		&self.0
-	}
+	fn value(&self) -> &Self::Inner { &self.0 }
 
-	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> {
-		HashMap::new()
-	}
+	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> { HashMap::new() }
 }
 
 impl From<bool> for RuntimeBoolean {
-	fn from(value: bool) -> Self {
-		Self(value)
-	}
+	fn from(value: bool) -> Self { Self(value) }
 }
 
 impl Display for RuntimeBoolean {

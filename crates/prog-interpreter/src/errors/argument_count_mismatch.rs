@@ -1,7 +1,7 @@
-use ariadne::{ColorGenerator, Label, Fmt};
 use std::ops::Range;
 
-use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
+use ariadne::{ColorGenerator, Fmt, Label};
+use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize))]
@@ -14,9 +14,7 @@ pub struct ArgumentCountMismatch {
 }
 
 impl AriadneCompatible for ArgumentCountMismatch {
-	fn message(&self) -> String {
-		String::from("argument count mismatch")
-	}
+	fn message(&self) -> String { String::from("argument count mismatch") }
 
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>> {
 		let mut colors = ColorGenerator::new();
@@ -56,17 +54,12 @@ impl AriadneCompatible for ArgumentCountMismatch {
 			Label::new((file, position))
 				.with_message(message)
 				.with_color(color_got),
-			
-			Label::new((file, self.fn_call_pos))
-				.with_color(color_expected)
+			Label::new((file, self.fn_call_pos)).with_color(color_expected),
 		];
 
 		if let Some(fn_def_args_pos) = self.fn_def_args_pos {
 			let definition_label = Label::new((file, fn_def_args_pos))
-				.with_message(format!(
-					"as defined {}",
-					"here".fg(color_expected)
-				))
+				.with_message(format!("as defined {}", "here".fg(color_expected)))
 				.with_color(color_expected);
 
 			labels.push(definition_label);

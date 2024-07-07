@@ -4,7 +4,6 @@ mod misc;
 mod statements;
 
 pub use expressions::Expression;
-pub use statements::*;
 pub use misc::*;
-
 pub use prog_utils::pretty_errors::Position;
+pub use statements::*;

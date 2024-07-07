@@ -4,14 +4,12 @@ pub mod errors;
 pub mod intrinsics;
 pub mod values;
 
-pub use values::{RuntimePrimitive, RuntimeValue, RuntimeValueKind};
-pub use errors::{InterpretError, InterpretErrorKind};
-
-use context::RuntimeContext;
-use values::{RuntimeFunction, CallSite};
-
-use prog_parser::ast;
 use anyhow::Result;
+use context::RuntimeContext;
+pub use errors::{InterpretError, InterpretErrorKind};
+use prog_parser::ast;
+use values::{CallSite, RuntimeFunction};
+pub use values::{RuntimePrimitive, RuntimeValue, RuntimeValueKind};
 
 /// Only to be used inside the interpreter impl
 macro_rules! create_error {
@@ -43,7 +41,7 @@ fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
 			} else {
 				None
 			}
-		},
+		}
 
 		_ => None
 	}
@@ -107,10 +105,18 @@ impl Interpreter {
 			Some(expression) => self.evaluate_expression(expression, false)?
 		};
 
-		if self.context.insert_value(statement.name.0.clone(), evaluated_value).is_err() {
-			create_error!(self, statement.name.1, InterpretErrorKind::ValueAlreadyExists(
-				errors::ValueAlreadyExists(statement.name.0)
-			));
+		if self
+			.context
+			.insert_value(statement.name.0.clone(), evaluated_value)
+			.is_err()
+		{
+			create_error!(
+				self,
+				statement.name.1,
+				InterpretErrorKind::ValueAlreadyExists(errors::ValueAlreadyExists(
+					statement.name.0
+				))
+			);
 		}
 
 		Ok(RuntimeValue::Empty)
@@ -119,10 +125,16 @@ impl Interpreter {
 	fn execute_variable_assign(&mut self, statement: ast::VariableAssign) -> Result<RuntimeValue> {
 		let evaluated_value = self.evaluate_expression(statement.value, false)?;
 
-		if self.context.update_value(statement.name.0.clone(), evaluated_value).is_err() {
-			create_error!(self, statement.name.1, InterpretErrorKind::ValueDoesntExist(
-				errors::ValueDoesntExist(statement.name.0)
-			));
+		if self
+			.context
+			.update_value(statement.name.0.clone(), evaluated_value)
+			.is_err()
+		{
+			create_error!(
+				self,
+				statement.name.1,
+				InterpretErrorKind::ValueDoesntExist(errors::ValueDoesntExist(statement.name.0))
+			);
 		}
 
 		Ok(RuntimeValue::Empty)
@@ -130,9 +142,12 @@ impl Interpreter {
 
 	fn execute_do_block(&mut self, statement: ast::DoBlock) -> Result<RuntimeValue> {
 		self.context.deeper();
-		let result = self.execute(ast::Program {
-			statements: statement.statements
-		}, false);
+		let result = self.execute(
+			ast::Program {
+				statements: statement.statements
+			},
+			false
+		);
 		self.context.shallower();
 
 		result
@@ -144,9 +159,9 @@ impl Interpreter {
 			None => RuntimeValue::Empty
 		};
 
-		Ok(RuntimeValue::Marker(
-			values::MarkerKind::Return(Box::new(value))
-		))
+		Ok(RuntimeValue::Marker(values::MarkerKind::Return(Box::new(
+			value
+		))))
 	}
 
 	fn execute_while_loop(&mut self, statement: ast::WhileLoop) -> Result<RuntimeValue> {
@@ -154,9 +169,12 @@ impl Interpreter {
 
 		while evaluated.is_truthy() {
 			self.context.deeper();
-			let result = self.execute(ast::Program {
-				statements: statement.statements.clone()
-			}, true)?;
+			let result = self.execute(
+				ast::Program {
+					statements: statement.statements.clone()
+				},
+				true
+			)?;
 			self.context.shallower();
 
 			if let RuntimeValue::Marker(ref marker) = result {
@@ -189,9 +207,12 @@ impl Interpreter {
 
 		if evaluated.is_truthy() {
 			self.context.deeper();
-			let result = self.execute(ast::Program {
-				statements: statement.statements
-			}, true)?;
+			let result = self.execute(
+				ast::Program {
+					statements: statement.statements
+				},
+				true
+			)?;
 			self.context.shallower();
 
 			if result.kind() == RuntimeValueKind::Marker {
@@ -202,13 +223,16 @@ impl Interpreter {
 		}
 
 		for branch in statement.elseif_branches {
-			let evaluated = self.evaluate_expression(branch.condition, false)?; 
+			let evaluated = self.evaluate_expression(branch.condition, false)?;
 
 			if evaluated.is_truthy() {
 				self.context.deeper();
-				let result = self.execute(ast::Program {
-					statements: branch.statements
-				}, true)?;
+				let result = self.execute(
+					ast::Program {
+						statements: branch.statements
+					},
+					true
+				)?;
 				self.context.shallower();
 
 				if result.kind() == RuntimeValueKind::Marker {
@@ -221,9 +245,12 @@ impl Interpreter {
 
 		if let Some(branch) = statement.else_branch {
 			self.context.deeper();
-			let result = self.execute(ast::Program {
-				statements: branch.statements
-			}, true)?;
+			let result = self.execute(
+				ast::Program {
+					statements: branch.statements
+				},
+				true
+			)?;
 			self.context.shallower();
 
 			if result.kind() == RuntimeValueKind::Marker {
@@ -236,27 +263,30 @@ impl Interpreter {
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_expression_assign(&mut self, statement: ast::ExpressionAssign) -> Result<RuntimeValue> {
+	fn execute_expression_assign(
+		&mut self,
+		statement: ast::ExpressionAssign
+	) -> Result<RuntimeValue> {
 		use ast::expressions::operators::BinaryOperator as Op;
 
 		let expression = match statement.expression {
 			ast::Expression::Binary(expression) => expression,
-			_ => create_error!(
-				self,
-				statement.expression.position(),
-				InterpretErrorKind::ExpressionNotAssignable(
-					errors::ExpressionNotAssignable(None)
+			_ => {
+				create_error!(
+					self,
+					statement.expression.position(),
+					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
+						None
+					))
 				)
-			)
+			}
 		};
 
 		if !matches!(expression.operator.0, Op::ListAccess | Op::ObjectAccess) {
 			create_error!(
 				self,
 				expression.position,
-				InterpretErrorKind::ExpressionNotAssignable(
-					errors::ExpressionNotAssignable(None)
-				)
+				InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(None))
 			);
 		}
 
@@ -269,45 +299,72 @@ impl Interpreter {
 		}
 	}
 
-	fn execute_expression_assign_list(&mut self, expression: ast::expressions::Binary, value: RuntimeValue) -> Result<RuntimeValue> {
-		let ast::expressions::Binary { lhs, rhs, operator: _, position } = expression;
+	fn execute_expression_assign_list(
+		&mut self,
+		expression: ast::expressions::Binary,
+		value: RuntimeValue
+	) -> Result<RuntimeValue> {
+		let ast::expressions::Binary {
+			lhs,
+			rhs,
+			operator: _,
+			position
+		} = expression;
 
 		let list_name = match self.evaluate_term(rhs.clone(), true)? {
 			RuntimeValue::Identifier(identifier) => identifier,
-			_ => create_error!(self, position, InterpretErrorKind::ExpressionNotAssignable(
-				errors::ExpressionNotAssignable(None)
-			))
+			_ => {
+				create_error!(
+					self,
+					position,
+					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
+						None
+					))
+				)
+			}
 		};
 
 		let index = match self.evaluate_term(lhs.clone(), false)? {
 			RuntimeValue::Number(index) => index.owned() as i64,
-			value => create_error!(self, position, InterpretErrorKind::CannotIndexValue(
-				errors::CannotIndexValue {
-					kind: (RuntimeValueKind::List, rhs.position()),
-					expected_index_kind: RuntimeValueKind::Number,
-					index_kind: (value.kind(), lhs.position()),
-					because_negative: false
-				}
-			))
+			value => {
+				create_error!(
+					self,
+					position,
+					InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
+						kind: (RuntimeValueKind::List, rhs.position()),
+						expected_index_kind: RuntimeValueKind::Number,
+						index_kind: (value.kind(), lhs.position()),
+						because_negative: false
+					})
+				)
+			}
 		};
 
 		if index.is_negative() {
-			create_error!(self, position, InterpretErrorKind::CannotIndexValue(
-				errors::CannotIndexValue {
+			create_error!(
+				self,
+				position,
+				InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
 					kind: (RuntimeValueKind::List, rhs.position()),
 					expected_index_kind: RuntimeValueKind::Number,
 					index_kind: (value.kind(), lhs.position()),
 					because_negative: true
-				}
-			));
+				})
+			);
 		}
 
 		let index: usize = index.try_into()?;
 		let inner_list = match self.context.get_value_mut(&list_name)? {
 			RuntimeValue::List(inner_list) => inner_list,
-			value => create_error!(self, position, InterpretErrorKind::ExpressionNotAssignable(
-				errors::ExpressionNotAssignable(Some(value.kind()))
-			))
+			value => {
+				create_error!(
+					self,
+					position,
+					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
+						Some(value.kind())
+					))
+				)
+			}
 		};
 
 		if index >= inner_list.value().len() {
@@ -319,36 +376,61 @@ impl Interpreter {
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn execute_expression_assign_object(&mut self, expression: ast::expressions::Binary, value: RuntimeValue) -> Result<RuntimeValue> {
-		let ast::expressions::Binary { lhs, rhs, operator: _, position } = expression.clone();
+	fn execute_expression_assign_object(
+		&mut self,
+		expression: ast::expressions::Binary,
+		value: RuntimeValue
+	) -> Result<RuntimeValue> {
+		let ast::expressions::Binary {
+			lhs,
+			rhs,
+			operator: _,
+			position
+		} = expression.clone();
 
 		let object_name = match self.evaluate_term(lhs.clone(), true)? {
 			RuntimeValue::Identifier(identifier) => identifier,
-			_ => create_error!(self, position, InterpretErrorKind::ExpressionNotAssignable(
-				errors::ExpressionNotAssignable(None)
-			))
+			_ => {
+				create_error!(
+					self,
+					position,
+					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
+						None
+					))
+				)
+			}
 		};
 
 		let entry_name = match self.evaluate_term(rhs.clone(), true)? {
 			RuntimeValue::Identifier(value) => value,
 			RuntimeValue::String(value) => value.owned(),
 
-			value => create_error!(self, position, InterpretErrorKind::CannotIndexValue(
-				errors::CannotIndexValue {
-					kind: (RuntimeValueKind::Object, lhs.position()),
-					expected_index_kind: RuntimeValueKind::String,
-					index_kind: (value.kind(), rhs.position()),
-					because_negative: false
-				}
-			))
+			value => {
+				create_error!(
+					self,
+					position,
+					InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
+						kind: (RuntimeValueKind::Object, lhs.position()),
+						expected_index_kind: RuntimeValueKind::String,
+						index_kind: (value.kind(), rhs.position()),
+						because_negative: false
+					})
+				)
+			}
 		};
 
 		let inner_object = match self.context.get_value_mut(&object_name)? {
 			RuntimeValue::Object(inner_object) => inner_object,
-			
-			value => create_error!(self, position, InterpretErrorKind::ExpressionNotAssignable(
-				errors::ExpressionNotAssignable(Some(value.kind()))
-			))
+
+			value => {
+				create_error!(
+					self,
+					position,
+					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
+						Some(value.kind())
+					))
+				)
+			}
 		};
 
 		inner_object.0.insert(entry_name, value);
@@ -356,12 +438,29 @@ impl Interpreter {
 		Ok(RuntimeValue::Empty)
 	}
 
-	fn evaluate_expression(&mut self, expression: ast::Expression, stop_on_ident: bool) -> Result<RuntimeValue> {
+	fn evaluate_expression(
+		&mut self,
+		expression: ast::Expression,
+		stop_on_ident: bool
+	) -> Result<RuntimeValue> {
 		use ast::expressions::*;
-		
+
 		match expression {
-			Expression::Unary(expression) => self.evaluate_unary_expression(expression.operator, expression.operand, stop_on_ident),
-			Expression::Binary(expression) => self.evaluate_binary_expression(expression.lhs, expression.operator, expression.rhs, stop_on_ident),
+			Expression::Unary(expression) => {
+				self.evaluate_unary_expression(
+					expression.operator,
+					expression.operand,
+					stop_on_ident
+				)
+			}
+			Expression::Binary(expression) => {
+				self.evaluate_binary_expression(
+					expression.lhs,
+					expression.operator,
+					expression.rhs,
+					stop_on_ident
+				)
+			}
 			Expression::Term(term) => self.evaluate_term(term, stop_on_ident),
 			Expression::Empty(_) => Ok(RuntimeValue::Empty)
 		}
@@ -393,12 +492,16 @@ impl Interpreter {
 			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(false.into())),
 			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(true.into())),
 
-			(_, evaluated_operand) => create_error!(self, whole_pos, InterpretErrorKind::UnsupportedUnary(
-				errors::UnsupportedUnary {
-					operator,
-					operand: (evaluated_operand.kind(), operand.position())
-				}
-			))
+			(_, evaluated_operand) => {
+				create_error!(
+					self,
+					whole_pos,
+					InterpretErrorKind::UnsupportedUnary(errors::UnsupportedUnary {
+						operator,
+						operand: (evaluated_operand.kind(), operand.position())
+					})
+				)
+			}
 		}
 	}
 
@@ -431,45 +534,70 @@ impl Interpreter {
 				let function = map.get(&$key);
 
 				if function.is_none() {
-					create_error!(self, lhs_position, InterpretErrorKind::FieldDoesntExist(
-						errors::FieldDoesntExist($key, rhs_position)
-					));
+					create_error!(
+						self,
+						lhs_position,
+						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
+							$key,
+							rhs_position
+						))
+					);
 				}
 
-				let mut function = function
-					.unwrap()
-					.to_owned();
+				let mut function = function.unwrap().to_owned();
 
-				function.this = Some(Box::new(
-					$lhs.into()
-				));
+				function.this = Some(Box::new($lhs.into()));
 
 				RuntimeValue::IntrinsicFunction(function.into())
 			}};
 		}
 
 		let evaluated_expr = match (operator.0, evaluated_lhs, evaluated_rhs) {
-			(Op::Add, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Number((lhs.owned() + rhs.owned()).into()),
-			(Op::Subtract, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Number((lhs.owned() - rhs.owned()).into()),
-			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Number((lhs.owned() / rhs.owned()).into()),
-			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Number((lhs.owned() * rhs.owned()).into()),
-			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Number((lhs.owned() % rhs.owned()).into()),
-			(Op::Gt, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs.owned() > rhs.owned()).into()),
-			(Op::Lt, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs.owned() < rhs.owned()).into()),
-			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs.owned() >= rhs.owned()).into()),
-			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs.owned() <= rhs.owned()).into()),
+			(Op::Add, Rv::Number(lhs), Rv::Number(rhs)) => {
+				Rv::Number((lhs.owned() + rhs.owned()).into())
+			}
+			(Op::Subtract, Rv::Number(lhs), Rv::Number(rhs)) => {
+				Rv::Number((lhs.owned() - rhs.owned()).into())
+			}
+			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => {
+				Rv::Number((lhs.owned() / rhs.owned()).into())
+			}
+			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => {
+				Rv::Number((lhs.owned() * rhs.owned()).into())
+			}
+			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => {
+				Rv::Number((lhs.owned() % rhs.owned()).into())
+			}
+			(Op::Gt, Rv::Number(lhs), Rv::Number(rhs)) => {
+				Rv::Boolean((lhs.owned() > rhs.owned()).into())
+			}
+			(Op::Lt, Rv::Number(lhs), Rv::Number(rhs)) => {
+				Rv::Boolean((lhs.owned() < rhs.owned()).into())
+			}
+			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => {
+				Rv::Boolean((lhs.owned() >= rhs.owned()).into())
+			}
+			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => {
+				Rv::Boolean((lhs.owned() <= rhs.owned()).into())
+			}
 
 			(Op::Add, Rv::String(lhs), rhs) => Rv::String(format!("{}{}", lhs.value(), rhs).into()),
 
-			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Rv::Boolean((lhs.owned() && rhs.owned()).into()),
-			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Rv::Boolean((lhs.owned() || rhs.owned()).into()),
+			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => {
+				Rv::Boolean((lhs.owned() && rhs.owned()).into())
+			}
+			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => {
+				Rv::Boolean((lhs.owned() || rhs.owned()).into())
+			}
 
 			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Rv::Boolean((lhs == rhs).into()),
 			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Rv::Boolean((lhs == rhs).into()),
 			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs == rhs).into()),
 			(Op::EqEq, Rv::List(lhs), Rv::List(rhs)) => Rv::Boolean((lhs == rhs).into()),
 			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Rv::Boolean((lhs == rhs).into()),
-			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Rv::Boolean((lhs == rhs).into()),
+			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => {
+				Rv::Boolean((lhs == rhs).into())
+			}
 			(Op::EqEq, Rv::Empty, Rv::Empty) => Rv::Boolean(true.into()),
 
 			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Rv::Boolean((lhs != rhs).into()),
@@ -477,52 +605,81 @@ impl Interpreter {
 			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs != rhs).into()),
 			(Op::NotEq, Rv::List(lhs), Rv::List(rhs)) => Rv::Boolean((lhs != rhs).into()),
 			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Rv::Boolean((lhs != rhs).into()),
-			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => Rv::Boolean((lhs != rhs).into()),
+			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => {
+				Rv::Boolean((lhs != rhs).into())
+			}
 			(Op::NotEq, Rv::Empty, Rv::Empty) => Rv::Boolean(false.into()),
 
-			(Op::ListAccess, Rv::Number(lhs), Rv::List(rhs)) => rhs
-				.value()
-				.get(lhs.owned() as usize)
-				.unwrap_or(&RuntimeValue::Empty)
-				.to_owned(),
+			(Op::ListAccess, Rv::Number(lhs), Rv::List(rhs)) => {
+				rhs.value()
+					.get(lhs.owned() as usize)
+					.unwrap_or(&RuntimeValue::Empty)
+					.to_owned()
+			}
 
-			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => lhs
-				.value()
-				.get(&rhs)
-				.unwrap_or(&RuntimeValue::Empty)
-				.to_owned(),
-			(Op::ObjectAccess, Rv::Object(lhs), Rv::String(rhs)) => lhs
-				.value()
-				.get(rhs.value())
-				.unwrap_or(&RuntimeValue::Empty)
-				.to_owned(),
+			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => {
+				lhs.value()
+					.get(&rhs)
+					.unwrap_or(&RuntimeValue::Empty)
+					.to_owned()
+			}
+			(Op::ObjectAccess, Rv::Object(lhs), Rv::String(rhs)) => {
+				lhs.value()
+					.get(rhs.value())
+					.unwrap_or(&RuntimeValue::Empty)
+					.to_owned()
+			}
 
-			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
-			(Op::ObjectAccess, Rv::String(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
-			(Op::ObjectAccess, Rv::Number(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
-			(Op::ObjectAccess, Rv::List(lhs), Rv::Identifier(rhs)) => primitive_object_access!(lhs, rhs),
+			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::Identifier(rhs)) => {
+				primitive_object_access!(lhs, rhs)
+			}
+			(Op::ObjectAccess, Rv::String(lhs), Rv::Identifier(rhs)) => {
+				primitive_object_access!(lhs, rhs)
+			}
+			(Op::ObjectAccess, Rv::Number(lhs), Rv::Identifier(rhs)) => {
+				primitive_object_access!(lhs, rhs)
+			}
+			(Op::ObjectAccess, Rv::List(lhs), Rv::Identifier(rhs)) => {
+				primitive_object_access!(lhs, rhs)
+			}
 
-			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
-			(Op::ObjectAccess, Rv::String(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
-			(Op::ObjectAccess, Rv::Number(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
-			(Op::ObjectAccess, Rv::List(lhs), Rv::String(rhs)) => primitive_object_access!(lhs, rhs.owned()),
+			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::String(rhs)) => {
+				primitive_object_access!(lhs, rhs.owned())
+			}
+			(Op::ObjectAccess, Rv::String(lhs), Rv::String(rhs)) => {
+				primitive_object_access!(lhs, rhs.owned())
+			}
+			(Op::ObjectAccess, Rv::Number(lhs), Rv::String(rhs)) => {
+				primitive_object_access!(lhs, rhs.owned())
+			}
+			(Op::ObjectAccess, Rv::List(lhs), Rv::String(rhs)) => {
+				primitive_object_access!(lhs, rhs.owned())
+			}
 
 			(Op::EqEq, _, _) => Rv::Boolean(false.into()),
 			(Op::NotEq, _, _) => Rv::Boolean(true.into()),
 
-			(_, evaluated_lhs, evaluated_rhs) => create_error!(self, whole_position, InterpretErrorKind::UnsupportedBinary(
-				errors::UnsupportedBinary {
-					lhs: (evaluated_lhs.kind(), lhs_position),
-					operator,
-					rhs: (evaluated_rhs.kind(), rhs_position)
-				}
-			))
+			(_, evaluated_lhs, evaluated_rhs) => {
+				create_error!(
+					self,
+					whole_position,
+					InterpretErrorKind::UnsupportedBinary(errors::UnsupportedBinary {
+						lhs: (evaluated_lhs.kind(), lhs_position),
+						operator,
+						rhs: (evaluated_rhs.kind(), rhs_position)
+					})
+				)
+			}
 		};
 
 		Ok(evaluated_expr)
 	}
 
-	fn evaluate_term(&mut self, term: ast::expressions::Term, stop_on_ident: bool) -> Result<RuntimeValue> {
+	fn evaluate_term(
+		&mut self,
+		term: ast::expressions::Term,
+		stop_on_ident: bool
+	) -> Result<RuntimeValue> {
 		use ast::expressions::*;
 
 		let position = term.position();
@@ -533,16 +690,18 @@ impl Interpreter {
 			Term::Call(value) => self.evaluate_call(value),
 			Term::Function(value) => self.evaluate_function(value),
 			Term::Literal(value) => Ok(value.into()),
-			Term::Identifier(value, _) => match stop_on_ident {
-				true => Ok(RuntimeValue::Identifier(value)),
-				false => self.context
-					.get_value(&value)
-					.map_err(|_|
-						create_error!(self, position, InterpretErrorKind::ValueDoesntExist(
+			Term::Identifier(value, _) => {
+				match stop_on_ident {
+					true => Ok(RuntimeValue::Identifier(value)),
+					false => {
+						self.context.get_value(&value).map_err(|_| {
+							create_error!(self, position, InterpretErrorKind::ValueDoesntExist(
 							errors::ValueDoesntExist(value)
 						); no_bail)
-					)
-			},
+						})
+					}
+				}
+			}
 			Term::Expression(value) => self.evaluate_expression(*value, stop_on_ident)
 		}
 	}
@@ -566,19 +725,26 @@ impl Interpreter {
 		for entry in object.0 {
 			let name = entry.name;
 			let value = self.evaluate_expression(entry.value, false)?;
-			
+
 			if value_map.insert(name.clone(), value).is_some() {
 				let definition_pos = position_map
 					.get(&name)
-					.unwrap_or_else(|| unreachable!("Position for entry `{}` does not exist in the position map", name))
+					.unwrap_or_else(|| {
+						unreachable!(
+							"Position for entry `{}` does not exist in the position map",
+							name
+						)
+					})
 					.to_owned();
 
-				create_error!(self, entry.position, InterpretErrorKind::DuplicateObjectEntry(
-					errors::DuplicateObjectEntry {
+				create_error!(
+					self,
+					entry.position,
+					InterpretErrorKind::DuplicateObjectEntry(errors::DuplicateObjectEntry {
 						entry_name: name,
 						definition_pos
-					}
-				));
+					})
+				);
 			}
 
 			position_map.insert(name, entry.position);
@@ -602,14 +768,16 @@ impl Interpreter {
 		let call_site = CallSite {
 			source: self.source.clone(),
 			file: self.file.clone(),
-			
+
 			args_pos: call.arguments.1,
 			func_pos: call.function.position(),
 			whole_pos: call.position
 		};
 
 		let call_args_pos = call_site.args_pos.clone();
-		let call_args = call.arguments.0
+		let call_args = call
+			.arguments
+			.0
 			.clone()
 			.into_iter()
 			.map(|arg| self.evaluate_expression(arg, false))
@@ -623,25 +791,35 @@ impl Interpreter {
 		if let RuntimeValue::IntrinsicFunction(function) = function_expr {
 			let convert_error = |e: arg_parser::ArgumentParseError| {
 				match e {
-					arg_parser::ArgumentParseError::CountMismatch { expected, end_boundary, got } => create_error!(
-						self,
-						call_args_pos,
-						InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
-							expected,
-							end_boundary,
-							got,
-							fn_call_pos: function_pos,
-							fn_def_args_pos: None
-						});
-						no_bail
-					),
+					arg_parser::ArgumentParseError::CountMismatch {
+						expected,
+						end_boundary,
+						got
+					} => {
+						create_error!(
+							self,
+							call_args_pos,
+							InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
+								expected,
+								end_boundary,
+								got,
+								fn_call_pos: function_pos,
+								fn_def_args_pos: None
+							});
+							no_bail
+						)
+					}
 
-					arg_parser::ArgumentParseError::IncorrectType { index, expected, got } => {
-						let argument = call
-							.arguments
-							.0
-							.get(index)
-							.unwrap_or_else(|| unreachable!("Argument at index `{index}` does not exist when it should"));
+					arg_parser::ArgumentParseError::IncorrectType {
+						index,
+						expected,
+						got
+					} => {
+						let argument = call.arguments.0.get(index).unwrap_or_else(|| {
+							unreachable!(
+								"Argument at index `{index}` does not exist when it should"
+							)
+						});
 
 						create_error!(
 							self,
@@ -659,7 +837,7 @@ impl Interpreter {
 				.arguments
 				.verify(&call_args)
 				.map_err(convert_error)?;
-			
+
 			self.context.deeper();
 			let result = function.call(&mut self.context, call_args, call_site);
 			self.context.shallower();
@@ -670,58 +848,54 @@ impl Interpreter {
 		if let RuntimeValue::Function(function) = function_expr {
 			let got_len = call_args.len();
 			let expected_len = function.ast.arguments.len();
-			
-			if got_len != expected_len {
-				let first_arg = function
-					.ast
-					.arguments
-					.first()
-					.unwrap();
 
-				let last_arg = function
-					.ast
-					.arguments
-					.last()
-					.unwrap();
+			if got_len != expected_len {
+				let first_arg = function.ast.arguments.first().unwrap();
+
+				let last_arg = function.ast.arguments.last().unwrap();
 
 				let fn_call_pos = function_pos;
-				let fn_def_args_pos = Some(
-					(first_arg.1.start)..(last_arg.1.end)
-				);
+				let fn_def_args_pos = Some((first_arg.1.start)..(last_arg.1.end));
 
-				create_error!(self, call_args_pos, InterpretErrorKind::ArgumentCountMismatch(
-					errors::ArgumentCountMismatch {
+				create_error!(
+					self,
+					call_args_pos,
+					InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
 						expected: expected_len..expected_len,
 						end_boundary: true,
 						got: got_len,
 						fn_call_pos,
 						fn_def_args_pos
-					}
-				));
+					})
+				);
 			}
 
 			let source = self.source.clone();
 			let file = self.file.clone();
-			
+
 			// Function execution
 			{
 				self.context.deeper();
 				self.source = function.source;
 				self.file = function.file;
 
-				for ((arg_name, _), arg_value) in function.ast.arguments.into_iter().zip(call_args) {
+				for ((arg_name, _), arg_value) in function.ast.arguments.into_iter().zip(call_args)
+				{
 					self.context.insert_value(arg_name, arg_value)?;
 				}
 
-				let exec_result = self.execute(ast::Program {
-					statements: function.ast.statements
-				}, false);
+				let exec_result = self.execute(
+					ast::Program {
+						statements: function.ast.statements
+					},
+					false
+				);
 
 				let result = exec_result.map_err(|err| {
 					// downcast `anyhow` error into `InterpretError`
-					let downcasted = err
-						.downcast::<InterpretError>()
-						.unwrap_or_else(|_| panic!("Function execution returned a non-`InterpretError` error"));
+					let downcasted = err.downcast::<InterpretError>().unwrap_or_else(|_| {
+						panic!("Function execution returned a non-`InterpretError` error")
+					});
 
 					// print it
 					downcasted.eprint();
@@ -745,9 +919,9 @@ impl Interpreter {
 			create_error!(
 				self,
 				original_expr.position(),
-				InterpretErrorKind::ExpressionNotCallable(
-					errors::ExpressionNotCallable(function_expr.kind())
-				)
+				InterpretErrorKind::ExpressionNotCallable(errors::ExpressionNotCallable(
+					function_expr.kind()
+				))
 			)
 		}
 	}

@@ -1,10 +1,13 @@
 use proc_macro2 as pm2;
 use quote::quote;
-
 use syn::punctuated::Punctuated;
-use syn::{Token, Variant, Error, Ident, ItemEnum};
+use syn::{Error, Ident, ItemEnum, Token, Variant};
 
-pub(crate) fn expand_match_arms(variants: &Punctuated<Variant, Token![,]>, function_name: &str, arguments: Vec<&str>) -> syn::Result<Vec<pm2::TokenStream>> {
+pub(crate) fn expand_match_arms(
+	variants: &Punctuated<Variant, Token![,]>,
+	function_name: &str,
+	arguments: Vec<&str>
+) -> syn::Result<Vec<pm2::TokenStream>> {
 	let mut arms = vec![];
 
 	for variant in variants {
@@ -14,7 +17,7 @@ pub(crate) fn expand_match_arms(variants: &Punctuated<Variant, Token![,]>, funct
 			syn::Fields::Unnamed(_) => (),
 			ref f => return Err(Error::new_spanned(f, "Expected unnamed fields"))
 		};
-		
+
 		let function_name = Ident::new(function_name, pm2::Span::call_site());
 
 		let arguments = arguments

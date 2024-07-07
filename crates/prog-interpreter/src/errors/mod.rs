@@ -24,14 +24,13 @@ pub use expression_not_assignable::*;
 pub use expression_not_callable::*;
 pub use field_doesnt_exist::*;
 pub use function_panicked::*;
+use prog_macros::ImplAriadneCompatible;
+use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 pub use unsupported_binary::*;
 pub use unsupported_statement::*;
 pub use unsupported_unary::*;
 pub use value_already_exists::*;
 pub use value_doesnt_exist::*;
-
-use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
-use prog_macros::ImplAriadneCompatible;
 
 pub type InterpretError = PrettyError<InterpretErrorKind>;
 

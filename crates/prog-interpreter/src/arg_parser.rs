@@ -25,7 +25,9 @@ impl ArgList {
 					}
 
 					if met_optional {
-						panic!("Optional arguments must always be positioned after required arguments");
+						panic!(
+							"Optional arguments must always be positioned after required arguments"
+						);
 					}
 				}
 			}
@@ -34,17 +36,20 @@ impl ArgList {
 		if variadic_count > 1 {
 			panic!("Only 1 variadic argument must be present in an argument list");
 		}
-		
-		Self { arguments: Some(arguments) }
+
+		Self {
+			arguments: Some(arguments)
+		}
 	}
 
 	/// Creates an argument list that accepts 0 arguments
-	pub fn new_empty() -> Self {
-		Self { arguments: None }
-	}
+	pub fn new_empty() -> Self { Self { arguments: None } }
 
 	/// Verifies the provided arguments according to the inner argument types list
-	pub fn verify(&self, arguments: &[RuntimeValue]) -> Result<HashMap<String, ParsedArg>, ArgumentParseError> {
+	pub fn verify(
+		&self,
+		arguments: &[RuntimeValue]
+	) -> Result<HashMap<String, ParsedArg>, ArgumentParseError> {
 		use core::iter::zip;
 
 		if let Some(result) = self.check_args_length(arguments)? {
@@ -61,42 +66,52 @@ impl ArgList {
 
 		let mut result = HashMap::new();
 
-		for (index, (own_argument, got_argument)) in zip(own_arguments, arguments.clone()).enumerate() {
-			let mut check_args = |expected: &RuntimeValueKind, got: &RuntimeValueKind, name: &str, optional: bool| {
+		for (index, (own_argument, got_argument)) in
+			zip(own_arguments, arguments.clone()).enumerate()
+		{
+			let mut check_args = |expected: &RuntimeValueKind,
+			                      got: &RuntimeValueKind,
+			                      name: &str,
+			                      optional: bool| {
 				if !optional && (expected != got) {
-					return Err(ArgumentParseError::incorrect_type(index, expected.to_string(), got.to_string()));
+					return Err(ArgumentParseError::incorrect_type(
+						index,
+						expected.to_string(),
+						got.to_string()
+					));
 				}
 
-				if optional && (got == &RuntimeValueKind::Empty) && (expected != &RuntimeValueKind::Empty) {
+				if optional
+					&& (got == &RuntimeValueKind::Empty)
+					&& (expected != &RuntimeValueKind::Empty)
+				{
 					return Ok(());
 				}
 
-				result.insert(
-					String::from(name),
-					ParsedArg::Regular(got_argument.clone())
-				);
+				result.insert(String::from(name), ParsedArg::Regular(got_argument.clone()));
 
 				Ok(())
 			};
-			
+
 			match own_argument {
 				Arg::Required(name, kind) => check_args(kind, &got_argument.kind(), name, false)?,
 				Arg::Optional(name, kind) => check_args(kind, &got_argument.kind(), name, true)?,
 				Arg::Variadic(name) => {
 					result.insert(
 						String::from(name.to_owned()),
-						ParsedArg::Variadic(
-							arguments[index..].to_vec()
-						)
+						ParsedArg::Variadic(arguments[index..].to_vec())
 					);
-				},
+				}
 			};
 		}
 
 		Ok(result)
 	}
 
-	fn check_args_length(&self, got: &[RuntimeValue]) -> Result<Option<HashMap<String, ParsedArg>>, ArgumentParseError> {
+	fn check_args_length(
+		&self,
+		got: &[RuntimeValue]
+	) -> Result<Option<HashMap<String, ParsedArg>>, ArgumentParseError> {
 		if self.arguments.is_none() {
 			if !got.is_empty() {
 				return Err(ArgumentParseError::count_mismatch(0..0, true, got.len()));
@@ -104,7 +119,7 @@ impl ArgList {
 
 			return Ok(Some(HashMap::new()));
 		}
-		
+
 		let own_arguments = self.arguments.as_ref().unwrap();
 
 		let mut num_optional = 0;
@@ -125,22 +140,41 @@ impl ArgList {
 		let expected_len = own_arguments.len();
 
 		if (got_len != expected_len) && (num_optional == 0) && !has_variadic {
-			return Err(ArgumentParseError::count_mismatch(expected_len..expected_len, true, got_len));
+			return Err(ArgumentParseError::count_mismatch(
+				expected_len..expected_len,
+				true,
+				got_len
+			));
 		}
 
-		if !has_variadic && (num_optional > 0) && ((got_len < expected_len - num_optional) || (got_len > expected_len)) {
-			return Err(ArgumentParseError::count_mismatch((expected_len - num_optional)..expected_len, true, got_len));
+		if !has_variadic
+			&& (num_optional > 0)
+			&& ((got_len < expected_len - num_optional) || (got_len > expected_len))
+		{
+			return Err(ArgumentParseError::count_mismatch(
+				(expected_len - num_optional)..expected_len,
+				true,
+				got_len
+			));
 		}
 
 		// Argument list may contain only 1 variadic argument, hence the -1
 		if has_variadic && (num_optional == 0) && (got_len < expected_len - 1) {
 			let expected_len = expected_len - 1;
-			return Err(ArgumentParseError::count_mismatch(expected_len..expected_len, false, got_len))
+			return Err(ArgumentParseError::count_mismatch(
+				expected_len..expected_len,
+				false,
+				got_len
+			));
 		}
 
 		if has_variadic && (num_optional > 0) && (got_len < expected_len - 1 - num_optional) {
 			let expected_len = expected_len - 1 - num_optional;
-			return Err(ArgumentParseError::count_mismatch(expected_len..expected_len, false, got_len));
+			return Err(ArgumentParseError::count_mismatch(
+				expected_len..expected_len,
+				false,
+				got_len
+			));
 		}
 
 		Ok(None)
@@ -177,10 +211,18 @@ pub enum ArgumentParseError {
 
 impl ArgumentParseError {
 	pub fn count_mismatch(expected: Range<usize>, end_boundary: bool, got: usize) -> Self {
-		Self::CountMismatch { expected, end_boundary, got }
+		Self::CountMismatch {
+			expected,
+			end_boundary,
+			got
+		}
 	}
 
 	pub fn incorrect_type(index: usize, expected: String, got: String) -> Self {
-		Self::IncorrectType { index, expected, got }
+		Self::IncorrectType {
+			index,
+			expected,
+			got
+		}
 	}
 }

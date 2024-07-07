@@ -1,5 +1,5 @@
-use ariadne::{ColorGenerator, Label, Fmt};
-use prog_utils::pretty_errors::{AriadneCompatible, Span, Position};
+use ariadne::{ColorGenerator, Fmt, Label};
+use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize))]
@@ -10,9 +10,7 @@ pub struct ArgumentTypeMismatch {
 }
 
 impl AriadneCompatible for ArgumentTypeMismatch {
-	fn message(&self) -> String {
-		String::from("argument type mismatch")
-	}
+	fn message(&self) -> String { String::from("argument type mismatch") }
 
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>> {
 		let mut colors = ColorGenerator::new();
@@ -28,10 +26,9 @@ impl AriadneCompatible for ArgumentTypeMismatch {
 					self.got.fg(color_got)
 				))
 				.with_color(color_got),
-			
 			Label::new((file, self.function_pos))
 				.with_message("function in question")
-				.with_color(color_expected)
+				.with_color(color_expected),
 		]
 	}
 }

@@ -7,24 +7,22 @@ mod function;
 mod intrinsic_function;
 mod marker;
 
+use std::collections::HashMap;
+use std::fmt::Display;
+
 pub use boolean::*;
-pub use string::*;
-pub use number::*;
-pub use list::*;
-pub use object::*;
 pub use function::*;
 pub use intrinsic_function::*;
+pub use list::*;
 pub use marker::*;
-
-use std::fmt::Display;
-use std::collections::HashMap;
-
+pub use number::*;
+pub use object::*;
+use prog_macros::{EnumKind, VariantUnwrap};
 use prog_parser::ast;
 use prog_utils::impl_basic_conv;
-use prog_macros::{VariantUnwrap, EnumKind};
-
 #[cfg(feature = "serialize")]
 use serde::Serialize;
+pub use string::*;
 
 pub trait RuntimePrimitive {
 	type Inner: Clone;
@@ -33,9 +31,7 @@ pub trait RuntimePrimitive {
 	fn value(&self) -> &Self::Inner;
 
 	/// Clones the inner value of the primitive
-	fn owned(&self) -> Self::Inner {
-		self.value().to_owned()
-	}
+	fn owned(&self) -> Self::Inner { self.value().to_owned() }
 
 	/// Returns an associated function dispatch map for the type
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction>;
@@ -44,65 +40,41 @@ pub trait RuntimePrimitive {
 #[derive(Debug, Clone, PartialEq, VariantUnwrap, EnumKind)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub enum RuntimeValue {
-	#[cfg_attr(
-		feature = "serialize",
-		serde(serialize_with = "s_use_display")
-	)]
+	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
 	Boolean(RuntimeBoolean),
 
-	#[cfg_attr(
-		feature = "serialize",
-		serde(serialize_with = "s_use_display")
-	)]
+	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
 	String(RuntimeString),
 
-	#[cfg_attr(
-		feature = "serialize",
-		serde(serialize_with = "s_use_display")
-	)]
+	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
 	Number(RuntimeNumber),
 
-	#[cfg_attr(
-		feature = "serialize",
-		serde(serialize_with = "s_use_display")
-	)]
+	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
 	List(RuntimeList),
 
-	#[cfg_attr(
-		feature = "serialize",
-		serde(serialize_with = "s_use_display")
-	)]
+	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
 	Object(RuntimeObject),
 
-	#[cfg_attr(
-		feature = "serialize",
-		serde(serialize_with = "s_use_display")
-	)]
+	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
 	Function(RuntimeFunction),
-	
-	#[cfg_attr(
-		feature = "serialize",
-		serde(serialize_with = "s_use_display")
-	)]
+
+	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
 	IntrinsicFunction(IntrinsicFunction),
 
 	Empty,
 
-	#[cfg_attr(
-		feature = "serialize",
-		serde(skip)
-	)]
+	#[cfg_attr(feature = "serialize", serde(skip))]
 	Identifier(String),
 
-	#[cfg_attr(
-		feature = "serialize",
-		serde(skip)
-	)]
+	#[cfg_attr(feature = "serialize", serde(skip))]
 	Marker(MarkerKind)
 }
 
 #[cfg(feature = "serialize")]
-fn s_use_display<T: Display + Clone, S: serde::Serializer>(value: &T, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+fn s_use_display<T: Display + Clone, S: serde::Serializer>(
+	value: &T,
+	serializer: S
+) -> std::result::Result<S::Ok, S::Error> {
 	serializer.collect_str(&value)
 }
 
@@ -115,12 +87,12 @@ impl RuntimeValue {
 			Self::Number(v) => v.owned() != 0.0,
 			Self::List(v) => !v.value().is_empty(),
 			Self::Object(v) => !v.value().is_empty(),
-	
+
 			Self::Function(_) => true,
 			Self::IntrinsicFunction(..) => true,
-	
+
 			Self::Empty => false,
-	
+
 			Self::Identifier(..) => panic!("RuntimeValue of kind Identifier"),
 			Self::Marker(..) => panic!("RuntimeValue of kind Marker")
 		}
@@ -149,7 +121,7 @@ impl From<ast::expressions::Literal> for RuntimeValue {
 }
 
 impl Display for RuntimeValue {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {	
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Boolean(value) => write!(f, "{value}"),
 			Self::String(value) => write!(f, "{value}"),

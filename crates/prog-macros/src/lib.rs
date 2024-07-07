@@ -7,7 +7,6 @@ mod impl_ariadne_compatible_inner;
 mod utils;
 
 use proc_macro as pm;
-
 use quote::quote;
 use syn::parse_macro_input;
 
@@ -21,11 +20,7 @@ pub fn variant_unwrap(input: pm::TokenStream) -> pm::TokenStream {
 	let mut expanded_variants = vec![];
 
 	for variant in item.variants {
-		let expanded = conversion_inner::expand_variant(
-			variant,
-			&enum_name,
-			&item.generics
-		);
+		let expanded = conversion_inner::expand_variant(variant, &enum_name, &item.generics);
 
 		expanded_variants.push(match expanded {
 			Ok(expanded) => expanded,
@@ -36,7 +31,8 @@ pub fn variant_unwrap(input: pm::TokenStream) -> pm::TokenStream {
 	// Concatenating and returning
 	quote! {
 		#( #expanded_variants )*
-	}.into()
+	}
+	.into()
 }
 
 /// Expands to `enum <Enum>Kind` and implements `.kind()` for the deriving enum. **Only compatible with enums**
@@ -44,16 +40,12 @@ pub fn variant_unwrap(input: pm::TokenStream) -> pm::TokenStream {
 pub fn enum_kind(input: pm::TokenStream) -> pm::TokenStream {
 	let item = parse_macro_input!(input as syn::ItemEnum);
 
-	let (
-		impl_generics,
-		type_generics,
-		where_clause
-	) = item.generics.split_for_impl();
+	let (impl_generics, type_generics, where_clause) = item.generics.split_for_impl();
 
 	let enum_name = item.ident;
 	let enum_vis = item.vis;
 	let enum_kind_name = quote::format_ident!("{enum_name}Kind");
-	
+
 	// Expanding variants into their names
 	let kind_variants = item.variants.iter().map(|variant| {
 		let variant_name = &variant.ident;
@@ -101,8 +93,8 @@ pub fn enum_kind(input: pm::TokenStream) -> pm::TokenStream {
 			let variant_name = variant.ident;
 
 			let suffix = match variant.fields {
-				syn::Fields::Named(_) => quote!( {..} ),
-				syn::Fields::Unnamed(_) => quote!( (..) ),
+				syn::Fields::Named(_) => quote!({ .. }),
+				syn::Fields::Unnamed(_) => quote!((..)),
 				syn::Fields::Unit => quote!()
 			};
 
@@ -163,7 +155,10 @@ pub fn get_argument(input: pm::TokenStream) -> pm::TokenStream {
 #[proc_macro]
 pub fn get_this(input: pm::TokenStream) -> pm::TokenStream {
 	let input = parse_macro_input!(input as get_this_inner::GetThisInput);
-	let get_this_inner::GetThisInput { this_arg_name, variant } = input;
+	let get_this_inner::GetThisInput {
+		this_arg_name,
+		variant
+	} = input;
 
 	// Note: double curly braces are extremely important
 	quote! {{
@@ -174,5 +169,6 @@ pub fn get_this(input: pm::TokenStream) -> pm::TokenStream {
 		} else {
 			::std::unreachable!("`this` argument is not of variant `{}`", stringify!(#variant))
 		}
-	}}.into()
+	}}
+	.into()
 }

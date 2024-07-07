@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand, Args};
+use clap::{Args, Parser, Subcommand};
 
 pub const DEFAULT_INPUT_FP: &str = "input.prog";
 pub const DEFAULT_SERVER_PORT: u16 = 80;

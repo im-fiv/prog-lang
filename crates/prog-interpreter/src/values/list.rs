@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::fmt::Display;
+
 use anyhow::Result;
 use prog_macros::get_this;
 
+use super::{CallSite, IntrinsicFunction, RuntimeNumber, RuntimePrimitive, RuntimeValue};
 use crate::arg_parser::{ArgList, ParsedArg};
 use crate::RuntimeContext;
-use super::{RuntimePrimitive, RuntimeValue, RuntimeNumber, IntrinsicFunction, CallSite};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeList(pub Vec<RuntimeValue>);
@@ -27,36 +28,33 @@ impl RuntimeList {
 impl RuntimePrimitive for RuntimeList {
 	type Inner = Vec<RuntimeValue>;
 
-	fn value(&self) -> &Self::Inner {
-		&self.0
-	}
+	fn value(&self) -> &Self::Inner { &self.0 }
 
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> {
 		let mut map = HashMap::new();
 
-		map.insert(String::from("len"), IntrinsicFunction::new(
-			Self::len,
-			ArgList::new_empty()
-		));
+		map.insert(
+			String::from("len"),
+			IntrinsicFunction::new(Self::len, ArgList::new_empty())
+		);
 
 		map
 	}
 }
 
 impl From<Vec<RuntimeValue>> for RuntimeList {
-	fn from(value: Vec<RuntimeValue>) -> Self {
-		Self(value)
-	}
+	fn from(value: Vec<RuntimeValue>) -> Self { Self(value) }
 }
 
 impl Display for RuntimeList {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let formatted = self.0
+		let formatted = self
+			.0
 			.iter()
 			.map(|entry| entry.to_string())
 			.collect::<Vec<String>>()
 			.join(", ");
-		
+
 		write!(f, "[{formatted}]")
 	}
 }

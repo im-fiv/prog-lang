@@ -1,11 +1,12 @@
-use std::fmt::Display;
 use std::collections::HashMap;
+use std::fmt::Display;
+
 use anyhow::Result;
 use prog_parser::ast;
 
-use crate::RuntimeContext;
-use crate::arg_parser::{ArgList, ParsedArg};
 use super::RuntimeValue;
+use crate::arg_parser::{ArgList, ParsedArg};
+use crate::RuntimeContext;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntrinsicFunction {
@@ -25,7 +26,7 @@ pub type IntrinsicFunctionPtr = fn(
 pub struct CallSite {
 	pub source: String,
 	pub file: String,
-	
+
 	pub args_pos: ast::Position,
 	pub func_pos: ast::Position,
 	pub whole_pos: ast::Position
@@ -46,12 +47,7 @@ impl IntrinsicFunction {
 		args: HashMap<String, ParsedArg>,
 		call_site: CallSite
 	) -> Result<RuntimeValue> {
-		(self.pointer)(
-			self.this.map(|this| *this),
-			context,
-			args,
-			call_site
-		)
+		(self.pointer)(self.this.map(|this| *this), context, args, call_site)
 	}
 }
 

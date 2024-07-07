@@ -1,8 +1,8 @@
-use super::Position;
-use super::expressions::{Expression, Call};
-use super::misc::ConditionBranch;
-
 use prog_utils::impl_basic_conv;
+
+use super::expressions::{Call, Expression};
+use super::misc::ConditionBranch;
+use super::Position;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
