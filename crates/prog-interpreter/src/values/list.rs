@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::fmt::{self, Debug, Display};
 
 use anyhow::Result;
 use prog_macros::get_this;
@@ -8,7 +8,8 @@ use super::{CallSite, IntrinsicFunction, RuntimeNumber, RuntimePrimitive, Runtim
 use crate::arg_parser::{ArgList, ParsedArg};
 use crate::RuntimeContext;
 
-#[derive(Debug, Clone, PartialEq)]
+//* Note: `Debug` is implemented manually below
+#[derive(Clone, PartialEq)]
 pub struct RuntimeList(pub Vec<RuntimeValue>);
 
 impl RuntimeList {
@@ -46,8 +47,12 @@ impl From<Vec<RuntimeValue>> for RuntimeList {
 	fn from(value: Vec<RuntimeValue>) -> Self { Self(value) }
 }
 
+impl Debug for RuntimeList {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Display::fmt(self, f) }
+}
+
 impl Display for RuntimeList {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let formatted = self
 			.0
 			.iter()

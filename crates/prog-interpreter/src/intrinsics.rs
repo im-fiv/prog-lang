@@ -162,7 +162,7 @@ fn assert_function(
 	Ok(RuntimeValue::Empty)
 }
 
-pub fn create_value_table() -> HashMap<String, RuntimeValue> {
+pub fn create_variable_table() -> HashMap<String, RuntimeValue> {
 	let mut map = HashMap::new();
 
 	map.insert(

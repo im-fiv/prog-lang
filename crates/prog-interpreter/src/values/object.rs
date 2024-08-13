@@ -1,9 +1,10 @@
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::fmt::{self, Debug, Display};
 
 use super::{IntrinsicFunction, RuntimePrimitive, RuntimeValue};
 
-#[derive(Debug, Clone, PartialEq)]
+//* Note: `Debug` is implemented manually below
+#[derive(Clone, PartialEq)]
 pub struct RuntimeObject(pub HashMap<String, RuntimeValue>);
 
 impl RuntimePrimitive for RuntimeObject {
@@ -23,8 +24,20 @@ impl From<HashMap<String, RuntimeValue>> for RuntimeObject {
 	fn from(value: HashMap<String, RuntimeValue>) -> Self { Self(value) }
 }
 
+impl Debug for RuntimeObject {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let mut debug_struct = f.debug_struct("Object");
+
+		for (name, value) in self.0.iter() {
+			debug_struct.field(name, value);
+		}
+
+		debug_struct.finish()
+	}
+}
+
 impl Display for RuntimeObject {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let formatted = self
 			.0
 			.iter()

@@ -1,9 +1,11 @@
 use std::collections::HashMap;
+use std::fmt::{self, Debug};
 use std::ops::Range;
 
 use crate::{RuntimeValue, RuntimeValueKind};
 
-#[derive(Debug, Clone, PartialEq)]
+//* Note: `Debug` is implemented manually below
+#[derive(Clone, PartialEq)]
 pub struct ArgList {
 	arguments: Option<Vec<Arg>>
 }
@@ -178,6 +180,28 @@ impl ArgList {
 		}
 
 		Ok(None)
+	}
+}
+
+impl Debug for ArgList {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		if self.arguments.is_none() {
+			return write!(f, "");
+		}
+
+		let mut arg_strings = vec![];
+
+		for arg in self.arguments.as_ref().unwrap() {
+			let formatted_arg = match arg {
+				Arg::Required(name, kind) => format!("{name}: {kind}"),
+				Arg::Optional(name, kind) => format!("{name}: {kind}?"),
+				Arg::Variadic(name) => format!("{name}...")
+			};
+
+			arg_strings.push(formatted_arg);
+		}
+
+		write!(f, "{}", arg_strings.join(", "))
 	}
 }
 

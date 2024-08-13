@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::fmt::{self, Debug, Display};
 
 use anyhow::Result;
 use prog_parser::ast;
@@ -8,7 +8,8 @@ use super::RuntimeValue;
 use crate::arg_parser::{ArgList, ParsedArg};
 use crate::RuntimeContext;
 
-#[derive(Debug, Clone, PartialEq)]
+//* Note: `Debug` is implemented manually below
+#[derive(Clone, PartialEq)]
 pub struct IntrinsicFunction {
 	pub pointer: IntrinsicFunctionPtr,
 	pub this: Option<Box<RuntimeValue>>,
@@ -51,8 +52,13 @@ impl IntrinsicFunction {
 	}
 }
 
+impl Debug for IntrinsicFunction {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Display::fmt(self, f) }
+}
+
 impl Display for IntrinsicFunction {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "Function({:?})", self.pointer)
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let args = format!("{:#?}", self.arguments);
+		write!(f, "<intrinsic func({}) @ {:?}>", args, self.pointer)
 	}
 }

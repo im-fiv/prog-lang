@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::fmt::{self, Debug, Display};
 
 use anyhow::Result;
 use prog_macros::{get_argument, get_this};
@@ -10,7 +10,8 @@ use super::{
 use crate::arg_parser::{Arg, ArgList, ParsedArg};
 use crate::RuntimeContext;
 
-#[derive(Debug, Clone, PartialEq)]
+//* Note: `Debug` is implemented manually below
+#[derive(Clone, PartialEq)]
 pub struct RuntimeString(pub String);
 
 impl RuntimeString {
@@ -98,6 +99,10 @@ impl From<&str> for RuntimeString {
 	fn from(value: &str) -> Self { Self(value.to_owned()) }
 }
 
+impl Debug for RuntimeString {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "\"{}\"", self.0) }
+}
+
 impl Display for RuntimeString {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
 }

@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use anyhow::{bail, Result};
@@ -23,184 +21,144 @@ impl Default for RuntimeContextFlags {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+//* Note: `Debug` is implemented manually below
+#[derive(Clone, PartialEq)]
 pub struct RuntimeContext {
-	pub level: usize,
-
 	pub stdin: String,
 	pub stdout: String,
 
 	pub flags: RuntimeContextFlags,
 
-	pub global_table: HashMap<String, RuntimeValue>,
-	pub(crate) sub_table: HashMap<usize, RefCell<HashMap<String, RuntimeValue>>>
+	pub variables: HashMap<String, RuntimeValue>,
+	pub parent: Option<Box<Self>>
 }
 
 impl RuntimeContext {
 	pub fn new() -> Self {
 		let mut this = Self::new_clean();
-		this.global_table = super::intrinsics::create_value_table();
+		this.variables = super::intrinsics::create_variable_table();
 
 		this
 	}
 
 	pub fn new_clean() -> Self {
 		Self {
-			level: 0,
-
 			stdin: String::new(),
 			stdout: String::new(),
 
 			flags: RuntimeContextFlags::default(),
 
-			global_table: HashMap::new(),
-			sub_table: HashMap::from([(0, RefCell::new(HashMap::new()))])
+			variables: HashMap::new(),
+			parent: None
 		}
 	}
 
-	pub fn deeper(&mut self) -> usize {
-		self.level += 1;
+	pub fn level(&self) -> usize {
+		let mut level = 0;
+		let mut current = &self.parent;
 
-		self.sub_table
-			.entry(self.level)
-			.or_insert_with(|| RefCell::new(HashMap::new()));
-
-		self.level
-	}
-
-	pub fn shallower(&mut self) -> usize {
-		if !self.is_subcontext() {
-			eprintln!("Warning: `shallower` was called while not in any subcontext (`level` < 1)");
-			return self.level;
+		while let Some(ref ctx) = current {
+			level += 1;
+			current = &ctx.parent;
 		}
 
-		self.level -= 1;
-		self.sub_table.remove(&(self.level + 1));
-
-		self.sub_table
-			.entry(self.level)
-			.or_insert_with(|| RefCell::new(HashMap::new()));
-
-		self.level
+		level
 	}
 
-	pub fn is_subcontext(&self) -> bool { self.level > 0 }
+	pub fn deeper(&mut self) {
+		let child_context = Self::new_clean();
+		let original_context = std::mem::replace(self, child_context);
 
-	fn key_in_global(&self, key: &String) -> bool { self.global_table.contains_key(key) }
-
-	fn key_in_subctx(&self, key: &String) -> bool {
-		self.sub_table
-			.values()
-			.any(|map| map.borrow().contains_key(key))
+		// `self` here is already the child context
+		self.flags = original_context.flags; // Infer the flags of the original context
+		self.parent = Some(Box::new(original_context));
 	}
 
-	pub fn get_value(&self, key: &String) -> Result<RuntimeValue> {
-		if !self.key_in_global(key) && !self.key_in_subctx(key) {
-			bail!("Value with name `{key}` does not exist");
-		}
-
-		// Iterating through temp table maps in reverse order
-		for map_index in (0..self.sub_table.len()).rev() {
-			// Getting a reference to the RefCell of the map
-			let map = self.sub_table.get(&map_index).unwrap_or_else(|| {
-				unreachable!("Subcontext in map at index `{map_index}` does not exist")
-			});
-
-			// Getting the value from it
-			if let Some(value) = map.borrow().get(key) {
-				return Ok(value.to_owned());
+	pub fn shallower(&mut self) {
+		match self.parent.take() {
+			Some(parent) => *self = *parent,
+			None => {
+				eprintln!(
+					"Warning `RuntimeContext::shallower()` was called while not having a parent"
+				)
 			}
 		}
-
-		if let Some(value) = self.global_table.get(key) {
-			return Ok(value.to_owned());
-		}
-
-		unreachable!()
 	}
 
-	pub fn get_value_mut(&mut self, key: &String) -> Result<&mut RuntimeValue> {
-		if !self.key_in_global(key) && !self.key_in_subctx(key) {
-			bail!("Value with name '{key}' does not exist");
+	pub fn is_subcontext(&self) -> bool { self.parent.is_some() }
+
+	pub fn exists(&self, name: &str) -> bool {
+		if self.variables.contains_key(name) {
+			return true;
 		}
 
-		// Iterating through temp table maps in reverse order
-		for map_index in (0..self.sub_table.len()).rev() {
-			// Getting a mutable reference to the RefCell of the map
-			let map = self.sub_table.get_mut(&map_index).unwrap_or_else(|| {
-				unreachable!("Subcontext in map at index `{map_index}` does not exist")
-			});
-
-			// Getting a mutable reference to the map itself
-			let mut borrowed_map = map.borrow_mut();
-
-			// Getting the value from it
-			if let Some(value) = borrowed_map.get_mut(key) {
-				// Warning: dark magic ahead!
-				// Extending the lifetime of the mutable borrow
-				return Ok(unsafe { &mut *(value as *mut _) });
-			}
+		match self.parent {
+			Some(ref p) => p.exists(name),
+			None => false
 		}
-
-		if let Some(value) = self.global_table.get_mut(key) {
-			return Ok(value);
-		}
-
-		unreachable!()
 	}
 
-	pub fn insert_value(&mut self, key: String, value: RuntimeValue) -> Result<()> {
-		if self.key_in_global(&key) && self.key_in_subctx(&key) {
-			bail!("Value with name `{key}` already exists");
+	pub fn get(&self, name: &str) -> Result<RuntimeValue> {
+		if let Some(var) = self.variables.get(name) {
+			return Ok(var.to_owned());
 		}
 
-		// Determining which table to write to
-		if self.is_subcontext() {
-			// Getting a mutable reference to the RefCell of the map
-			let map = self.sub_table.get_mut(&self.level).unwrap_or_else(|| {
-				unreachable!("Subcontext in map at index `{}` does not exist", self.level)
-			});
-
-			map.borrow_mut().insert(key, value);
-		} else {
-			self.global_table.insert(key, value);
+		match self.parent {
+			Some(ref p) => p.get(name),
+			None => bail!("Variable with name `{name}` does not exist")
 		}
-
-		Ok(())
 	}
 
-	pub fn update_value(&mut self, key: String, value: RuntimeValue) -> Result<RuntimeValue> {
-		if !self.key_in_global(&key) && !self.key_in_subctx(&key) {
-			bail!("Value with name `{key}` does not exist");
+	pub fn get_mut(&mut self, name: &str) -> Result<&mut RuntimeValue> {
+		if let Some(var) = self.variables.get_mut(name) {
+			return Ok(var);
 		}
 
-		// Determining which table to write to
-		let old_value = if self.is_subcontext() && self.key_in_subctx(&key) {
-			// Iterating through temp table maps in reverse order
-			for map_index in (0..self.sub_table.len()).rev() {
-				// Getting a mutable reference to the RefCell of the map
-				let map = self.sub_table.get_mut(&map_index).unwrap_or_else(|| {
-					unreachable!("Subcontext in map at index `{map_index}` does not exist")
-				});
+		match self.parent {
+			Some(ref mut p) => p.get_mut(name),
+			None => bail!("Variable with name `{name}` does not exist")
+		}
+	}
 
-				// Getting a mutable reference to the map itself
-				let mut borrowed_map = map.borrow_mut();
+	pub fn insert(&mut self, name: String, value: RuntimeValue) -> Option<RuntimeValue> {
+		self.variables.insert(name, value)
+	}
 
-				// Getting an entry from the mutable map reference
-				if let Entry::Occupied(mut e) = borrowed_map.entry(key.clone()) {
-					// Updating the entry
-					let result = Ok(e.insert(value));
+	pub fn update(&mut self, name: String, value: RuntimeValue) -> Result<RuntimeValue> {
+		use std::collections::hash_map::Entry;
 
-					return result;
+		if !self.exists(&name) {
+			bail!("Variable with name `{name}` does not exist");
+		}
+
+		match self.variables.entry(name.clone()) {
+			Entry::Occupied(mut e) => Ok(e.insert(value)),
+			Entry::Vacant(_) => {
+				match self.parent {
+					Some(ref mut p) => p.update(name, value),
+					None => {
+						unreachable!(
+							"Match arm reached despite expecting `RuntimeContext::exists(\"{name}\")` to return `false`"
+						)
+					}
 				}
 			}
+		}
+	}
+}
 
-			None
-		} else {
-			self.global_table.insert(key, value)
-		};
+impl std::fmt::Debug for RuntimeContext {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let mut debug_struct = f.debug_struct("Context");
 
-		Ok(old_value.unwrap_or(RuntimeValue::Empty))
+		debug_struct.field("flags", &self.flags);
+		debug_struct.field("variables", &self.variables);
+
+		if let Some(ref p) = self.parent {
+			debug_struct.field("parent", p);
+		}
+
+		debug_struct.finish()
 	}
 }
 

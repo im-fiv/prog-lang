@@ -105,35 +105,21 @@ impl Interpreter {
 			Some(expression) => self.evaluate_expression(expression, false)?
 		};
 
-		if self
-			.context
-			.insert_value(statement.name.0.clone(), evaluated_value)
-			.is_err()
-		{
-			create_error!(
-				self,
-				statement.name.1,
-				InterpretErrorKind::ValueAlreadyExists(errors::ValueAlreadyExists(
-					statement.name.0
-				))
-			);
-		}
-
+		self.context.insert(statement.name.0, evaluated_value);
 		Ok(RuntimeValue::Empty)
 	}
 
 	fn execute_variable_assign(&mut self, statement: ast::VariableAssign) -> Result<RuntimeValue> {
-		let evaluated_value = self.evaluate_expression(statement.value, false)?;
+		let variable_name = statement.name.0;
 
-		if self
-			.context
-			.update_value(statement.name.0.clone(), evaluated_value)
-			.is_err()
-		{
+		let evaluated_value = self.evaluate_expression(statement.value, false)?;
+		let update_result = self.context.update(variable_name.clone(), evaluated_value);
+
+		if update_result.is_err() {
 			create_error!(
 				self,
 				statement.name.1,
-				InterpretErrorKind::ValueDoesntExist(errors::ValueDoesntExist(statement.name.0))
+				InterpretErrorKind::ValueDoesntExist(errors::ValueDoesntExist(variable_name))
 			);
 		}
 
@@ -354,7 +340,7 @@ impl Interpreter {
 		}
 
 		let index: usize = index.try_into()?;
-		let inner_list = match self.context.get_value_mut(&list_name)? {
+		let inner_list = match self.context.get_mut(&list_name)? {
 			RuntimeValue::List(inner_list) => inner_list,
 			value => {
 				create_error!(
@@ -419,7 +405,7 @@ impl Interpreter {
 			}
 		};
 
-		let inner_object = match self.context.get_value_mut(&object_name)? {
+		let inner_object = match self.context.get_mut(&object_name)? {
 			RuntimeValue::Object(inner_object) => inner_object,
 
 			value => {
@@ -685,20 +671,20 @@ impl Interpreter {
 		let position = term.position();
 
 		match term {
-			Term::Object(value) => self.evaluate_object(value),
-			Term::List(value) => self.evaluate_list(value),
-			Term::Call(value) => self.evaluate_call(value),
-			Term::Function(value) => self.evaluate_function(value),
-			Term::Literal(value) => Ok(value.into()),
-			Term::Identifier(value, _) => {
+			Term::Object(obj) => self.evaluate_object(obj),
+			Term::List(list) => self.evaluate_list(list),
+			Term::Call(call) => self.evaluate_call(call),
+			Term::Function(func) => self.evaluate_function(func),
+			Term::Literal(lit) => Ok(lit.into()),
+			Term::Identifier(ident, _) => {
 				match stop_on_ident {
-					true => Ok(RuntimeValue::Identifier(value)),
+					true => Ok(RuntimeValue::Identifier(ident)),
 					false => {
-						self.context.get_value(&value).map_err(|_| {
-							create_error!(self, position, InterpretErrorKind::ValueDoesntExist(
-							errors::ValueDoesntExist(value)
-						); no_bail)
-						})
+						let error = create_error!(self, position, InterpretErrorKind::ValueDoesntExist(
+							errors::ValueDoesntExist(ident.clone())
+						); no_bail);
+
+						self.context.get(&ident).map_err(|_| error)
 					}
 				}
 			}
@@ -879,9 +865,9 @@ impl Interpreter {
 				self.source = function.source;
 				self.file = function.file;
 
-				for ((arg_name, _), arg_value) in function.ast.arguments.into_iter().zip(call_args)
-				{
-					self.context.insert_value(arg_name, arg_value)?;
+				let argument_iter = function.ast.arguments.into_iter().zip(call_args);
+				for ((arg_name, _), arg_value) in argument_iter {
+					self.context.insert(arg_name, arg_value);
 				}
 
 				let exec_result = self.execute(

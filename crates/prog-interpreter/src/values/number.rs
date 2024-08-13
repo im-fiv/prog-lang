@@ -1,9 +1,10 @@
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::fmt::{self, Debug, Display};
 
 use super::{IntrinsicFunction, RuntimePrimitive};
 
-#[derive(Debug, Clone, PartialEq)]
+//* Note: `Debug` is implemented manually below
+#[derive(Clone, PartialEq)]
 pub struct RuntimeNumber(pub f64);
 
 impl RuntimePrimitive for RuntimeNumber {
@@ -22,6 +23,10 @@ impl From<usize> for RuntimeNumber {
 	fn from(value: usize) -> Self { Self(value as f64) }
 }
 
+impl Debug for RuntimeNumber {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Display::fmt(self, f) }
+}
+
 impl Display for RuntimeNumber {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
 }

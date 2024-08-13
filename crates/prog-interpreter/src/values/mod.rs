@@ -8,7 +8,7 @@ mod intrinsic_function;
 mod marker;
 
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::fmt::{self, Debug, Display};
 
 pub use boolean::*;
 pub use function::*;
@@ -37,7 +37,8 @@ pub trait RuntimePrimitive {
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction>;
 }
 
-#[derive(Debug, Clone, PartialEq, VariantUnwrap, EnumKind)]
+//* Note: `Debug` is implemented manually below
+#[derive(Clone, PartialEq, VariantUnwrap, EnumKind)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub enum RuntimeValue {
 	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
@@ -93,8 +94,8 @@ impl RuntimeValue {
 
 			Self::Empty => false,
 
-			Self::Identifier(..) => panic!("RuntimeValue of kind Identifier"),
-			Self::Marker(..) => panic!("RuntimeValue of kind Marker")
+			Self::Identifier(..) => panic!("Got `RuntimeValue` of kind `Identifier`"),
+			Self::Marker(..) => panic!("Got `RuntimeValue` of kind `Marker`")
 		}
 	}
 }
@@ -120,8 +121,27 @@ impl From<ast::expressions::Literal> for RuntimeValue {
 	}
 }
 
+impl Debug for RuntimeValue {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Boolean(bool) => Debug::fmt(bool, f),
+			Self::String(str) => Debug::fmt(str, f),
+			Self::Number(num) => Debug::fmt(num, f),
+			Self::List(list) => Debug::fmt(list, f),
+			Self::Object(obj) => Debug::fmt(obj, f),
+			Self::Function(func) => Debug::fmt(func, f),
+			Self::IntrinsicFunction(func) => Debug::fmt(func, f),
+
+			Self::Empty => Debug::fmt(&(), f),
+
+			Self::Identifier(ident) => Debug::fmt(ident, f),
+			Self::Marker(marker) => Debug::fmt(marker, f)
+		}
+	}
+}
+
 impl Display for RuntimeValue {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Boolean(value) => write!(f, "{value}"),
 			Self::String(value) => write!(f, "{value}"),

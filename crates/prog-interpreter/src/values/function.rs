@@ -1,16 +1,35 @@
-use std::fmt::Display;
+use std::fmt::{self, Debug, Display};
 
 use prog_parser::ast;
 
-#[derive(Debug, Clone, PartialEq)]
+//* Note: `Debug` is implemented manually below
+#[derive(Clone, PartialEq)]
 pub struct RuntimeFunction {
 	pub ast: Box<ast::expressions::Function>,
 	pub source: String,
 	pub file: String
 }
 
+impl Debug for RuntimeFunction {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let arguments = self
+			.ast
+			.arguments
+			.iter()
+			.map(|(name, _)| name)
+			.cloned()
+			.collect::<Vec<_>>();
+
+		f.debug_struct("Function")
+			.field("arguments", &arguments)
+			.field("statements", &self.ast.statements)
+			.field("file", &self.file)
+			.finish()
+	}
+}
+
 impl Display for RuntimeFunction {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let arguments_str = self
 			.ast
 			.arguments
