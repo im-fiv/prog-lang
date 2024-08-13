@@ -4,7 +4,7 @@ use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 use crate::RuntimeValueKind;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct CannotIndexValue {
 	pub kind: (RuntimeValueKind, Position),
 	pub expected_index_kind: RuntimeValueKind,

@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = []
-serialize = ["serde"]
+serde = ["dep:serde"]
 
 [dependencies]
 anyhow = { workspace = true }

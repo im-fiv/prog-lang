@@ -35,7 +35,7 @@ pub use value_doesnt_exist::*;
 pub type InterpretError = PrettyError<InterpretErrorKind>;
 
 #[derive(Debug, Clone, ImplAriadneCompatible)]
-#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum InterpretErrorKind {
 	ArgumentCountMismatch(ArgumentCountMismatch),
 	ArgumentTypeMismatch(ArgumentTypeMismatch),

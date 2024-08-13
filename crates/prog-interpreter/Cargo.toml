@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = []
-serialize = ["serde", "prog-parser/serialize"]
+serde = ["dep:serde", "prog-parser/serde"]
 
 [dependencies]
 text_io = "0.1.12"

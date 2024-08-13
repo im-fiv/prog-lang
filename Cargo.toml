@@ -5,17 +5,17 @@ edition = "2021"
 
 [features]
 default = []
-serialize = ["serde", "serde_json"]
+serde = ["dep:serde", "dep:serde_json"]
 api = [
-	"serialize",
-	"prog-parser/serialize",
-	"prog-interpreter/serialize",
-	"prog-utils/serialize",
-	"actix-web",
-	"actix-cors",
-	"env_logger"
+	"serde",
+	"prog-parser/serde",
+	"prog-interpreter/serde",
+	"prog-utils/serde",
+	"dep:actix-web",
+	"dep:actix-cors",
+	"dep:env_logger"
 ]
-website = ["api", "actix-files"]
+website = ["api", "dep:actix-files"]
 
 [workspace]
 members = ["crates/*"]

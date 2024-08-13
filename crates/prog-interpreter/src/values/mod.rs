@@ -20,7 +20,7 @@ pub use object::*;
 use prog_macros::{EnumKind, VariantUnwrap};
 use prog_parser::ast;
 use prog_utils::impl_basic_conv;
-#[cfg(feature = "serialize")]
+#[cfg(feature = "serde")]
 use serde::Serialize;
 pub use string::*;
 
@@ -39,39 +39,39 @@ pub trait RuntimePrimitive {
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq, VariantUnwrap, EnumKind)]
-#[cfg_attr(feature = "serialize", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 pub enum RuntimeValue {
-	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
 	Boolean(RuntimeBoolean),
 
-	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
 	String(RuntimeString),
 
-	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
 	Number(RuntimeNumber),
 
-	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
 	List(RuntimeList),
 
-	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
 	Object(RuntimeObject),
 
-	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
 	Function(RuntimeFunction),
 
-	#[cfg_attr(feature = "serialize", serde(serialize_with = "s_use_display"))]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
 	IntrinsicFunction(IntrinsicFunction),
 
 	Empty,
 
-	#[cfg_attr(feature = "serialize", serde(skip))]
+	#[cfg_attr(feature = "serde", serde(skip))]
 	Identifier(String),
 
-	#[cfg_attr(feature = "serialize", serde(skip))]
+	#[cfg_attr(feature = "serde", serde(skip))]
 	Marker(MarkerKind)
 }
 
-#[cfg(feature = "serialize")]
+#[cfg(feature = "serde")]
 fn s_use_display<T: Display + Clone, S: serde::Serializer>(
 	value: &T,
 	serializer: S

@@ -2,7 +2,7 @@ use ariadne::{ColorGenerator, Fmt, Label};
 use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serialize", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ContextDisallowed {
 	pub thing: String,
 	pub plural: bool
