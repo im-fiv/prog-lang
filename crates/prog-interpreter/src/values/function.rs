@@ -38,7 +38,7 @@ impl Display for RuntimeFunction {
 			.collect::<Vec<_>>()
 			.join(", ");
 
-		let formatted = format!("Function({arguments_str})");
+		let formatted = format!("func({arguments_str})");
 		write!(f, "{formatted}")
 	}
 }
