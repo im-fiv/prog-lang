@@ -4,21 +4,18 @@ use std::fmt::{self, Debug, Display};
 use anyhow::Result;
 use prog_macros::get_this;
 
-use super::{CallSite, IntrinsicFunction, RuntimeNumber, RuntimePrimitive, RuntimeValue};
-use crate::arg_parser::{ArgList, ParsedArg};
-use crate::RuntimeContext;
+use super::{IntrinsicFunction, IntrinsicFunctionData, RuntimeNumber, RuntimePrimitive, RuntimeValue};
+use crate::arg_parser::ArgList;
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
 pub struct RuntimeList(pub Vec<RuntimeValue>);
 
 impl RuntimeList {
-	fn len(
-		this: Option<RuntimeValue>,
-		_context: &mut RuntimeContext,
-		_args: HashMap<String, ParsedArg>,
-		_call_site: CallSite
-	) -> Result<RuntimeValue> {
+	fn len(IntrinsicFunctionData {
+		this,
+		..
+	}: IntrinsicFunctionData) -> Result<RuntimeValue> {
 		let this = get_this!(this => List);
 		let len = this.value().len();
 

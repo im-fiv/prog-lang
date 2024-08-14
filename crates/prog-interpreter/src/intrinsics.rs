@@ -4,38 +4,38 @@ use anyhow::{bail, Result};
 use prog_macros::get_argument;
 
 use crate::arg_parser::{Arg, ArgList, ParsedArg};
-use crate::context::RuntimeContext;
 use crate::errors;
 use crate::values::*;
 
-fn print_function(
-	_this: Option<RuntimeValue>,
-	context: &mut RuntimeContext,
-	args: HashMap<String, ParsedArg>,
-	_call_site: CallSite
-) -> Result<RuntimeValue> {
-	let to_print = get_argument!(args => varargs: ...)
+fn print_function(IntrinsicFunctionData {
+	interpreter,
+	arguments,
+	..
+}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+	let to_print = get_argument!(arguments => varargs: ...)
 		.into_iter()
 		.map(|arg| format!("{}", arg))
 		.collect::<Vec<String>>()
 		.join("");
 
-	context.stdout.push_str(&format!("{}\n", to_print)[..]);
+	interpreter.context.stdout.push_str(&format!("{}\n", to_print)[..]);
 
-	if context.flags.con_stdout_allowed {
+	if interpreter.context.flags.con_stdout_allowed {
 		println!("{to_print}");
 	}
 
 	Ok(RuntimeValue::Empty)
 }
 
-fn import_function(
-	_this: Option<RuntimeValue>,
-	context: &mut RuntimeContext,
-	args: HashMap<String, ParsedArg>,
-	call_site: CallSite
-) -> Result<RuntimeValue> {
-	if !context.flags.imports_allowed {
+fn import_function(IntrinsicFunctionData {
+	interpreter,
+	arguments,
+	call_site,
+	..
+}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+	use std::mem::swap;
+
+	if !interpreter.context.flags.imports_allowed {
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
@@ -47,7 +47,7 @@ fn import_function(
 		));
 	}
 
-	let path_str = get_argument!(args => path: RuntimeString).owned();
+	let path_str = get_argument!(arguments => path: RuntimeString).owned();
 
 	let mut path = std::path::Path::new(&path_str).to_path_buf();
 
@@ -74,25 +74,26 @@ fn import_function(
 	let parser = prog_parser::Parser::new(&contents, path_str);
 	let ast = parser.parse()?;
 
-	let mut interpreter = crate::Interpreter::new(contents, path_str.to_owned());
-	context.clone_into(&mut interpreter.context);
+	// Swapping the active memory to a new interpreter for the time of execution,
+	// such that only 1 memory is getting allocations
+	let mut new_interpreter = crate::Interpreter::new(contents, path_str.to_owned());
+	swap(&mut new_interpreter.memory, &mut interpreter.memory);
 
 	let result = interpreter.execute(ast, false)?;
-
-	*context = interpreter.context;
-
+	swap(&mut new_interpreter.memory, &mut interpreter.memory);
+	
 	Ok(result)
 }
 
-fn input_function(
-	_this: Option<RuntimeValue>,
-	context: &mut RuntimeContext,
-	args: HashMap<String, ParsedArg>,
-	call_site: CallSite
-) -> Result<RuntimeValue> {
+fn input_function(IntrinsicFunctionData {
+	interpreter,
+	arguments,
+	call_site,
+	..
+}: IntrinsicFunctionData) -> Result<RuntimeValue> {
 	use text_io::read;
 
-	if !context.flags.inputs_allowed {
+	if !interpreter.context.flags.inputs_allowed {
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
@@ -104,7 +105,7 @@ fn input_function(
 		));
 	}
 
-	let message = get_argument!(args => message: RuntimeString?);
+	let message = get_argument!(arguments => message: RuntimeString?);
 
 	if let Some(message) = message {
 		print!("{}", message.value());
@@ -116,24 +117,23 @@ fn input_function(
 	result = result.replace('\r', "");
 	result = result.replace('\n', "");
 
-	context.stdin.push_str(&format!("{result}\n")[..]);
+	interpreter.context.stdin.push_str(&format!("{result}\n")[..]);
 
 	Ok(RuntimeValue::String(result.into()))
 }
 
-fn raw_print_function(
-	_this: Option<RuntimeValue>,
-	context: &mut RuntimeContext,
-	args: HashMap<String, ParsedArg>,
-	_call_site: CallSite
-) -> Result<RuntimeValue> {
+fn raw_print_function(IntrinsicFunctionData {
+	interpreter,
+	arguments,
+	..
+}: IntrinsicFunctionData) -> Result<RuntimeValue> {
 	use std::io;
 	use std::io::Write;
 
-	let text = get_argument!(args => string: RuntimeString).owned();
-	context.stdout.push_str(&text);
+	let text = get_argument!(arguments => string: RuntimeString).owned();
+	interpreter.context.stdout.push_str(&text);
 
-	if context.flags.con_stdout_allowed {
+	if interpreter.context.flags.con_stdout_allowed {
 		print!("{text}");
 		io::stdout().flush().unwrap();
 	}
@@ -141,14 +141,13 @@ fn raw_print_function(
 	Ok(RuntimeValue::Empty)
 }
 
-fn assert_function(
-	_this: Option<RuntimeValue>,
-	_context: &mut RuntimeContext,
-	args: HashMap<String, ParsedArg>,
-	call_site: CallSite
-) -> Result<RuntimeValue> {
-	let value = get_argument!(args => value: RuntimeValue);
-	let message = get_argument!(args => message: RuntimeString?).map(|str| str.owned());
+fn assert_function(IntrinsicFunctionData {
+	arguments,
+	call_site,
+	..
+}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+	let value = get_argument!(arguments => value: RuntimeValue);
+	let message = get_argument!(arguments => message: RuntimeString?).map(|str| str.owned());
 
 	if !value.is_truthy() {
 		bail!(crate::InterpretError::new(
@@ -159,6 +158,14 @@ fn assert_function(
 		));
 	}
 
+	Ok(RuntimeValue::Empty)
+}
+
+fn dump_ctx_function(IntrinsicFunctionData {
+	interpreter,
+	..
+}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+	println!("{:#?}", interpreter.context);
 	Ok(RuntimeValue::Empty)
 }
 
@@ -205,6 +212,15 @@ pub fn create_variable_table() -> HashMap<String, RuntimeValue> {
 				Arg::Required("value", RuntimeValueKind::Boolean),
 				Arg::Optional("message", RuntimeValueKind::String),
 			])
+		)
+		.into()
+	);
+
+	map.insert(
+		String::from("dump_ctx"),
+		IntrinsicFunction::new(
+			dump_ctx_function,
+			ArgList::new_empty()
 		)
 		.into()
 	);

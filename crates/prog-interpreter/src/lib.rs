@@ -837,7 +837,7 @@ impl Interpreter {
 				.map_err(convert_error)?;
 
 			self.context.deeper();
-			let result = function.call(&mut self.context, call_args, call_site);
+			let result = function.call(self, call_args, call_site);
 			self.context.shallower();
 
 			return result;

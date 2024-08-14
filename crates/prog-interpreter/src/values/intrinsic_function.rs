@@ -6,22 +6,25 @@ use prog_parser::ast;
 
 use super::RuntimeValue;
 use crate::arg_parser::{ArgList, ParsedArg};
-use crate::RuntimeContext;
+use crate::Interpreter;
 
-//* Note: `Debug` is implemented manually below
-#[derive(Clone, PartialEq)]
+//* Note: `Debug` and `PartialEq` are implemented manually below
+#[derive(Clone)]
 pub struct IntrinsicFunction {
 	pub pointer: IntrinsicFunctionPtr,
 	pub this: Option<Box<RuntimeValue>>,
 	pub arguments: ArgList
 }
 
-pub type IntrinsicFunctionPtr = fn(
-	this: Option<RuntimeValue>,
-	context: &mut RuntimeContext,
-	args: HashMap<String, ParsedArg>,
-	call_site: CallSite
-) -> Result<RuntimeValue>;
+#[derive(Debug)]
+pub struct IntrinsicFunctionData<'i> {
+	pub this: Option<RuntimeValue>,
+	pub interpreter: &'i mut Interpreter,
+	pub arguments: HashMap<String, ParsedArg>,
+	pub call_site: CallSite
+}
+
+pub type IntrinsicFunctionPtr = fn(IntrinsicFunctionData) -> Result<RuntimeValue>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallSite {
@@ -44,11 +47,24 @@ impl IntrinsicFunction {
 
 	pub fn call(
 		self,
-		context: &mut RuntimeContext,
-		args: HashMap<String, ParsedArg>,
+		interpreter: &mut Interpreter,
+		arguments: HashMap<String, ParsedArg>,
 		call_site: CallSite
 	) -> Result<RuntimeValue> {
-		(self.pointer)(self.this.map(|this| *this), context, args, call_site)
+		let data = IntrinsicFunctionData {
+			this: self.this.as_deref().cloned(),
+			interpreter,
+			arguments,
+			call_site
+		};
+
+		(self.pointer)(data)
+	}
+}
+
+impl PartialEq for IntrinsicFunction {
+	fn eq(&self, other: &Self) -> bool {
+		self.pointer == other.pointer
 	}
 }
 

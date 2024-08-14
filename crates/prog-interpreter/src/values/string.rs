@@ -5,30 +5,28 @@ use anyhow::Result;
 use prog_macros::{get_argument, get_this};
 
 use super::{
-	CallSite, IntrinsicFunction, RuntimeNumber, RuntimePrimitive, RuntimeValue, RuntimeValueKind
+	IntrinsicFunction, IntrinsicFunctionData, RuntimeNumber, RuntimePrimitive, RuntimeValue, RuntimeValueKind
 };
 use crate::arg_parser::{Arg, ArgList, ParsedArg};
-use crate::RuntimeContext;
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
 pub struct RuntimeString(pub String);
 
 impl RuntimeString {
-	fn sub(
-		this: Option<RuntimeValue>,
-		_context: &mut RuntimeContext,
-		args: HashMap<String, ParsedArg>,
-		_call_site: CallSite
-	) -> Result<RuntimeValue> {
+	fn sub(IntrinsicFunctionData {
+		this,
+		arguments,
+		..
+	}: IntrinsicFunctionData) -> Result<RuntimeValue> {
 		let this = get_this!(this => String);
 		let this = this.value();
 
 		let this_len = this.len();
 
-		let start_index = get_argument!(args => start: RuntimeNumber).owned() as usize;
+		let start_index = get_argument!(arguments => start: RuntimeNumber).owned() as usize;
 
-		let end_index = get_argument!(args => end: RuntimeNumber?)
+		let end_index = get_argument!(arguments => end: RuntimeNumber?)
 			.and_then(|value| Some(value.owned() as usize))
 			.unwrap_or(this_len);
 
@@ -50,12 +48,10 @@ impl RuntimeString {
 		Ok(Self::from(substring).into())
 	}
 
-	fn len(
-		this: Option<RuntimeValue>,
-		_context: &mut RuntimeContext,
-		_args: HashMap<String, ParsedArg>,
-		_call_site: CallSite
-	) -> Result<RuntimeValue> {
+	fn len(IntrinsicFunctionData {
+		this,
+		..
+	}: IntrinsicFunctionData) -> Result<RuntimeValue> {
 		let this = get_this!(this => String);
 		let len = this.value().len();
 
