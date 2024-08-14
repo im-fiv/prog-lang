@@ -7,6 +7,7 @@ pub mod values;
 use anyhow::Result;
 use context::RuntimeContext;
 pub use errors::{InterpretError, InterpretErrorKind};
+use halloc::Memory;
 use prog_parser::ast;
 use values::{CallSite, RuntimeFunction};
 pub use values::{RuntimePrimitive, RuntimeValue, RuntimeValueKind};
@@ -49,7 +50,9 @@ fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
 
 #[derive(Debug)]
 pub struct Interpreter {
+	pub memory: Memory,
 	pub context: RuntimeContext,
+
 	source: String,
 	file: String
 }
@@ -57,7 +60,9 @@ pub struct Interpreter {
 impl Interpreter {
 	pub fn new(source: String, file: String) -> Self {
 		Self {
+			memory: Memory::new(),
 			context: RuntimeContext::new(),
+
 			source,
 			file
 		}
@@ -119,7 +124,7 @@ impl Interpreter {
 			create_error!(
 				self,
 				statement.name.1,
-				InterpretErrorKind::ValueDoesntExist(errors::ValueDoesntExist(variable_name))
+				InterpretErrorKind::VariableDoesntExist(errors::VariableDoesntExist(variable_name))
 			);
 		}
 
@@ -419,7 +424,11 @@ impl Interpreter {
 			}
 		};
 
-		inner_object.0.insert(entry_name, value);
+		// `HeapMutator::get_mut` fails, so this is a workaround
+		let mut map = inner_object.0.get().to_owned();
+		map.insert(entry_name, value);
+
+		inner_object.0.write(map);
 
 		Ok(RuntimeValue::Empty)
 	}
@@ -580,6 +589,7 @@ impl Interpreter {
 			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Rv::Boolean((lhs == rhs).into()),
 			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs == rhs).into()),
 			(Op::EqEq, Rv::List(lhs), Rv::List(rhs)) => Rv::Boolean((lhs == rhs).into()),
+			(Op::EqEq, Rv::Object(lhs), Rv::Object(rhs)) => Rv::Boolean((lhs == rhs).into()),
 			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Rv::Boolean((lhs == rhs).into()),
 			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => {
 				Rv::Boolean((lhs == rhs).into())
@@ -590,6 +600,7 @@ impl Interpreter {
 			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Rv::Boolean((lhs != rhs).into()),
 			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs != rhs).into()),
 			(Op::NotEq, Rv::List(lhs), Rv::List(rhs)) => Rv::Boolean((lhs != rhs).into()),
+			(Op::NotEq, Rv::Object(lhs), Rv::Object(rhs)) => Rv::Boolean((lhs != rhs).into()),
 			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Rv::Boolean((lhs != rhs).into()),
 			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => {
 				Rv::Boolean((lhs != rhs).into())
@@ -599,21 +610,21 @@ impl Interpreter {
 			(Op::ListAccess, Rv::Number(lhs), Rv::List(rhs)) => {
 				rhs.value()
 					.get(lhs.owned() as usize)
-					.unwrap_or(&RuntimeValue::Empty)
-					.to_owned()
+					.cloned()
+					.unwrap_or(RuntimeValue::Empty)
 			}
 
 			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => {
 				lhs.value()
 					.get(&rhs)
-					.unwrap_or(&RuntimeValue::Empty)
-					.to_owned()
+					.cloned()
+					.unwrap_or(RuntimeValue::Empty)
 			}
 			(Op::ObjectAccess, Rv::Object(lhs), Rv::String(rhs)) => {
 				lhs.value()
 					.get(rhs.value())
-					.unwrap_or(&RuntimeValue::Empty)
-					.to_owned()
+					.cloned()
+					.unwrap_or(RuntimeValue::Empty)
 			}
 
 			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::Identifier(rhs)) => {
@@ -680,8 +691,8 @@ impl Interpreter {
 				match stop_on_ident {
 					true => Ok(RuntimeValue::Identifier(ident)),
 					false => {
-						let error = create_error!(self, position, InterpretErrorKind::ValueDoesntExist(
-							errors::ValueDoesntExist(ident.clone())
+						let error = create_error!(self, position, InterpretErrorKind::VariableDoesntExist(
+							errors::VariableDoesntExist(ident.clone())
 						); no_bail);
 
 						self.context.get(&ident).map_err(|_| error)
@@ -736,7 +747,8 @@ impl Interpreter {
 			position_map.insert(name, entry.position);
 		}
 
-		Ok(RuntimeValue::Object(value_map.into()))
+		let allocated = unsafe { self.memory.alloc(value_map).promote() };
+		Ok(RuntimeValue::Object(allocated.into()))
 	}
 
 	fn evaluate_list(&mut self, list: ast::expressions::List) -> Result<RuntimeValue> {

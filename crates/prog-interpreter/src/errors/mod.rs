@@ -11,8 +11,7 @@ mod function_panicked;
 mod unsupported_binary;
 mod unsupported_statement;
 mod unsupported_unary;
-mod value_already_exists;
-mod value_doesnt_exist;
+mod variable_doesnt_exist;
 
 pub use argument_count_mismatch::*;
 pub use argument_type_mismatch::*;
@@ -29,8 +28,7 @@ use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 pub use unsupported_binary::*;
 pub use unsupported_statement::*;
 pub use unsupported_unary::*;
-pub use value_already_exists::*;
-pub use value_doesnt_exist::*;
+pub use variable_doesnt_exist::*;
 
 pub type InterpretError = PrettyError<InterpretErrorKind>;
 
@@ -50,8 +48,7 @@ pub enum InterpretErrorKind {
 	UnsupportedBinary(UnsupportedBinary),
 	UnsupportedStatement(UnsupportedStatement),
 	UnsupportedUnary(UnsupportedUnary),
-	ValueAlreadyExists(ValueAlreadyExists),
-	ValueDoesntExist(ValueDoesntExist)
+	VariableDoesntExist(VariableDoesntExist)
 }
 
 impl PrettyErrorKind for InterpretErrorKind {}

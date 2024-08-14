@@ -3,9 +3,9 @@ use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct ValueDoesntExist(pub String);
+pub struct VariableDoesntExist(pub String);
 
-impl AriadneCompatible for ValueDoesntExist {
+impl AriadneCompatible for VariableDoesntExist {
 	fn message(&self) -> String { String::from("value doesn't exist") }
 
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>> {

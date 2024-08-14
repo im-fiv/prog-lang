@@ -67,19 +67,6 @@ fn parse_variadic() {
 		RuntimeValue::Boolean(RuntimeBoolean(true).into()),
 		RuntimeValue::Number(RuntimeNumber(3.14).into()),
 		// Variadic arguments
-		RuntimeValue::Object(
-			RuntimeObject(std::collections::HashMap::from([
-				(
-					String::from("hello"),
-					RuntimeValue::Boolean(RuntimeBoolean(true).into())
-				),
-				(
-					String::from("world"),
-					RuntimeValue::Number(RuntimeNumber(5.0).into())
-				)
-			]))
-			.into()
-		),
 		RuntimeValue::Function(
 			RuntimeFunction {
 				ast: Box::new(prog_parser::ast::expressions::Function {

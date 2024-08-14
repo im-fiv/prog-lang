@@ -34,7 +34,7 @@ pub trait RuntimePrimitive {
 	fn owned(&self) -> Self::Inner { self.value().to_owned() }
 
 	/// Returns an associated function dispatch map for the type
-	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction>;
+	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> { HashMap::new() }
 }
 
 //* Note: `Debug` is implemented manually below
@@ -157,3 +157,5 @@ impl Display for RuntimeValue {
 		}
 	}
 }
+
+impl halloc::Allocatable for RuntimeValue {}
