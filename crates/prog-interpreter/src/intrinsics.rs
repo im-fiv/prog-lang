@@ -83,10 +83,10 @@ fn import_function(
 
 	// Swapping the active memory to a new interpreter for the time of execution,
 	// such that only 1 memory is getting allocations
-	let mut new_interpreter = crate::Interpreter::new(contents, path_str.to_owned());
+	let mut new_interpreter = crate::Interpreter::new();
 	swap(&mut new_interpreter.memory, &mut interpreter.memory);
 
-	let result = interpreter.execute(ast, false)?;
+	let result = interpreter.interpret(contents, path_str.to_owned(), ast, false)?;
 	swap(&mut new_interpreter.memory, &mut interpreter.memory);
 
 	Ok(result)

@@ -29,14 +29,75 @@ fn execute_run_command(args: cli::RunCommand) {
 	let parser = ProgParser::new(&contents, &args.file_path);
 	let ast = parser.parse().unwrap();
 
-	let mut interpreter = Interpreter::new(contents, args.file_path);
-
-	let result = interpreter.execute(ast, false);
+	let mut interpreter = Interpreter::new();
+	let result = interpreter.interpret(contents, args.file_path, ast, false);
 
 	match result {
 		Ok(r) => println!("{r}"),
 		Err(e) => eprintln!("{e}")
 	};
+}
+
+#[cfg(feature = "repl")]
+fn repl() {
+	use rustyline::error::ReadlineError;
+	use rustyline::DefaultEditor;
+
+	let mut rl = DefaultEditor::new().unwrap();
+	let mut interpreter = Interpreter::new();
+	let mut line_counter = 0usize;
+
+	println!(
+		"{} REPL v{}",
+		env!("CARGO_PKG_NAME"),
+		env!("CARGO_PKG_VERSION")
+	);
+
+	loop {
+		let line = rl.readline("> ");
+
+		match line {
+			Ok(line) => {
+				rl.add_history_entry(line.as_str()).unwrap();
+
+				// A hacky way to keep track of the line number without having to re-interpret the entire REPL
+				let source = format!("{}{}", "\n".repeat(line_counter), line);
+
+				let parser = ProgParser::new(&source, "<REPL>");
+				let ast = parser.parse();
+
+				if ast.is_err() {
+					println!("{:?}", ast.unwrap_err());
+					continue;
+				}
+
+				let result = interpreter.interpret(source, "<REPL>", ast.unwrap(), false);
+
+				if result.is_err() {
+					println!("{:?}", result.unwrap_err());
+					continue;
+				}
+
+				println!("{}", result.unwrap());
+				line_counter += 1;
+			}
+
+			Err(ReadlineError::Interrupted) => {
+				println!("CTRL-C");
+				break;
+			}
+
+			Err(ReadlineError::Eof) => {
+				println!("CTRL-D");
+				break;
+			}
+
+			Err(err) => {
+				println!("Error: {err:?}");
+				break;
+			}
+		}
+	}
 }
 
 #[cfg(feature = "api")]
@@ -121,9 +182,18 @@ fn execute_serve_command(args: cli::ServeCommand) {
 }
 
 fn main() {
-	let args = Cli::parse();
+	let Cli { subcommand } = Cli::parse();
 
-	match args.subcommand {
+	#[cfg(feature = "repl")]
+	let subcommand = {
+		if subcommand.is_none() {
+			return repl();
+		}
+
+		subcommand.unwrap()
+	};
+
+	match subcommand {
 		cli::CLISubcommand::Run(command) => execute_run_command(command),
 		#[cfg(feature = "api")]
 		cli::CLISubcommand::Serve(command) => execute_serve_command(command)

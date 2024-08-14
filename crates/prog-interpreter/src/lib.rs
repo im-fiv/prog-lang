@@ -58,14 +58,35 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-	pub fn new(source: String, file: String) -> Self {
+	pub fn new() -> Self {
 		Self {
 			memory: Memory::new(),
 			context: RuntimeContext::new(),
 
-			source,
-			file
+			source: String::new(),
+			file: String::new()
 		}
+	}
+
+	pub fn interpret<S, F>(
+		&mut self,
+		source: S,
+		file: F,
+		ast: ast::Program,
+		keep_marker: bool
+	) -> Result<RuntimeValue>
+	where
+		S: Into<String>,
+		F: Into<String> {
+		self.source = source.into();
+		self.file = file.into();
+
+		let result = self.execute(ast, keep_marker);
+
+		self.source = String::new();
+		self.file = String::new();
+
+		result
 	}
 
 	pub fn execute(&mut self, ast: ast::Program, keep_marker: bool) -> Result<RuntimeValue> {

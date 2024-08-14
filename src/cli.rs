@@ -6,9 +6,15 @@ pub const DEFAULT_SERVER_PORT: u16 = 80;
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 pub struct Cli {
-	/// Action
+	#[cfg(not(feature = "repl"))]
 	#[clap(subcommand)]
-	pub subcommand: CLISubcommand
+	/// Action
+	pub subcommand: CLISubcommand,
+
+	#[cfg(feature = "repl")]
+	#[clap(subcommand)]
+	/// Action
+	pub subcommand: Option<CLISubcommand>
 }
 
 #[derive(Debug, Subcommand)]

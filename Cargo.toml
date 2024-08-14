@@ -5,12 +5,16 @@ edition = "2021"
 
 [features]
 default = []
-serde = ["dep:serde", "dep:serde_json"]
-api = [
-	"serde",
+repl = ["dep:rustyline"]
+serde = [
+	"dep:serde",
+	"dep:serde_json",
 	"prog-parser/serde",
 	"prog-interpreter/serde",
-	"prog-utils/serde",
+	"prog-utils/serde"
+]
+api = [
+	"serde",
 	"dep:actix-web",
 	"dep:actix-cors",
 	"dep:env_logger"
@@ -43,6 +47,7 @@ prog-utils = { workspace = true }
 
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
+rustyline = { version = "14.0.0", optional = true }
 actix-web = { version = "4", optional = true }
 actix-cors = { version = "0.7.0", optional = true }
 actix-files = { version = "0.6.5", optional = true }
