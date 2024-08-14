@@ -50,10 +50,7 @@ impl Drop for RuntimeObject {
 
 impl Debug for RuntimeObject {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let mut debug_struct = f.debug_struct(&format!(
-			"Object ({} refs)",
-			self.0.ref_count()
-		));
+		let mut debug_struct = f.debug_struct(&format!("Object ({} refs)", self.0.ref_count()));
 
 		for (name, value) in self.0.iter() {
 			debug_struct.field(name, value);

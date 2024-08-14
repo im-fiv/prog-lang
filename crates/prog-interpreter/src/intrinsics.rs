@@ -7,18 +7,23 @@ use crate::arg_parser::{Arg, ArgList, ParsedArg};
 use crate::errors;
 use crate::values::*;
 
-fn print_function(IntrinsicFunctionData {
-	interpreter,
-	arguments,
-	..
-}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+fn print_function(
+	IntrinsicFunctionData {
+		interpreter,
+		arguments,
+		..
+	}: IntrinsicFunctionData
+) -> Result<RuntimeValue> {
 	let to_print = get_argument!(arguments => varargs: ...)
 		.into_iter()
 		.map(|arg| format!("{}", arg))
 		.collect::<Vec<String>>()
 		.join("");
 
-	interpreter.context.stdout.push_str(&format!("{}\n", to_print)[..]);
+	interpreter
+		.context
+		.stdout
+		.push_str(&format!("{}\n", to_print)[..]);
 
 	if interpreter.context.flags.con_stdout_allowed {
 		println!("{to_print}");
@@ -27,12 +32,14 @@ fn print_function(IntrinsicFunctionData {
 	Ok(RuntimeValue::Empty)
 }
 
-fn import_function(IntrinsicFunctionData {
-	interpreter,
-	arguments,
-	call_site,
-	..
-}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+fn import_function(
+	IntrinsicFunctionData {
+		interpreter,
+		arguments,
+		call_site,
+		..
+	}: IntrinsicFunctionData
+) -> Result<RuntimeValue> {
 	use std::mem::swap;
 
 	if !interpreter.context.flags.imports_allowed {
@@ -81,16 +88,18 @@ fn import_function(IntrinsicFunctionData {
 
 	let result = interpreter.execute(ast, false)?;
 	swap(&mut new_interpreter.memory, &mut interpreter.memory);
-	
+
 	Ok(result)
 }
 
-fn input_function(IntrinsicFunctionData {
-	interpreter,
-	arguments,
-	call_site,
-	..
-}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+fn input_function(
+	IntrinsicFunctionData {
+		interpreter,
+		arguments,
+		call_site,
+		..
+	}: IntrinsicFunctionData
+) -> Result<RuntimeValue> {
 	use text_io::read;
 
 	if !interpreter.context.flags.inputs_allowed {
@@ -117,16 +126,21 @@ fn input_function(IntrinsicFunctionData {
 	result = result.replace('\r', "");
 	result = result.replace('\n', "");
 
-	interpreter.context.stdin.push_str(&format!("{result}\n")[..]);
+	interpreter
+		.context
+		.stdin
+		.push_str(&format!("{result}\n")[..]);
 
 	Ok(RuntimeValue::String(result.into()))
 }
 
-fn raw_print_function(IntrinsicFunctionData {
-	interpreter,
-	arguments,
-	..
-}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+fn raw_print_function(
+	IntrinsicFunctionData {
+		interpreter,
+		arguments,
+		..
+	}: IntrinsicFunctionData
+) -> Result<RuntimeValue> {
 	use std::io;
 	use std::io::Write;
 
@@ -141,11 +155,13 @@ fn raw_print_function(IntrinsicFunctionData {
 	Ok(RuntimeValue::Empty)
 }
 
-fn assert_function(IntrinsicFunctionData {
-	arguments,
-	call_site,
-	..
-}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+fn assert_function(
+	IntrinsicFunctionData {
+		arguments,
+		call_site,
+		..
+	}: IntrinsicFunctionData
+) -> Result<RuntimeValue> {
 	let value = get_argument!(arguments => value: RuntimeValue);
 	let message = get_argument!(arguments => message: RuntimeString?).map(|str| str.owned());
 
@@ -161,10 +177,9 @@ fn assert_function(IntrinsicFunctionData {
 	Ok(RuntimeValue::Empty)
 }
 
-fn dump_ctx_function(IntrinsicFunctionData {
-	interpreter,
-	..
-}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+fn dump_ctx_function(
+	IntrinsicFunctionData { interpreter, .. }: IntrinsicFunctionData
+) -> Result<RuntimeValue> {
 	println!("{:#?}", interpreter.context);
 	Ok(RuntimeValue::Empty)
 }
@@ -218,11 +233,7 @@ pub fn create_variable_table() -> HashMap<String, RuntimeValue> {
 
 	map.insert(
 		String::from("dump_ctx"),
-		IntrinsicFunction::new(
-			dump_ctx_function,
-			ArgList::new_empty()
-		)
-		.into()
+		IntrinsicFunction::new(dump_ctx_function, ArgList::new_empty()).into()
 	);
 
 	map

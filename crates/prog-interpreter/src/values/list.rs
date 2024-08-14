@@ -4,7 +4,9 @@ use std::fmt::{self, Debug, Display};
 use anyhow::Result;
 use prog_macros::get_this;
 
-use super::{IntrinsicFunction, IntrinsicFunctionData, RuntimeNumber, RuntimePrimitive, RuntimeValue};
+use super::{
+	IntrinsicFunction, IntrinsicFunctionData, RuntimeNumber, RuntimePrimitive, RuntimeValue
+};
 use crate::arg_parser::ArgList;
 
 //* Note: `Debug` is implemented manually below
@@ -12,10 +14,7 @@ use crate::arg_parser::ArgList;
 pub struct RuntimeList(pub Vec<RuntimeValue>);
 
 impl RuntimeList {
-	fn len(IntrinsicFunctionData {
-		this,
-		..
-	}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+	fn len(IntrinsicFunctionData { this, .. }: IntrinsicFunctionData) -> Result<RuntimeValue> {
 		let this = get_this!(this => List);
 		let len = this.value().len();
 

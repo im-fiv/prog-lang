@@ -5,7 +5,8 @@ use anyhow::Result;
 use prog_macros::{get_argument, get_this};
 
 use super::{
-	IntrinsicFunction, IntrinsicFunctionData, RuntimeNumber, RuntimePrimitive, RuntimeValue, RuntimeValueKind
+	IntrinsicFunction, IntrinsicFunctionData, RuntimeNumber, RuntimePrimitive, RuntimeValue,
+	RuntimeValueKind
 };
 use crate::arg_parser::{Arg, ArgList, ParsedArg};
 
@@ -14,11 +15,11 @@ use crate::arg_parser::{Arg, ArgList, ParsedArg};
 pub struct RuntimeString(pub String);
 
 impl RuntimeString {
-	fn sub(IntrinsicFunctionData {
-		this,
-		arguments,
-		..
-	}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+	fn sub(
+		IntrinsicFunctionData {
+			this, arguments, ..
+		}: IntrinsicFunctionData
+	) -> Result<RuntimeValue> {
 		let this = get_this!(this => String);
 		let this = this.value();
 
@@ -48,10 +49,7 @@ impl RuntimeString {
 		Ok(Self::from(substring).into())
 	}
 
-	fn len(IntrinsicFunctionData {
-		this,
-		..
-	}: IntrinsicFunctionData) -> Result<RuntimeValue> {
+	fn len(IntrinsicFunctionData { this, .. }: IntrinsicFunctionData) -> Result<RuntimeValue> {
 		let this = get_this!(this => String);
 		let len = this.value().len();
 

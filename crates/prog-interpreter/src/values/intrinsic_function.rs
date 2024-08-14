@@ -63,9 +63,7 @@ impl IntrinsicFunction {
 }
 
 impl PartialEq for IntrinsicFunction {
-	fn eq(&self, other: &Self) -> bool {
-		self.pointer == other.pointer
-	}
+	fn eq(&self, other: &Self) -> bool { self.pointer == other.pointer }
 }
 
 impl Debug for IntrinsicFunction {
