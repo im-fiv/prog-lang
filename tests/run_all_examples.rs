@@ -4,14 +4,14 @@ use std::path::Path;
 
 use anyhow::Result;
 
-fn execute_string(source: String, file: &str) -> Result<prog_interpreter::RuntimeValue> {
+fn execute_string(source: String, file: &str) -> Result<()> {
 	let parser = prog_parser::Parser::new(&source[..], file);
 	let ast = parser.parse()?;
 
 	let mut interpreter = prog_interpreter::Interpreter::new(source, file.to_owned());
 	interpreter.context.flags.con_stdout_allowed = false;
 
-	interpreter.execute(ast, false)
+	interpreter.execute(ast, false).map(|_| ())
 }
 
 fn iterate_dir(paths: ReadDir, exclusions: &[String]) {
@@ -50,7 +50,7 @@ fn iterate_dir(paths: ReadDir, exclusions: &[String]) {
 			execution_result.is_ok(),
 			"Execution failed: {}",
 			execution_result.unwrap_err()
-		)
+		);
 	}
 }
 
