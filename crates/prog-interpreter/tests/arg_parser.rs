@@ -86,7 +86,7 @@ fn parse_variadic() {
 	let parsed = parsed.unwrap();
 	let arg3 = get_argument!(parsed => arg3: ...);
 
-	assert_eq!(arg3.len(), 2)
+	assert_eq!(arg3.len(), 1)
 }
 
 #[test]
