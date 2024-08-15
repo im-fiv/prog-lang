@@ -10,6 +10,7 @@ some_object.counter = some_object.counter + 1
 (some_object.text_to_print, " ", some_object.counter) -> print
 some_object.counter = some_object.counter - 1
 
+// Objects are passed by reference
 def increment_counter = func(object, amount) do
 	object.counter = object.counter + amount
 end
