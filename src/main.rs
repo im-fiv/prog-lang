@@ -29,6 +29,8 @@ fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
 }
 
 fn execute_run_command(args: cli::RunCommand) {
+	use prog_interpreter::RuntimeValueKind;
+
 	let contents = read_file(&args.file_path);
 
 	let parser = ProgParser::new(&contents, &args.file_path);
@@ -38,8 +40,10 @@ fn execute_run_command(args: cli::RunCommand) {
 	let result = interpreter.interpret(contents, args.file_path, ast, false);
 
 	match result {
-		Ok(r) => println!("{r}"),
-		Err(e) => eprintln!("{e}")
+		Ok(r) if !matches!(r.kind(), RuntimeValueKind::Empty) => println!("{r}"),
+		Err(e) => eprintln!("{e}"),
+
+		_ => ()
 	};
 }
 

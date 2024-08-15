@@ -591,7 +591,7 @@ impl<'inp> Parser<'inp> {
 		let position = span_to_pos(pair.as_span());
 		let as_str = pair_into_string(&pair);
 
-		if as_str == "void" {
+		if as_str == "none" {
 			return Expression::Empty(Some(position)).into();
 		}
 

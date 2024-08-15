@@ -139,7 +139,7 @@ impl Debug for RuntimeValue {
 			Self::Function(func) => Debug::fmt(func, f),
 			Self::IntrinsicFunction(func) => Debug::fmt(func, f),
 
-			Self::Empty => Debug::fmt(&(), f),
+			Self::Empty => write!(f, "none"),
 
 			Self::Identifier(ident) => Debug::fmt(ident, f),
 			Self::Marker(marker) => Debug::fmt(marker, f)
@@ -157,7 +157,7 @@ impl Display for RuntimeValue {
 			Self::Object(value) => write!(f, "{value}"),
 			Self::Function(value) => write!(f, "{value}"),
 			Self::IntrinsicFunction(value) => write!(f, "{value}"),
-			Self::Empty => write!(f, ""),
+			Self::Empty => write!(f, "none"),
 
 			Self::Identifier(value) => write!(f, "{value}"),
 			Self::Marker(value) => write!(f, "Marker({value})")

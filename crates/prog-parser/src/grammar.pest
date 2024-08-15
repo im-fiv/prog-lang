@@ -4,7 +4,7 @@ identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* ~ !keywords }
 keywords = {
 	"true" | "false" | "def" | "func" | "do" |
 	"end" | "return" | "while" | "break" |
-	"continue" | "if" | "then" | "void" |
+	"continue" | "if" | "then" | "none" |
 	"and" | "or" | "not"
 }
 
