@@ -7,6 +7,11 @@ use prog_parser::Parser as ProgParser;
 use prog_utils::read_file;
 
 #[cfg(feature = "api")]
+const NAME_STDIN: &str = "<STDIN>";
+#[cfg(feature = "repl")]
+const NAME_REPL: &str = "<REPL>";
+
+#[cfg(feature = "api")]
 fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
 	let interpret_error = anyhow_error.downcast_ref::<prog_interpreter::InterpretError>();
 
@@ -63,7 +68,7 @@ fn repl() {
 				// A hacky way to keep track of the line number without having to re-interpret the entire REPL
 				let source = format!("{}{}", "\n".repeat(line_counter), line);
 
-				let parser = ProgParser::new(&source, "<REPL>");
+				let parser = ProgParser::new(&source, NAME_REPL);
 				let ast = parser.parse();
 
 				if ast.is_err() {
@@ -71,7 +76,7 @@ fn repl() {
 					continue;
 				}
 
-				let result = interpreter.interpret(source, "<REPL>", ast.unwrap(), false);
+				let result = interpreter.interpret(source, NAME_REPL, ast.unwrap(), false);
 
 				if result.is_err() {
 					println!("{:?}", result.unwrap_err());
@@ -121,18 +126,18 @@ fn execute_serve_command(args: cli::ServeCommand) {
 
 	#[post("/execute")]
 	async fn execute_str(req_body: String) -> impl Responder {
-		let parser = ProgParser::new(&req_body, "stdin");
+		let parser = ProgParser::new(&req_body, NAME_STDIN);
 		let ast = match parser.parse() {
 			Ok(ast) => ast,
 			Err(error) => return handle_anyhow_error(error)
 		};
 
-		let mut interpreter = Interpreter::new(req_body, String::from("stdin"));
+		let mut interpreter = Interpreter::new();
 		interpreter.context.flags.con_stdout_allowed = false;
 		interpreter.context.flags.imports_allowed = false;
 		interpreter.context.flags.inputs_allowed = false;
 
-		let result = match interpreter.execute(ast, false) {
+		let result = match interpreter.interpret(req_body, NAME_STDIN, ast, false) {
 			Ok(result) => result,
 			Err(error) => return handle_anyhow_error(error)
 		};
