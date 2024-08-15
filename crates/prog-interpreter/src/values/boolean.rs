@@ -4,7 +4,7 @@ use super::RuntimePrimitive;
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
-pub struct RuntimeBoolean(pub bool);
+pub struct RuntimeBoolean(bool);
 
 impl RuntimePrimitive for RuntimeBoolean {
 	type Inner = bool;

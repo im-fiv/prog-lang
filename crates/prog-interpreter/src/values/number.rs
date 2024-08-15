@@ -5,7 +5,7 @@ use super::{IntrinsicFunction, RuntimePrimitive};
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
-pub struct RuntimeNumber(pub f64);
+pub struct RuntimeNumber(f64);
 
 impl RuntimePrimitive for RuntimeNumber {
 	type Inner = f64;

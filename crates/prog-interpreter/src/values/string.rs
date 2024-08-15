@@ -12,7 +12,7 @@ use crate::arg_parser::{Arg, ArgList, ParsedArg};
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
-pub struct RuntimeString(pub String);
+pub struct RuntimeString(String);
 
 impl RuntimeString {
 	fn sub(

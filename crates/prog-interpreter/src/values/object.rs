@@ -7,12 +7,12 @@ use super::{RuntimePrimitive, RuntimeValue};
 
 //* Note: `Debug` and `PartialEq` are implemented manually below
 #[derive(Clone)]
-pub struct RuntimeObject(pub HeapMutator<'static, HashMap<String, RuntimeValue>>);
+pub struct RuntimeObject(HeapMutator<'static, HashMap<String, RuntimeValue>>);
 
 impl RuntimePrimitive for RuntimeObject {
-	type Inner = HashMap<String, RuntimeValue>;
+	type Inner = HeapMutator<'static, HashMap<String, RuntimeValue>>;
 
-	fn get(&self) -> &Self::Inner { self.0.get() }
+	fn get(&self) -> &Self::Inner { &self.0 }
 
 	fn get_mut(&mut self) -> &mut Self::Inner { &mut self.0 }
 }

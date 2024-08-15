@@ -3,7 +3,7 @@ use prog_interpreter::values::*;
 
 #[test]
 fn insert_and_get_variable() {
-	let some_value = RuntimeValue::Boolean(RuntimeBoolean(true).into());
+	let some_value = RuntimeValue::Boolean(true.into());
 
 	let mut context = RuntimeContext::new_clean();
 	context.insert(String::from("some_variable"), some_value.clone());
@@ -15,12 +15,12 @@ fn insert_and_get_variable() {
 
 #[test]
 fn update_variable() {
-	let some_value = RuntimeValue::Boolean(RuntimeBoolean(true).into());
+	let some_value = RuntimeValue::Boolean(true.into());
 
 	let mut context = RuntimeContext::new_clean();
 	context.insert(String::from("some_variable"), some_value.clone());
 
-	let new_value = RuntimeValue::Boolean(RuntimeBoolean(false).into());
+	let new_value = RuntimeValue::Boolean(false.into());
 	let old_value = context
 		.update(String::from("some_variable"), new_value.clone())
 		.unwrap();
@@ -40,7 +40,7 @@ fn get_nonexistent_variable() {
 
 #[test]
 fn get_variable_mutable() {
-	let some_value = RuntimeValue::Boolean(RuntimeBoolean(true).into());
+	let some_value = RuntimeValue::Boolean(true.into());
 
 	let mut context = RuntimeContext::new_clean();
 	context.insert(String::from("some_variable"), some_value.clone());
@@ -49,21 +49,18 @@ fn get_variable_mutable() {
 
 	if let RuntimeValue::Boolean(inner_value) = value_ref {
 		// Inverting the value
-		*inner_value = RuntimeBoolean(!inner_value.get_owned());
+		*inner_value = (!inner_value.get_owned()).into();
 	} else {
 		panic!("Value is not of type Boolean");
 	}
 
 	let got_value = context.get("some_variable").unwrap();
-	assert_eq!(
-		got_value,
-		RuntimeValue::Boolean(RuntimeBoolean(false).into())
-	);
+	assert_eq!(got_value, RuntimeValue::Boolean(false.into()));
 }
 
 #[test]
 fn subcontexts() {
-	let some_value = RuntimeValue::Boolean(RuntimeBoolean(true).into());
+	let some_value = RuntimeValue::Boolean(true.into());
 
 	let mut context = RuntimeContext::new_clean();
 

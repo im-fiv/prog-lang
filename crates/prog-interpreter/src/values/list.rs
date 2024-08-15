@@ -11,7 +11,7 @@ use crate::arg_parser::ArgList;
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
-pub struct RuntimeList(pub Vec<RuntimeValue>);
+pub struct RuntimeList(Vec<RuntimeValue>);
 
 impl RuntimeList {
 	fn len(IntrinsicFunctionData { this, .. }: IntrinsicFunctionData) -> Result<RuntimeValue> {

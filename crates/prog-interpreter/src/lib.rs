@@ -380,10 +380,10 @@ impl Interpreter {
 		};
 
 		if index >= inner_list.get().len() {
-			inner_list.0.resize(index + 1, RuntimeValue::Empty);
+			inner_list.get_mut().resize(index + 1, RuntimeValue::Empty);
 		}
 
-		inner_list.0[index] = value;
+		inner_list.get_mut()[index] = value;
 
 		Ok(RuntimeValue::Empty)
 	}
@@ -446,10 +446,10 @@ impl Interpreter {
 		};
 
 		// `HeapMutator::get_mut` fails, so this is a workaround
-		let mut map = inner_object.0.get().to_owned();
+		let mut map = inner_object.get().get_owned();
 		map.insert(entry_name, value);
 
-		inner_object.0.write(map);
+		inner_object.get_mut().write(map);
 
 		Ok(RuntimeValue::Empty)
 	}
@@ -636,10 +636,13 @@ impl Interpreter {
 			}
 
 			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => {
-				lhs.get().get(&rhs).cloned().unwrap_or(RuntimeValue::Empty)
+				(**lhs.get())
+					.get(&rhs)
+					.cloned()
+					.unwrap_or(RuntimeValue::Empty)
 			}
 			(Op::ObjectAccess, Rv::Object(lhs), Rv::String(rhs)) => {
-				lhs.get()
+				(**lhs.get())
 					.get(rhs.get())
 					.cloned()
 					.unwrap_or(RuntimeValue::Empty)
