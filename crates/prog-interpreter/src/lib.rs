@@ -926,7 +926,10 @@ impl Interpreter {
 				let mut function_context = function.context.get_owned();
 				mem::swap(&mut self.context, &mut function_context);
 
-				self.context.insert(String::from("self"), RuntimeValue::Function(function.clone()));
+				self.context.insert(
+					String::from("self"),
+					RuntimeValue::Function(function.clone())
+				);
 
 				let argument_iter = function.ast.arguments.into_iter().zip(call_args);
 				for ((arg_name, _), arg_value) in argument_iter {
@@ -982,7 +985,5 @@ impl Interpreter {
 }
 
 impl Default for Interpreter {
-	fn default() -> Self {
-		Self::new()
-	}
+	fn default() -> Self { Self::new() }
 }
