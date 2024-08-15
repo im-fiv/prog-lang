@@ -4,6 +4,8 @@ pub mod errors;
 pub mod intrinsics;
 pub mod values;
 
+use std::collections::HashMap;
+
 use anyhow::Result;
 use context::RuntimeContext;
 pub use errors::{InterpretError, InterpretErrorKind};
@@ -51,6 +53,7 @@ fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
 #[derive(Debug)]
 pub struct Interpreter {
 	pub memory: Memory,
+	pub function_map: HashMap<u64, RuntimeFunction>,
 	pub context: RuntimeContext,
 
 	source: String,
@@ -61,6 +64,7 @@ impl Interpreter {
 	pub fn new() -> Self {
 		Self {
 			memory: Memory::new(),
+			function_map: HashMap::new(),
 			context: RuntimeContext::new(),
 
 			source: String::new(),
@@ -724,13 +728,32 @@ impl Interpreter {
 		}
 	}
 
-	fn evaluate_function(&self, function: ast::expressions::Function) -> Result<RuntimeValue> {
-		let converted = RuntimeFunction {
-			ast: Box::new(function),
-			source: self.source.to_owned(),
-			file: self.file.to_owned()
+	fn evaluate_function(&mut self, function: ast::expressions::Function) -> Result<RuntimeValue> {
+		use std::hash::{DefaultHasher, Hash, Hasher};
+
+		let mut hasher = DefaultHasher::new();
+		function.hash(&mut hasher);
+		let hash = hasher.finish();
+
+		if let Some(func) = self.function_map.get(&hash) {
+			return Ok(RuntimeValue::Function(func.to_owned()));
+		}
+
+		let captured_context = unsafe {
+			let new_context = self.context.clone();
+			self.memory.alloc(new_context).promote()
 		};
 
+		let converted = RuntimeFunction {
+			ast: Box::new(function),
+
+			source: self.source.to_owned(),
+			file: self.file.to_owned(),
+
+			context: captured_context
+		};
+
+		self.function_map.insert(hash, converted.clone());
 		Ok(RuntimeValue::Function(converted))
 	}
 
@@ -864,7 +887,7 @@ impl Interpreter {
 			return result;
 		}
 
-		if let RuntimeValue::Function(function) = function_expr {
+		if let RuntimeValue::Function(mut function) = function_expr {
 			let got_len = call_args.len();
 			let expected_len = function.ast.arguments.len();
 
@@ -894,9 +917,16 @@ impl Interpreter {
 
 			// Function execution
 			{
+				use std::mem;
+
 				self.context.deeper();
-				self.source = function.source;
-				self.file = function.file;
+				self.source = function.source.clone();
+				self.file = function.file.clone();
+
+				let mut function_context = function.context.get_owned();
+				mem::swap(&mut self.context, &mut function_context);
+
+				self.context.insert(String::from("self"), RuntimeValue::Function(function.clone()));
 
 				let argument_iter = function.ast.arguments.into_iter().zip(call_args);
 				for ((arg_name, _), arg_value) in argument_iter {
@@ -916,6 +946,8 @@ impl Interpreter {
 						panic!("Function execution returned a non-`InterpretError` error")
 					});
 
+					// TODO: nest the error inside of `FunctionPanicked` error instead of printing it directly
+					// TODO: fold the call stack of recursive functions
 					// print it
 					downcasted.eprint();
 
@@ -927,6 +959,9 @@ impl Interpreter {
 						InterpretErrorKind::FunctionPanicked(errors::FunctionPanicked)
 					))
 				});
+
+				mem::swap(&mut self.context, &mut function_context);
+				function.context.write(function_context);
 
 				self.context.shallower();
 				self.source = source;

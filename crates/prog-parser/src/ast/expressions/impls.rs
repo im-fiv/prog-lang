@@ -1,4 +1,5 @@
-use std::fmt::Display;
+use std::fmt::{self, Display};
+use std::hash::{self, Hash};
 
 use prog_utils::impl_basic_conv;
 
@@ -43,6 +44,30 @@ impl Literal {
 			Self::Number(_, value) => value
 		}
 		.to_owned()
+	}
+
+	pub fn decode_f64(value: f64) -> (u64, i16, i8) {
+		let bits = unsafe { std::mem::transmute::<f64, u64>(value) };
+		let sign = if bits >> 63 == 0 { 1 } else { -1 } as i8;
+		let mut exponent = ((bits >> 52) & 0x7FF) as i16;
+		let mantissa = if exponent == 0 {
+			(bits & 0xFFFFFFFFFFFFF) << 1
+		} else {
+			(bits & 0xFFFFFFFFFFFFF) | 0x10000000000000
+		};
+
+		exponent -= 1023 + 52;
+		(mantissa, exponent, sign)
+	}
+}
+
+impl Hash for Literal {
+	fn hash<H: hash::Hasher>(&self, state: &mut H) {
+		match self {
+			Self::Boolean(val, pos) => (val, pos).hash(state),
+			Self::String(val, pos) => (val, pos).hash(state),
+			Self::Number(val, pos) => (Self::decode_f64(*val), pos).hash(state)
+		}
 	}
 }
 
@@ -128,7 +153,7 @@ impl TryFrom<String> for operators::UnaryOperator {
 //* Display *//
 
 impl Display for operators::BinaryOperator {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Add => write!(f, "+"),
 			Self::Subtract => write!(f, "-"),
@@ -150,7 +175,7 @@ impl Display for operators::BinaryOperator {
 }
 
 impl Display for operators::UnaryOperator {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Minus => write!(f, "-"),
 			Self::Not => write!(f, "not")
@@ -159,7 +184,7 @@ impl Display for operators::UnaryOperator {
 }
 
 impl Display for Expression {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Unary(value) => write!(f, "{value}"),
 			Self::Binary(value) => write!(f, "{value}"),
@@ -170,7 +195,7 @@ impl Display for Expression {
 }
 
 impl Display for Unary {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self.operator.0 {
 			operators::UnaryOperator::Minus => write!(f, "{}{}", self.operator.0, self.operand),
 			operators::UnaryOperator::Not => write!(f, "{} {}", self.operator.0, self.operand)
@@ -179,7 +204,7 @@ impl Display for Unary {
 }
 
 impl Display for Binary {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self.operator.0 {
 			operators::BinaryOperator::ListAccess | operators::BinaryOperator::ObjectAccess => {
 				write!(f, "{}{}{}", self.lhs, self.operator.0, self.rhs)
@@ -191,7 +216,7 @@ impl Display for Binary {
 }
 
 impl Display for Term {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Object(value) => write!(f, "{value}"),
 			Self::List(value) => write!(f, "{value}"),
@@ -205,7 +230,7 @@ impl Display for Term {
 }
 
 impl Display for Object {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let formatted = self
 			.0
 			.iter()
@@ -218,7 +243,7 @@ impl Display for Object {
 }
 
 impl Display for List {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let formatted = self
 			.0
 			.iter()
@@ -231,7 +256,7 @@ impl Display for List {
 }
 
 impl Display for Call {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let function = self.function.to_string();
 
 		let arguments = self
@@ -246,7 +271,7 @@ impl Display for Call {
 }
 
 impl Display for Function {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let arguments = self
 			.arguments
 			.iter()
@@ -259,7 +284,7 @@ impl Display for Function {
 }
 
 impl Display for Literal {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Boolean(value, _) => write!(f, "{value}"),
 			Self::String(value, _) => write!(f, "{value}"),

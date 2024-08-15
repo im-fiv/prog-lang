@@ -25,7 +25,7 @@ def fibonacci_recursive = func(num) do
 		return num
 	end
 
-	return ((num - 1) -> fibonacci_recursive) + ((num - 2) -> fibonacci_recursive) 
+	return ((num - 1) -> self) + ((num - 2) -> self) 
 end
 
 def arg_number = 10

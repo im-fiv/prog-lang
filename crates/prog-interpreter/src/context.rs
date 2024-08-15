@@ -165,3 +165,5 @@ impl std::fmt::Debug for RuntimeContext {
 impl Default for RuntimeContext {
 	fn default() -> Self { Self::new_clean() }
 }
+
+impl halloc::Allocatable for RuntimeContext {}

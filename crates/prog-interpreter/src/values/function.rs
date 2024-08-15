@@ -1,13 +1,19 @@
 use std::fmt::{self, Debug, Display};
 
+use halloc::HeapMutator;
 use prog_parser::ast;
 
-//* Note: `Debug` is implemented manually below
-#[derive(Clone, PartialEq)]
+use crate::context::RuntimeContext;
+
+//* Note: `Debug` and `PartialEq` are implemented manually below
+#[derive(Clone)]
 pub struct RuntimeFunction {
 	pub ast: Box<ast::expressions::Function>,
+
 	pub source: String,
-	pub file: String
+	pub file: String,
+
+	pub context: HeapMutator<'static, RuntimeContext>
 }
 
 impl Debug for RuntimeFunction {
@@ -25,6 +31,16 @@ impl Debug for RuntimeFunction {
 			.field("statements", &self.ast.statements)
 			.field("file", &self.file)
 			.finish()
+	}
+}
+
+impl PartialEq for RuntimeFunction {
+	fn eq(&self, other: &Self) -> bool {
+		let ast = self.ast == other.ast;
+		let source = self.source == other.source;
+		let file = self.file == other.file;
+
+		ast && source && file
 	}
 }
 

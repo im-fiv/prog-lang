@@ -67,18 +67,10 @@ fn parse_variadic() {
 		RuntimeValue::Boolean(true.into()),
 		RuntimeValue::Number(3.14.into()),
 		// Variadic arguments
-		RuntimeValue::Function(
-			RuntimeFunction {
-				ast: Box::new(prog_parser::ast::expressions::Function {
-					arguments: vec![],
-					statements: vec![],
-					position: 0..0
-				}),
-				source: String::new(),
-				file: String::new()
-			}
-			.into()
-		)
+		RuntimeValue::Boolean(true.into()),
+		RuntimeValue::Number(3.14.into()),
+		RuntimeValue::Boolean(true.into()),
+		RuntimeValue::Number(3.14.into())
 	]);
 
 	assert!(parsed.is_ok());
@@ -86,7 +78,7 @@ fn parse_variadic() {
 	let parsed = parsed.unwrap();
 	let arg3 = get_argument!(parsed => arg3: ...);
 
-	assert_eq!(arg3.len(), 1)
+	assert_eq!(arg3.len(), 4)
 }
 
 #[test]

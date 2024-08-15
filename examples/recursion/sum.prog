@@ -14,7 +14,7 @@ def sum_recursive = func(num) do
 		return 0
 	end
 
-	return num + ((num - 1) -> sum_recursive)
+	return num + ((num - 1) -> self)
 end
 
 def arg_number = 25

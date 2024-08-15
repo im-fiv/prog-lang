@@ -4,7 +4,7 @@ use super::expressions::{Call, Expression};
 use super::misc::ConditionBranch;
 use super::Position;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Statement {
 	VariableDefine(VariableDefine),
 	VariableAssign(VariableAssign),
@@ -52,50 +52,50 @@ impl Statement {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct VariableDefine {
 	pub name: (String, Position),
 	pub value: Option<Expression>,
 	pub position: Position
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct VariableAssign {
 	pub name: (String, Position),
 	pub value: Expression,
 	pub position: Position
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct DoBlock {
 	pub statements: Vec<Statement>,
 	pub position: Position
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Return {
 	pub expression: Option<Expression>,
 	pub position: Position
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct WhileLoop {
 	pub condition: Expression,
 	pub statements: Vec<Statement>,
 	pub position: Position
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Break {
 	pub position: Position
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Continue {
 	pub position: Position
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct If {
 	pub condition: Expression,
 	pub statements: Vec<Statement>,
@@ -104,7 +104,7 @@ pub struct If {
 	pub position: Position
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct ExpressionAssign {
 	pub expression: Expression,
 	pub value: Expression,
