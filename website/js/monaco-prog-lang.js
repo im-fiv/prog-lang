@@ -2,7 +2,7 @@ export default {
 	keywords: [
 		'true', 'false', 'def', 'func', 'do', 'end',
 		'return', 'while', 'break', 'continue', 'if',
-		'then', 'void'
+		'then', 'void', 'self'
 	],
 
 	typeKeywords: [
@@ -76,6 +76,6 @@ export default {
 			[/[ \t\r\n]+/, 'white'],
 			[/\/\*/, 'comment', '@comment'],
 			[/\/\/.*$/, 'comment'],
-		],
+		]
 	}
 }

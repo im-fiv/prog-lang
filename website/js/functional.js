@@ -15,8 +15,7 @@ async function Execute() {
 	try {
 		data = await fetch(endpoint, {
 			body: code,
-			method: "POST",
-			
+			method: "POST"
 		});
 	} catch (error) {
 		console.error(error);
