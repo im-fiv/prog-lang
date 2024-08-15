@@ -16,7 +16,7 @@ impl Expression {
 			Self::Empty(value) => {
 				value
 					.to_owned()
-					.expect("Position of Expression::Empty is None")
+					.expect("Position of `Expression::Empty` is `None`")
 			}
 		}
 	}
@@ -45,20 +45,6 @@ impl Literal {
 		}
 		.to_owned()
 	}
-
-	pub fn decode_f64(value: f64) -> (u64, i16, i8) {
-		let bits = value.to_bits();
-		let sign = if bits >> 63 == 0 { 1 } else { -1 } as i8;
-		let mut exponent = ((bits >> 52) & 0x7FF) as i16;
-		let mantissa = if exponent == 0 {
-			(bits & 0xFFFFFFFFFFFFF) << 1
-		} else {
-			(bits & 0xFFFFFFFFFFFFF) | 0x10000000000000
-		};
-
-		exponent -= 1023 + 52;
-		(mantissa, exponent, sign)
-	}
 }
 
 impl Hash for Literal {
@@ -66,7 +52,7 @@ impl Hash for Literal {
 		match self {
 			Self::Boolean(val, pos) => (val, pos).hash(state),
 			Self::String(val, pos) => (val, pos).hash(state),
-			Self::Number(val, pos) => (Self::decode_f64(*val), pos).hash(state)
+			Self::Number(val, pos) => (crate::utils::decode_f64(*val), pos).hash(state)
 		}
 	}
 }

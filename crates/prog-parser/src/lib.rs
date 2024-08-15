@@ -84,7 +84,7 @@ impl<'inp> Parser<'inp> {
 			}
 		}
 
-		unreachable!("AST does not have a Program rule")
+		panic!("AST does not have a Program rule")
 	}
 
 	fn parse_statements(&self, pairs: Pairs<'_, Rule>) -> Vec<Statement> {
@@ -423,7 +423,7 @@ impl<'inp> Parser<'inp> {
 		precedence: u8
 	) -> Expression {
 		if pairs.len() < 1 {
-			unreachable!("Failed to parse expression: pairs are empty");
+			panic!("Failed to parse expression: pairs are empty");
 		}
 
 		let left_pair = pairs.next().unwrap();

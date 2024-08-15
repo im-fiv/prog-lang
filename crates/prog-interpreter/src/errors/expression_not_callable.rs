@@ -8,7 +8,7 @@ use crate::RuntimeValueKind;
 pub struct ExpressionNotCallable(pub RuntimeValueKind);
 
 impl AriadneCompatible for ExpressionNotCallable {
-	fn message(&self) -> String { String::from("expression not callable") }
+	fn message(&self) -> String { String::from("expression is not callable") }
 
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>> {
 		let mut colors = ColorGenerator::new();
