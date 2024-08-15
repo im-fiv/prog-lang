@@ -16,7 +16,7 @@ pub struct RuntimeList(pub Vec<RuntimeValue>);
 impl RuntimeList {
 	fn len(IntrinsicFunctionData { this, .. }: IntrinsicFunctionData) -> Result<RuntimeValue> {
 		let this = get_this!(this => List);
-		let len = this.value().len();
+		let len = this.get().len();
 
 		Ok(RuntimeNumber::from(len).into())
 	}
@@ -25,7 +25,9 @@ impl RuntimeList {
 impl RuntimePrimitive for RuntimeList {
 	type Inner = Vec<RuntimeValue>;
 
-	fn value(&self) -> &Self::Inner { &self.0 }
+	fn get(&self) -> &Self::Inner { &self.0 }
+
+	fn get_mut(&mut self) -> &mut Self::Inner { &mut self.0 }
 
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> {
 		let mut map = HashMap::new();

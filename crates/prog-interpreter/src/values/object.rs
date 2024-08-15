@@ -12,7 +12,9 @@ pub struct RuntimeObject(pub HeapMutator<'static, HashMap<String, RuntimeValue>>
 impl RuntimePrimitive for RuntimeObject {
 	type Inner = HashMap<String, RuntimeValue>;
 
-	fn value(&self) -> &Self::Inner { self.0.get() }
+	fn get(&self) -> &Self::Inner { self.0.get() }
+
+	fn get_mut(&mut self) -> &mut Self::Inner { &mut self.0 }
 }
 
 impl From<HeapMutator<'static, HashMap<String, RuntimeValue>>> for RuntimeObject {

@@ -10,7 +10,9 @@ pub struct RuntimeNumber(pub f64);
 impl RuntimePrimitive for RuntimeNumber {
 	type Inner = f64;
 
-	fn value(&self) -> &Self::Inner { &self.0 }
+	fn get(&self) -> &Self::Inner { &self.0 }
+
+	fn get_mut(&mut self) -> &mut Self::Inner { &mut self.0 }
 
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> { HashMap::new() }
 }

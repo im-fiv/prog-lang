@@ -54,7 +54,7 @@ fn import_function(
 		));
 	}
 
-	let path_str = get_argument!(arguments => path: RuntimeString).owned();
+	let path_str = get_argument!(arguments => path: RuntimeString).get_owned();
 
 	let mut path = std::path::Path::new(&path_str).to_path_buf();
 
@@ -117,7 +117,7 @@ fn input_function(
 	let message = get_argument!(arguments => message: RuntimeString?);
 
 	if let Some(message) = message {
-		print!("{}", message.value());
+		print!("{}", message.get());
 	}
 
 	let mut result: String = read!("{}\n");
@@ -144,7 +144,7 @@ fn raw_print_function(
 	use std::io;
 	use std::io::Write;
 
-	let text = get_argument!(arguments => string: RuntimeString).owned();
+	let text = get_argument!(arguments => string: RuntimeString).get_owned();
 	interpreter.context.stdout.push_str(&text);
 
 	if interpreter.context.flags.con_stdout_allowed {
@@ -163,7 +163,7 @@ fn assert_function(
 	}: IntrinsicFunctionData
 ) -> Result<RuntimeValue> {
 	let value = get_argument!(arguments => value: RuntimeValue);
-	let message = get_argument!(arguments => message: RuntimeString?).map(|str| str.owned());
+	let message = get_argument!(arguments => message: RuntimeString?).map(|str| str.get_owned());
 
 	if !value.is_truthy() {
 		bail!(crate::InterpretError::new(

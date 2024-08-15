@@ -25,13 +25,20 @@ use serde::Serialize;
 pub use string::*;
 
 pub trait RuntimePrimitive {
-	type Inner: Clone;
+	type Inner;
 
-	/// Gets the inner value of the primitive
-	fn value(&self) -> &Self::Inner;
+	/// Gets a reference to the inner value of the primitive
+	fn get(&self) -> &Self::Inner;
+
+	/// Gets a mutable reference to the inner value of the primitive
+	fn get_mut(&mut self) -> &mut Self::Inner;
 
 	/// Clones the inner value of the primitive
-	fn owned(&self) -> Self::Inner { self.value().to_owned() }
+	fn get_owned(&self) -> Self::Inner
+	where
+		Self::Inner: Clone {
+		self.get().to_owned()
+	}
 
 	/// Returns an associated function dispatch map for the type
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> { HashMap::new() }
@@ -83,11 +90,11 @@ impl RuntimeValue {
 	pub fn is_truthy(&self) -> bool {
 		match self {
 			// Values that are inexpensive to clone can be cloned
-			Self::Boolean(v) => v.owned(),
-			Self::String(v) => !v.value().is_empty(),
-			Self::Number(v) => v.owned() != 0.0,
-			Self::List(v) => !v.value().is_empty(),
-			Self::Object(v) => !v.value().is_empty(),
+			Self::Boolean(v) => v.get_owned(),
+			Self::String(v) => !v.get().is_empty(),
+			Self::Number(v) => v.get_owned() != 0.0,
+			Self::List(v) => !v.get().is_empty(),
+			Self::Object(v) => !v.get().is_empty(),
 
 			Self::Function(_) => true,
 			Self::IntrinsicFunction(..) => true,

@@ -108,8 +108,8 @@ fn getting_arguments() {
 	let arg1 = get_argument!(parsed => arg1: RuntimeBoolean);
 	let arg2 = get_argument!(parsed => arg2: RuntimeNumber);
 
-	assert_eq!(arg1.owned(), true);
-	assert_eq!(arg2.owned(), 3.14);
+	assert_eq!(arg1.get_owned(), true);
+	assert_eq!(arg2.get_owned(), 3.14);
 }
 
 #[test]

@@ -1,7 +1,6 @@
-use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 
-use super::{IntrinsicFunction, RuntimePrimitive};
+use super::RuntimePrimitive;
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
@@ -10,9 +9,9 @@ pub struct RuntimeBoolean(pub bool);
 impl RuntimePrimitive for RuntimeBoolean {
 	type Inner = bool;
 
-	fn value(&self) -> &Self::Inner { &self.0 }
+	fn get(&self) -> &Self::Inner { &self.0 }
 
-	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> { HashMap::new() }
+	fn get_mut(&mut self) -> &mut Self::Inner { &mut self.0 }
 }
 
 impl From<bool> for RuntimeBoolean {

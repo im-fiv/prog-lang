@@ -49,7 +49,7 @@ fn get_variable_mutable() {
 
 	if let RuntimeValue::Boolean(inner_value) = value_ref {
 		// Inverting the value
-		*inner_value = RuntimeBoolean(!inner_value.owned());
+		*inner_value = RuntimeBoolean(!inner_value.get_owned());
 	} else {
 		panic!("Value is not of type Boolean");
 	}

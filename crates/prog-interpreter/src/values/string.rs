@@ -21,14 +21,14 @@ impl RuntimeString {
 		}: IntrinsicFunctionData
 	) -> Result<RuntimeValue> {
 		let this = get_this!(this => String);
-		let this = this.value();
+		let this = this.get();
 
 		let this_len = this.len();
 
-		let start_index = get_argument!(arguments => start: RuntimeNumber).owned() as usize;
+		let start_index = get_argument!(arguments => start: RuntimeNumber).get_owned() as usize;
 
 		let end_index = get_argument!(arguments => end: RuntimeNumber?)
-			.and_then(|value| Some(value.owned() as usize))
+			.and_then(|value| Some(value.get_owned() as usize))
 			.unwrap_or(this_len);
 
 		if end_index <= start_index {
@@ -51,7 +51,7 @@ impl RuntimeString {
 
 	fn len(IntrinsicFunctionData { this, .. }: IntrinsicFunctionData) -> Result<RuntimeValue> {
 		let this = get_this!(this => String);
-		let len = this.value().len();
+		let len = this.get().len();
 
 		Ok(RuntimeNumber::from(len).into())
 	}
@@ -60,7 +60,9 @@ impl RuntimeString {
 impl RuntimePrimitive for RuntimeString {
 	type Inner = String;
 
-	fn value(&self) -> &Self::Inner { &self.0 }
+	fn get(&self) -> &Self::Inner { &self.0 }
+
+	fn get_mut(&mut self) -> &mut Self::Inner { &mut self.0 }
 
 	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> {
 		let mut map = HashMap::new();
