@@ -1,0 +1,14 @@
+def create_counter = func(initial) do
+	def value = initial
+
+	return func(amount) do
+		value = value + amount
+		return value
+	end
+end
+
+def counter = (0) -> create_counter
+
+(((1) -> counter) == 1) -> assert
+(((2) -> counter) == 3) -> assert
+(((10) -> counter) == 13) -> assert

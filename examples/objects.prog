@@ -8,5 +8,16 @@ some_object.name = "some other value"
 some_object.counter = some_object.counter + 1
 
 (some_object.text_to_print, " ", some_object.counter) -> print
+some_object.counter = some_object.counter - 1
 
-return some_object
+def increment_counter = func(object, amount) do
+	object.counter = object.counter + amount
+end
+
+(some_object.counter == 0) -> assert
+
+(some_object, 5) -> increment_counter
+(some_object.counter == 5) -> assert
+
+(some_object, 6) -> increment_counter
+(some_object.counter == 11) -> assert
