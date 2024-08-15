@@ -10,7 +10,7 @@ use ast::*;
 pub use errors::{ParseError, ParseErrorKind};
 use errors_legacy::error;
 use pest::iterators::{Pair, Pairs};
-use pest::Span;
+use pest::{Parser as _, Span};
 use utils::*;
 
 #[inline]
@@ -29,8 +29,6 @@ impl<'inp> Parser<'inp> {
 	pub fn new(source: &'inp str, file: &'inp str) -> Self { Self { source, file } }
 
 	pub fn parse(&self) -> Result<Program> {
-		use pest::Parser;
-
 		let tt = PestParser::parse(Rule::program, self.source);
 
 		if let Err(e) = tt {
@@ -589,13 +587,13 @@ impl<'inp> Parser<'inp> {
 		assert_rule!(pair == identifier in pair);
 
 		let position = span_to_pos(pair.as_span());
-		let as_str = pair_into_string(&pair);
+		let value = pair_into_string(&pair);
 
-		if as_str == "none" {
+		if value == "none" {
 			return Expression::Empty(Some(position)).into();
 		}
 
-		expressions::Term::Identifier(as_str, position)
+		expressions::Term::Identifier(value, position)
 	}
 
 	fn parse_number_literal(&self, pair: Pair<Rule>) -> expressions::Literal {
