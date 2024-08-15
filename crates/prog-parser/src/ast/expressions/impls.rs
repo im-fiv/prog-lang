@@ -47,7 +47,7 @@ impl Literal {
 	}
 
 	pub fn decode_f64(value: f64) -> (u64, i16, i8) {
-		let bits = unsafe { std::mem::transmute::<f64, u64>(value) };
+		let bits = value.to_bits();
 		let sign = if bits >> 63 == 0 { 1 } else { -1 } as i8;
 		let mut exponent = ((bits >> 52) & 0x7FF) as i16;
 		let mantissa = if exponent == 0 {
