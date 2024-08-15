@@ -2,7 +2,8 @@
   "name": "prog-lang",
   "displayName": "Prog Lang Syntax Highlighting",
   "description": "Syntax highlighting for Prog Lang",
-  "version": "0.0.8",
+  "publisher": "im-fiv",
+  "version": "0.0.9",
   "repository": {
     "url": "https://github.com/im-fiv/prog-lang"
   },
