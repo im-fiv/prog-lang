@@ -27,14 +27,14 @@ impl AriadneCompatible for ArgumentCountMismatch {
 				format!(
 					"expected {} argument{}, got {}",
 					self.expected.start.fg(color_expected),
-					if self.expected.start > 1 { "s" } else { "" },
+					if self.expected.start != 1 { "s" } else { "" },
 					self.got.fg(color_got)
 				)
 			} else if self.expected.start != self.expected.end && self.end_boundary {
 				format!(
 					"expected {} argument{} at least and {} at most, got {}",
 					self.expected.start.fg(color_expected),
-					if self.expected.start > 1 { "s" } else { "" },
+					if self.expected.start != 1 { "s" } else { "" },
 					self.expected.end.fg(color_expected),
 					self.got.fg(color_got)
 				)
@@ -42,7 +42,7 @@ impl AriadneCompatible for ArgumentCountMismatch {
 				format!(
 					"expected at least {} argument{}, got {}",
 					self.expected.start.fg(color_expected),
-					if self.expected.start > 1 { "s" } else { "" },
+					if self.expected.start != 1 { "s" } else { "" },
 					self.got.fg(color_got)
 				)
 			} else {

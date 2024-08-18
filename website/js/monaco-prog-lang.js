@@ -2,7 +2,7 @@ export default {
 	keywords: [
 		'true', 'false', 'def', 'func', 'do', 'end',
 		'return', 'while', 'break', 'continue', 'if',
-		'then', 'none', 'self'
+		'then', 'none', 'self', 'class'
 	],
 
 	typeKeywords: [

@@ -14,6 +14,8 @@ use prog_parser::ast;
 use values::{CallSite, RFunction};
 pub use values::{RPrimitive, Value, ValueKind};
 
+const NO_SELF_OVERRIDE: &str = "$NO_SELF_OVERRIDE";
+
 /// Only to be used inside the interpreter impl
 macro_rules! create_error {
 	($self:expr, $position:expr, $kind:expr) => {
@@ -116,16 +118,17 @@ impl Interpreter {
 
 	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<Value> {
 		match statement {
-			ast::Statement::VariableDefine(statement) => self.execute_variable_define(statement),
-			ast::Statement::VariableAssign(statement) => self.execute_variable_assign(statement),
-			ast::Statement::DoBlock(statement) => self.execute_do_block(statement),
-			ast::Statement::Return(statement) => self.execute_return(statement),
-			ast::Statement::Call(statement) => self.evaluate_call(statement),
-			ast::Statement::WhileLoop(statement) => self.execute_while_loop(statement),
-			ast::Statement::Break(statement) => self.execute_break(statement),
-			ast::Statement::Continue(statement) => self.execute_continue(statement),
-			ast::Statement::If(statement) => self.execute_if(statement),
-			ast::Statement::ExpressionAssign(statement) => self.execute_expression_assign(statement)
+			ast::Statement::VariableDefine(stmt) => self.execute_variable_define(stmt),
+			ast::Statement::VariableAssign(stmt) => self.execute_variable_assign(stmt),
+			ast::Statement::DoBlock(stmt) => self.execute_do_block(stmt),
+			ast::Statement::Return(stmt) => self.execute_return(stmt),
+			ast::Statement::Call(stmt) => self.evaluate_call(stmt),
+			ast::Statement::WhileLoop(stmt) => self.execute_while_loop(stmt),
+			ast::Statement::Break(stmt) => self.execute_break(stmt),
+			ast::Statement::Continue(stmt) => self.execute_continue(stmt),
+			ast::Statement::If(stmt) => self.execute_if(stmt),
+			ast::Statement::ExpressionAssign(stmt) => self.execute_expression_assign(stmt),
+			ast::Statement::ClassDefine(stmt) => self.execute_class_define(stmt)
 		}
 	}
 
@@ -430,8 +433,17 @@ impl Interpreter {
 			}
 		};
 
-		let inner_object = match self.context.get_mut(&object_name)? {
-			Value::Object(inner_object) => inner_object,
+		// Here we're handling objects and classes at the same time
+		// because the difference between them is minimal
+		let (object_kind, fields, parent_fields) = match self.context.get_mut(&object_name)? {
+			Value::Object(inner_object) => (ValueKind::Object, inner_object.get_mut(), None),
+			Value::ClassInstance(inst) => {
+				(
+					ValueKind::ClassInstance,
+					&mut inst.fields,
+					Some(&inst.class.fields)
+				)
+			}
 
 			value => {
 				create_error!(
@@ -445,12 +457,87 @@ impl Interpreter {
 		};
 
 		// `HeapMutator::get_mut` fails, so this is a workaround
-		let mut map = inner_object.get().get_owned();
-		map.insert(entry_name, value);
+		let mut map = fields.take();
 
-		inner_object.get_mut().write(map);
+		// Checking if the field that is to be reassigned is a function inside a class instance
+		// (which is illegal)
+		if object_kind == ValueKind::ClassInstance {
+			let parent_fields = parent_fields.unwrap();
+
+			if !map.contains_key(&entry_name) && !parent_fields.contains_key(&entry_name) {
+				create_error!(
+					self,
+					lhs.position(),
+					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
+						entry_name,
+						rhs.position()
+					))
+				)
+			}
+
+			macro_rules! check_fields {
+				($fields:expr) => {
+					match ($fields).get(&entry_name) {
+						Some(val) if val.kind() == ValueKind::Function => {
+							create_error!(
+								self,
+								position,
+								InterpretErrorKind::CannotReassignClassFunctions(
+									errors::CannotReassignClassFunctions
+								)
+							)
+						}
+
+						_ => {}
+					}
+				};
+			}
+
+			check_fields!(map);
+			check_fields!(**parent_fields);
+		}
+
+		map.insert(entry_name, value);
+		fields.write(map);
 
 		Ok(Value::Empty)
+	}
+
+	fn execute_class_define(&mut self, statement: ast::ClassDefine) -> Result<Value> {
+		// This is a hack to keep fields of `self` and the actual class in sync
+		let mut fields = unsafe { self.memory.alloc(HashMap::new()).promote() };
+
+		self.context.deeper();
+		self.context
+			.insert(String::from(NO_SELF_OVERRIDE), Value::Boolean(true.into()));
+		self.context.insert(
+			String::from("self"),
+			values::RClass {
+				name: statement.name.clone(),
+				fields: fields.clone()
+			}
+			.into()
+		);
+
+		let mut temp_fields = HashMap::new();
+		for field in statement.fields {
+			let value = field
+				.value
+				.map_or(Ok(Value::Empty), |val| self.evaluate_expression(val, false))?;
+
+			temp_fields.insert(field.name.0, value);
+		}
+		fields.write(temp_fields);
+
+		let class = values::RClass {
+			name: statement.name.clone(),
+			fields
+		};
+
+		self.context.shallower();
+		self.context.insert(statement.name, class.clone().into());
+
+		Ok(class.into())
 	}
 
 	fn evaluate_expression(
@@ -567,6 +654,7 @@ impl Interpreter {
 			}};
 		}
 
+		// TODO: get rid of code repetition with (ObjectAccess, _, Identifier and String)
 		let evaluated_expr = match (operator.0, evaluated_lhs, evaluated_rhs) {
 			(Op::Add, V::Number(lhs), V::Number(rhs)) => {
 				V::Number((lhs.get_owned() + rhs.get_owned()).into())
@@ -614,6 +702,10 @@ impl Interpreter {
 			(Op::EqEq, V::IntrinsicFunction(lhs), V::IntrinsicFunction(rhs)) => {
 				V::Boolean((lhs == rhs).into())
 			}
+			(Op::EqEq, V::Class(lhs), V::Class(rhs)) => V::Boolean((lhs == rhs).into()),
+			(Op::EqEq, V::ClassInstance(lhs), V::ClassInstance(rhs)) => {
+				V::Boolean((lhs == rhs).into())
+			}
 			(Op::EqEq, V::Empty, V::Empty) => V::Boolean(true.into()),
 
 			(Op::NotEq, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean((lhs != rhs).into()),
@@ -623,6 +715,10 @@ impl Interpreter {
 			(Op::NotEq, V::Object(lhs), V::Object(rhs)) => V::Boolean((lhs != rhs).into()),
 			(Op::NotEq, V::Function(lhs), V::Function(rhs)) => V::Boolean((lhs != rhs).into()),
 			(Op::NotEq, V::IntrinsicFunction(lhs), V::IntrinsicFunction(rhs)) => {
+				V::Boolean((lhs != rhs).into())
+			}
+			(Op::NotEq, V::Class(lhs), V::Class(rhs)) => V::Boolean((lhs != rhs).into()),
+			(Op::NotEq, V::ClassInstance(lhs), V::ClassInstance(rhs)) => {
 				V::Boolean((lhs != rhs).into())
 			}
 			(Op::NotEq, V::Empty, V::Empty) => V::Boolean(false.into()),
@@ -656,6 +752,58 @@ impl Interpreter {
 			(Op::ObjectAccess, V::List(lhs), V::Identifier(rhs)) => {
 				primitive_object_access!(lhs, rhs)
 			}
+			(Op::ObjectAccess, V::Class(lhs), V::Identifier(rhs)) => {
+				let field = (*lhs.fields).get(&rhs).unwrap_or(&Value::Empty);
+
+				if field.kind() == ValueKind::Empty {
+					create_error!(
+						self,
+						whole_position,
+						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
+							rhs,
+							rhs_position
+						))
+					)
+				}
+
+				field.to_owned()
+			}
+			(Op::ObjectAccess, V::ClassInstance(lhs), V::Identifier(rhs)) => {
+				if let Some(val) = (*lhs.fields).get(&rhs).cloned() {
+					return Ok(val);
+				}
+
+				if let Some(mut val) = (*lhs.class.fields).get(&rhs).cloned() {
+					if let Value::Function(func) = &mut val {
+						let has_args = !func.ast.arguments.is_empty();
+
+						if has_args {
+							let first_arg = &func.ast.arguments.first().as_ref().unwrap().0;
+
+							if first_arg == "self" {
+								// Insert `self` into scope
+								let mut context = func.context.take();
+								context.insert(String::from("self"), lhs.into());
+								func.context.write(context);
+
+								// Remove `self` argument
+								func.ast.arguments.remove(0);
+							}
+						}
+					}
+
+					return Ok(val);
+				}
+
+				create_error!(
+					self,
+					whole_position,
+					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
+						rhs,
+						rhs_position
+					))
+				)
+			}
 
 			(Op::ObjectAccess, V::Boolean(lhs), V::String(rhs)) => {
 				primitive_object_access!(lhs, rhs.get_owned())
@@ -668,6 +816,61 @@ impl Interpreter {
 			}
 			(Op::ObjectAccess, V::List(lhs), V::String(rhs)) => {
 				primitive_object_access!(lhs, rhs.get_owned())
+			}
+			(Op::ObjectAccess, V::Class(lhs), V::String(rhs)) => {
+				let rhs = rhs.get_owned();
+				let field = (*lhs.fields).get(&rhs).unwrap_or(&Value::Empty);
+
+				if field.kind() == ValueKind::Empty {
+					create_error!(
+						self,
+						whole_position,
+						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
+							rhs,
+							rhs_position
+						))
+					)
+				}
+
+				field.to_owned()
+			}
+			(Op::ObjectAccess, V::ClassInstance(lhs), V::String(rhs)) => {
+				let rhs = rhs.get_owned();
+
+				if let Some(val) = (*lhs.fields).get(&rhs).cloned() {
+					return Ok(val);
+				}
+
+				if let Some(mut val) = (*lhs.class.fields).get(&rhs).cloned() {
+					if let Value::Function(func) = &mut val {
+						let has_args = !func.ast.arguments.is_empty();
+
+						if has_args {
+							let first_arg = &func.ast.arguments.first().as_ref().unwrap().0;
+
+							if first_arg == "self" {
+								// Insert `self` into scope
+								let mut context = func.context.take();
+								context.insert(String::from("self"), lhs.into());
+								func.context.write(context);
+
+								// Remove `self` argument
+								func.ast.arguments.remove(0);
+							}
+						}
+					}
+
+					return Ok(val);
+				}
+
+				create_error!(
+					self,
+					whole_position,
+					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
+						rhs,
+						rhs_position
+					))
+				)
 			}
 
 			(Op::EqEq, _, _) => V::Boolean(false.into()),
@@ -822,51 +1025,51 @@ impl Interpreter {
 
 		let function_expr = self.evaluate_expression(*call.function, false)?;
 
-		if let Value::IntrinsicFunction(function) = function_expr {
-			let convert_error = |e: arg_parser::ArgumentParseError| {
-				match e {
-					arg_parser::ArgumentParseError::CountMismatch {
-						expected,
-						end_boundary,
-						got
-					} => {
-						create_error!(
-							self,
-							call_args_pos,
-							InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
-								expected,
-								end_boundary,
-								got,
-								fn_call_pos: function_pos,
-								fn_def_args_pos: None
-							});
-							no_bail
-						)
-					}
-
-					arg_parser::ArgumentParseError::IncorrectType {
-						index,
-						expected,
-						got
-					} => {
-						let argument = call.arguments.0.get(index).unwrap_or_else(|| {
-							unreachable!(
-								"Argument at index `{index}` does not exist when it should"
-							)
+		let convert_error = |e: arg_parser::ArgumentParseError| {
+			match e {
+				arg_parser::ArgumentParseError::CountMismatch {
+					expected,
+					end_boundary,
+					got
+				} => {
+					create_error!(
+						self,
+						call_args_pos.clone(),
+						InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
+							expected,
+							end_boundary,
+							got,
+							fn_call_pos: function_pos.clone(),
+							fn_def_args_pos: None
 						});
-
-						create_error!(
-							self,
-							argument.position(),
-							InterpretErrorKind::ArgumentTypeMismatch(errors::ArgumentTypeMismatch {
-								expected, got, function_pos
-							});
-							no_bail
-						)
-					}
+						no_bail
+					)
 				}
-			};
 
+				arg_parser::ArgumentParseError::IncorrectType {
+					index,
+					expected,
+					got
+				} => {
+					let argument = call.arguments.0.get(index).unwrap_or_else(|| {
+						panic!("Argument at index `{index}` does not exist when it should")
+					});
+
+					create_error!(
+						self,
+						argument.position(),
+						InterpretErrorKind::ArgumentTypeMismatch(errors::ArgumentTypeMismatch {
+							expected,
+							got,
+							function_pos: function_pos.clone()
+						});
+						no_bail
+					)
+				}
+			}
+		};
+
+		if let Value::IntrinsicFunction(function) = function_expr {
 			let call_args = function
 				.arguments
 				.verify(&call_args)
@@ -883,9 +1086,22 @@ impl Interpreter {
 			let got_len = call_args.len();
 			let expected_len = function.ast.arguments.len();
 
+			if got_len != expected_len && expected_len == 0 {
+				create_error!(
+					self,
+					call_args_pos,
+					InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
+						expected: 0..0,
+						end_boundary: true,
+						got: got_len,
+						fn_call_pos: function_pos,
+						fn_def_args_pos: None
+					})
+				)
+			}
+
 			if got_len != expected_len {
 				let first_arg = function.ast.arguments.first().unwrap();
-
 				let last_arg = function.ast.arguments.last().unwrap();
 
 				let fn_call_pos = function_pos;
@@ -918,8 +1134,24 @@ impl Interpreter {
 				let mut function_context = function.context.get_owned();
 				mem::swap(&mut self.context, &mut function_context);
 
-				self.context
-					.insert(String::from("self"), Value::Function(function.clone()));
+				// `self` variable insertion
+				{
+					// `no_override` indicates whether `self` has already been inferred
+					// and does not need reassignment
+					let no_override = self
+						.context
+						.get(NO_SELF_OVERRIDE)
+						.unwrap_or(Value::Boolean(false.into()));
+
+					match no_override {
+						Value::Boolean(bool) if bool.get_owned() => {}
+
+						_ => {
+							self.context
+								.insert(String::from("self"), Value::Function(function.clone()));
+						}
+					}
+				}
 
 				let argument_iter = function.ast.arguments.into_iter().zip(call_args);
 				for ((arg_name, _), arg_value) in argument_iter {
@@ -960,17 +1192,90 @@ impl Interpreter {
 				self.source = source;
 				self.file = file;
 
-				result
+				return result;
 			}
-		} else {
-			create_error!(
-				self,
-				original_expr.position(),
-				InterpretErrorKind::ExpressionNotCallable(errors::ExpressionNotCallable(
-					function_expr.kind()
-				))
-			)
 		}
+
+		// If calling a `Class`, treat it as constructing a class instance
+		if let Value::Class(class) = function_expr {
+			let props = {
+				use arg_parser::{Arg, ArgList, ParsedArg};
+
+				let parser = ArgList::new(vec![Arg::Required("props", ValueKind::Object)]);
+
+				let arg = parser
+					.verify(&call_args)
+					.map_err(convert_error)?
+					.remove("props")
+					.unwrap();
+
+				if let ParsedArg::Regular(arg) = arg {
+					if let Value::Object(arg) = arg {
+						arg.get().get_owned()
+					} else {
+						panic!("`props is not an object");
+					}
+				} else {
+					panic!("`props` is a variadic argument");
+				}
+			};
+
+			let filtered_class_fields = class
+				.fields
+				.iter()
+				.filter(|&(_, value)| value.kind() == ValueKind::Empty)
+				.map(|(name, value)| (name.to_owned(), value.to_owned()))
+				.collect::<HashMap<_, _>>();
+			let mut instance_fields = HashMap::new();
+
+			for (prop_name, prop_value) in props {
+				if !filtered_class_fields.contains_key(&prop_name) {
+					create_error!(
+						self,
+						function_pos,
+						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
+							prop_name,
+							call_args_pos
+						))
+					)
+				}
+
+				instance_fields.insert(prop_name, prop_value);
+			}
+
+			if instance_fields.keys().len() < filtered_class_fields.len() {
+				let missing_fields = class
+					.fields
+					.keys()
+					.filter(|name| !instance_fields.contains_key(*name))
+					.map(|name| name.to_owned())
+					.collect::<Vec<_>>();
+
+				create_error!(
+					self,
+					call_args_pos,
+					InterpretErrorKind::NonExhaustiveClassConstruction(
+						errors::NonExhaustiveClassConstruction(missing_fields)
+					)
+				)
+			}
+
+			let allocated = unsafe { self.memory.alloc(instance_fields).promote() };
+
+			return Ok(values::RClassInstance {
+				class,
+				fields: allocated
+			}
+			.into());
+		}
+
+		create_error!(
+			self,
+			original_expr.position(),
+			InterpretErrorKind::ExpressionNotCallable(errors::ExpressionNotCallable(
+				function_expr.kind()
+			))
+		)
 	}
 }
 

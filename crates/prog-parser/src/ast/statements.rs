@@ -15,27 +15,29 @@ pub enum Statement {
 	Break(Break),
 	Continue(Continue),
 	If(If),
-	ExpressionAssign(ExpressionAssign)
+	ExpressionAssign(ExpressionAssign),
+	ClassDefine(ClassDefine)
 }
 
 impl Statement {
 	pub fn position(&self) -> &Position {
 		match self {
-			Self::VariableDefine(statement) => &statement.position,
-			Self::VariableAssign(statement) => &statement.position,
-			Self::DoBlock(statement) => &statement.position,
-			Self::Return(statement) => &statement.position,
-			Self::Call(statement) => &statement.position,
-			Self::WhileLoop(statement) => &statement.position,
-			Self::Break(statement) => &statement.position,
-			Self::Continue(statement) => &statement.position,
-			Self::If(statement) => &statement.position,
-			Self::ExpressionAssign(statement) => &statement.position
+			Self::VariableDefine(stmt) => &stmt.position,
+			Self::VariableAssign(stmt) => &stmt.position,
+			Self::DoBlock(stmt) => &stmt.position,
+			Self::Return(stmt) => &stmt.position,
+			Self::Call(stmt) => &stmt.position,
+			Self::WhileLoop(stmt) => &stmt.position,
+			Self::Break(stmt) => &stmt.position,
+			Self::Continue(stmt) => &stmt.position,
+			Self::If(stmt) => &stmt.position,
+			Self::ExpressionAssign(stmt) => &stmt.position,
+			Self::ClassDefine(stmt) => &stmt.position
 		}
 	}
 
 	pub fn name(&self) -> String {
-		let name = match self {
+		match self {
 			Self::VariableDefine(_) => "VariableDefine",
 			Self::VariableAssign(_) => "VariableAssign",
 			Self::DoBlock(_) => "DoBlock",
@@ -45,10 +47,10 @@ impl Statement {
 			Self::Break(_) => "Break",
 			Self::Continue(_) => "Continue",
 			Self::If(_) => "If",
-			Self::ExpressionAssign(_) => "ExpressionAssign"
-		};
-
-		name.to_owned()
+			Self::ExpressionAssign(_) => "ExpressionAssign",
+			Self::ClassDefine(_) => "ClassDefine"
+		}
+		.to_owned()
 	}
 }
 
@@ -111,6 +113,13 @@ pub struct ExpressionAssign {
 	pub position: Position
 }
 
+#[derive(Debug, Clone, PartialEq, Hash)]
+pub struct ClassDefine {
+	pub name: String,
+	pub fields: Vec<VariableDefine>,
+	pub position: Position
+}
+
 impl_basic_conv!(from VariableDefine => Statement as VariableDefine);
 impl_basic_conv!(from VariableAssign => Statement as VariableAssign);
 impl_basic_conv!(from DoBlock => Statement as DoBlock);
@@ -121,3 +130,4 @@ impl_basic_conv!(from Break => Statement as Break);
 impl_basic_conv!(from Continue => Statement as Continue);
 impl_basic_conv!(from If => Statement as If);
 impl_basic_conv!(from ExpressionAssign => Statement as ExpressionAssign);
+impl_basic_conv!(from ClassDefine => Statement as ClassDefine);

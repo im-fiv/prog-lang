@@ -106,6 +106,7 @@ impl<'inp> Parser<'inp> {
 				Rule::return_stmt => self.parse_return_stmt(pair).into(),
 				Rule::call => self.parse_function_call(pair).into(),
 				Rule::while_stmt => self.parse_while_stmt(pair).into(),
+				Rule::class_define_stmt => self.parse_class_definte_stmt(pair).into(),
 
 				Rule::break_stmt => self.parse_break_stmt(pair).into(),
 				Rule::continue_stmt => self.parse_continue_stmt(pair).into(),
@@ -332,6 +333,30 @@ impl<'inp> Parser<'inp> {
 		}
 	}
 
+	fn parse_class_definte_stmt(&self, pair: Pair<'_, Rule>) -> ast::ClassDefine {
+		assert_rule!(pair == class_define_stmt in pair);
+
+		let position = span_to_pos(pair.as_span());
+		let mut pairs = pair.clone().into_inner();
+
+		let name = pair_into_string(&get_pair_safe!(from pairs expect identifier in pair));
+
+		let mut fields = vec![];
+
+		while pairs.len() > 0 {
+			let field = self
+				.parse_var_define_stmt(get_pair_safe!(from pairs expect var_define_stmt in pair));
+
+			fields.push(field);
+		}
+
+		ClassDefine {
+			name,
+			fields,
+			position
+		}
+	}
+
 	fn parse_if_stmt(&self, pair: Pair<'_, Rule>) -> ast::If {
 		assert_rule!(pair == if_stmt in pair);
 
@@ -505,6 +530,7 @@ impl<'inp> Parser<'inp> {
 
 		let position = span_to_pos(pair.as_span());
 		let mut pairs = pair.clone().into_inner();
+
 		let mut arguments = vec![];
 
 		let mut next_pair = get_pair_safe!(from pairs expect function_def_args | do_block in pair);

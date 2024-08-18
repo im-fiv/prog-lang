@@ -17,6 +17,7 @@ Prog Lang is an interpreted programming language written in Rust, developed duri
 
 - [x] Objects
 - [x] Spanned error reporting
+- [x] Classes
 - [ ] More standard functions
 - [ ] Improved stability
   

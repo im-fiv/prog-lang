@@ -5,12 +5,14 @@ mod list;
 mod object;
 mod function;
 mod intrinsic_function;
+mod class;
 mod marker;
 
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 
 pub use boolean::*;
+pub use class::*;
 pub use function::*;
 pub use intrinsic_function::*;
 pub use list::*;
@@ -69,6 +71,12 @@ pub enum Value {
 	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
 	IntrinsicFunction(RIntrinsicFunction),
 
+	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
+	Class(RClass),
+
+	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
+	ClassInstance(RClassInstance),
+
 	Empty,
 
 	#[cfg_attr(feature = "serde", serde(skip))]
@@ -96,8 +104,9 @@ impl Value {
 			Self::List(v) => !v.get().is_empty(),
 			Self::Object(v) => !v.get().is_empty(),
 
-			Self::Function(_) => true,
-			Self::IntrinsicFunction(..) => true,
+			Self::Function(_) | Self::IntrinsicFunction(_) => true,
+
+			Self::Class(_) | Self::ClassInstance(_) => true,
 
 			Self::Empty => false,
 
@@ -114,6 +123,8 @@ impl_basic_conv!(from RList => Value as List);
 impl_basic_conv!(from RObject => Value as Object);
 impl_basic_conv!(from RFunction => Value as Function);
 impl_basic_conv!(from RIntrinsicFunction => Value as IntrinsicFunction);
+impl_basic_conv!(from RClass => Value as Class);
+impl_basic_conv!(from RClassInstance => Value as ClassInstance);
 impl_basic_conv!(from MarkerKind => Value as Marker);
 
 impl From<ast::expressions::Literal> for Value {
@@ -136,8 +147,12 @@ impl Debug for Value {
 			Self::Number(num) => Debug::fmt(num, f),
 			Self::List(list) => Debug::fmt(list, f),
 			Self::Object(obj) => Debug::fmt(obj, f),
+
 			Self::Function(func) => Debug::fmt(func, f),
 			Self::IntrinsicFunction(func) => Debug::fmt(func, f),
+
+			Self::Class(class) => Debug::fmt(class, f),
+			Self::ClassInstance(inst) => Debug::fmt(inst, f),
 
 			Self::Empty => write!(f, "none"),
 
@@ -150,17 +165,22 @@ impl Debug for Value {
 impl Display for Value {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::Boolean(value) => write!(f, "{value}"),
-			Self::String(value) => write!(f, "{value}"),
-			Self::Number(value) => write!(f, "{value}"),
-			Self::List(value) => write!(f, "{value}"),
-			Self::Object(value) => write!(f, "{value}"),
-			Self::Function(value) => write!(f, "{value}"),
-			Self::IntrinsicFunction(value) => write!(f, "{value}"),
+			Self::Boolean(bool) => write!(f, "{bool}"),
+			Self::String(str) => write!(f, "{str}"),
+			Self::Number(num) => write!(f, "{num}"),
+			Self::List(list) => write!(f, "{list}"),
+			Self::Object(obj) => write!(f, "{obj}"),
+
+			Self::Function(func) => write!(f, "{func}"),
+			Self::IntrinsicFunction(func) => write!(f, "{func}"),
+
+			Self::Class(class) => write!(f, "{class}"),
+			Self::ClassInstance(inst) => write!(f, "{inst}"),
+
 			Self::Empty => write!(f, "none"),
 
-			Self::Identifier(value) => write!(f, "{value}"),
-			Self::Marker(value) => write!(f, "Marker({value})")
+			Self::Identifier(ident) => write!(f, "{ident}"),
+			Self::Marker(marker) => write!(f, "Marker({marker})")
 		}
 	}
 }

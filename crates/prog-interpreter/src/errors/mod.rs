@@ -12,17 +12,21 @@ mod unsupported_binary;
 mod unsupported_statement;
 mod unsupported_unary;
 mod variable_doesnt_exist;
+mod non_exhaustive_class_construction;
+mod cannot_reassign_class_functions;
 
 pub use argument_count_mismatch::*;
 pub use argument_type_mismatch::*;
 pub use assertion_failed::*;
 pub use cannot_index_value::*;
+pub use cannot_reassign_class_functions::*;
 pub use context_disallowed::*;
 pub use duplicate_object_entry::*;
 pub use expression_not_assignable::*;
 pub use expression_not_callable::*;
 pub use field_doesnt_exist::*;
 pub use function_panicked::*;
+pub use non_exhaustive_class_construction::*;
 use prog_macros::ImplAriadneCompatible;
 use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 pub use unsupported_binary::*;
@@ -48,7 +52,9 @@ pub enum InterpretErrorKind {
 	UnsupportedBinary(UnsupportedBinary),
 	UnsupportedStatement(UnsupportedStatement),
 	UnsupportedUnary(UnsupportedUnary),
-	VariableDoesntExist(VariableDoesntExist)
+	VariableDoesntExist(VariableDoesntExist),
+	NonExhaustiveClassConstruction(NonExhaustiveClassConstruction),
+	CannotReassignClassFunctions(CannotReassignClassFunctions)
 }
 
 impl PrettyErrorKind for InterpretErrorKind {}

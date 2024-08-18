@@ -1,0 +1,34 @@
+class Wallet
+	def stored
+
+	def new = func(initial) do
+		def wallet = ({ stored = initial }) -> self
+		return wallet
+	end
+
+	def balance = func(self) do
+		return self.stored
+	end
+
+	def deposit = func(self, amount) do
+		self.stored = self.stored + amount
+	end
+
+	def withdraw = func(self, amount) do
+		if self.stored - amount < 0 then
+			def withdrawn = self.stored
+			self.stored = 0
+
+			return withdrawn
+		end
+
+		return amount
+	end
+end
+
+def wallet = (0) -> Wallet.new
+(10) -> wallet.deposit
+
+((() -> wallet.balance) == 10) -> assert
+(((25) -> wallet.withdraw) == 10) -> assert
+((() -> wallet.balance) == 0) -> assert

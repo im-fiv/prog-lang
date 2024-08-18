@@ -18,16 +18,18 @@ impl AriadneCompatible for ExpressionNotAssignable {
 
 		let message = if let Some(kind) = self.0 {
 			format!(
-				"expected expression of type {} or {}, got {}",
+				"expected expression of type {}, {} or {}, got {}",
 				"List".fg(color_expected),
 				"Object".fg(color_expected),
+				"ClassInstance".fg(color_expected),
 				kind.to_string().fg(color_got)
 			)
 		} else {
 			format!(
-				"expected expression of type {} or {}",
+				"expected expression of type {}, {} or {}",
 				"List".fg(color_expected),
-				"Object".fg(color_expected)
+				"Object".fg(color_expected),
+				"ClassInstance".fg(color_expected)
 			)
 		};
 
