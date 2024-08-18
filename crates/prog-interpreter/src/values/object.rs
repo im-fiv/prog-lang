@@ -3,32 +3,32 @@ use std::fmt::{self, Debug, Display};
 
 use halloc::HeapMutator;
 
-use super::{RuntimePrimitive, RuntimeValue};
+use super::{RPrimitive, Value};
 
 //* Note: `Debug` and `PartialEq` are implemented manually below
 #[derive(Clone)]
-pub struct RuntimeObject(HeapMutator<'static, HashMap<String, RuntimeValue>>);
+pub struct RObject(HeapMutator<'static, HashMap<String, Value>>);
 
-impl RuntimePrimitive for RuntimeObject {
-	type Inner = HeapMutator<'static, HashMap<String, RuntimeValue>>;
+impl RPrimitive for RObject {
+	type Inner = HeapMutator<'static, HashMap<String, Value>>;
 
 	fn get(&self) -> &Self::Inner { &self.0 }
 
 	fn get_mut(&mut self) -> &mut Self::Inner { &mut self.0 }
 }
 
-impl From<HeapMutator<'static, HashMap<String, RuntimeValue>>> for RuntimeObject {
-	fn from(value: HeapMutator<'static, HashMap<String, RuntimeValue>>) -> Self { Self(value) }
+impl From<HeapMutator<'static, HashMap<String, Value>>> for RObject {
+	fn from(value: HeapMutator<'static, HashMap<String, Value>>) -> Self { Self(value) }
 }
 
-impl PartialEq for RuntimeObject {
+impl PartialEq for RObject {
 	fn eq(&self, other: &Self) -> bool { *self.0 == *other.0 }
 }
 
 // This is necessary since it is important to deallocate the inner elements
 // **before** the main `HeapMutator`. Otherwise, the result would look something like this:
 //
-// 1. `drop()` called on `RuntimeObject`
+// 1. `drop()` called on `RObject`
 // 2. `drop()` called on `HeapMutator<HashMap<_, _>>`
 // 3. `HeapMutator` tries to drop each element, while having the heap lock
 // 4. Each element that is an object also tries to acquire a heap lock, which is already acquired by the parent
@@ -37,7 +37,7 @@ impl PartialEq for RuntimeObject {
 // * Additional note: while the interpreter handles references as owned values,
 // * the cloned objects will constantly try to deallocate themselves when going out of scope,
 // * despite them only being a clone
-impl Drop for RuntimeObject {
+impl Drop for RObject {
 	fn drop(&mut self) {
 		if !self.0.can_dealloc() {
 			return;
@@ -50,7 +50,7 @@ impl Drop for RuntimeObject {
 	}
 }
 
-impl Debug for RuntimeObject {
+impl Debug for RObject {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let mut debug_struct = f.debug_struct(&format!("Object ({} refs)", self.0.ref_count()));
 
@@ -62,7 +62,7 @@ impl Debug for RuntimeObject {
 	}
 }
 
-impl Display for RuntimeObject {
+impl Display for RObject {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let formatted = self
 			.0

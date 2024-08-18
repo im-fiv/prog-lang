@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{self, Debug};
 use std::ops::Range;
 
-use crate::{RuntimeValue, RuntimeValueKind};
+use crate::{Value, ValueKind};
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
@@ -50,7 +50,7 @@ impl ArgList {
 	/// Verifies the provided arguments according to the inner argument types list
 	pub fn verify(
 		&self,
-		arguments: &[RuntimeValue]
+		arguments: &[Value]
 	) -> Result<HashMap<String, ParsedArg>, ArgumentParseError> {
 		use core::iter::zip;
 
@@ -63,41 +63,35 @@ impl ArgList {
 
 		// It is crucial to balance both of the vectors such that the `for` loop actually runs
 		if arguments.len() < own_arguments.len() {
-			arguments.resize(own_arguments.len(), RuntimeValue::Empty)
+			arguments.resize(own_arguments.len(), Value::Empty)
 		}
 
 		let mut result = HashMap::new();
+		let zipped_args = zip(own_arguments, arguments.clone());
 
-		for (index, (own_argument, got_argument)) in
-			zip(own_arguments, arguments.clone()).enumerate()
-		{
-			let mut check_args = |expected: &RuntimeValueKind,
-			                      got: &RuntimeValueKind,
-			                      name: &str,
-			                      optional: bool| {
-				if !optional && (expected != got) {
-					return Err(ArgumentParseError::incorrect_type(
-						index,
-						expected.to_string(),
-						got.to_string()
-					));
-				}
+		for (index, (own_argument, got_argument)) in zipped_args.enumerate() {
+			let mut check_args =
+				|expected: ValueKind, got: ValueKind, name: &str, optional: bool| {
+					if !optional && (expected != got) {
+						return Err(ArgumentParseError::incorrect_type(
+							index,
+							expected.to_string(),
+							got.to_string()
+						));
+					}
 
-				if optional
-					&& (got == &RuntimeValueKind::Empty)
-					&& (expected != &RuntimeValueKind::Empty)
-				{
-					return Ok(());
-				}
+					if optional && (got == ValueKind::Empty) && (expected != ValueKind::Empty) {
+						return Ok(());
+					}
 
-				result.insert(String::from(name), ParsedArg::Regular(got_argument.clone()));
+					result.insert(String::from(name), ParsedArg::Regular(got_argument.clone()));
 
-				Ok(())
-			};
+					Ok(())
+				};
 
 			match own_argument {
-				Arg::Required(name, kind) => check_args(kind, &got_argument.kind(), name, false)?,
-				Arg::Optional(name, kind) => check_args(kind, &got_argument.kind(), name, true)?,
+				Arg::Required(name, kind) => check_args(*kind, got_argument.kind(), name, false)?,
+				Arg::Optional(name, kind) => check_args(*kind, got_argument.kind(), name, true)?,
 				Arg::Variadic(name) => {
 					result.insert(
 						String::from(name.to_owned()),
@@ -112,7 +106,7 @@ impl ArgList {
 
 	fn check_args_length(
 		&self,
-		got: &[RuntimeValue]
+		got: &[Value]
 	) -> Result<Option<HashMap<String, ParsedArg>>, ArgumentParseError> {
 		if self.arguments.is_none() {
 			if !got.is_empty() {
@@ -207,15 +201,15 @@ impl Debug for ArgList {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Arg {
-	Required(&'static str, RuntimeValueKind),
-	Optional(&'static str, RuntimeValueKind),
+	Required(&'static str, ValueKind),
+	Optional(&'static str, ValueKind),
 	Variadic(&'static str)
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ParsedArg {
-	Regular(RuntimeValue),
-	Variadic(Vec<RuntimeValue>)
+	Regular(Value),
+	Variadic(Vec<Value>)
 }
 
 #[derive(Debug, Clone, PartialEq)]

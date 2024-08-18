@@ -24,7 +24,7 @@ use prog_utils::impl_basic_conv;
 use serde::Serialize;
 pub use string::*;
 
-pub trait RuntimePrimitive {
+pub trait RPrimitive {
 	type Inner;
 
 	/// Gets a reference to the inner value of the primitive
@@ -41,33 +41,33 @@ pub trait RuntimePrimitive {
 	}
 
 	/// Returns an associated function dispatch map for the type
-	fn dispatch_map(&self) -> HashMap<String, IntrinsicFunction> { HashMap::new() }
+	fn dispatch_map(&self) -> HashMap<String, RIntrinsicFunction> { HashMap::new() }
 }
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq, VariantUnwrap, EnumKind)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
-pub enum RuntimeValue {
+pub enum Value {
 	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
-	Boolean(RuntimeBoolean),
+	Boolean(RBoolean),
 
 	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
-	String(RuntimeString),
+	String(RString),
 
 	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
-	Number(RuntimeNumber),
+	Number(RNumber),
 
 	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
-	List(RuntimeList),
+	List(RList),
 
 	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
-	Object(RuntimeObject),
+	Object(RObject),
 
 	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
-	Function(RuntimeFunction),
+	Function(RFunction),
 
 	#[cfg_attr(feature = "serde", serde(serialize_with = "s_use_display"))]
-	IntrinsicFunction(IntrinsicFunction),
+	IntrinsicFunction(RIntrinsicFunction),
 
 	Empty,
 
@@ -86,7 +86,7 @@ fn s_use_display<T: Display + Clone, S: serde::Serializer>(
 	serializer.collect_str(&value)
 }
 
-impl RuntimeValue {
+impl Value {
 	pub fn is_truthy(&self) -> bool {
 		match self {
 			// Values that are inexpensive to clone can be cloned
@@ -101,22 +101,22 @@ impl RuntimeValue {
 
 			Self::Empty => false,
 
-			Self::Identifier(..) => panic!("Got `RuntimeValue` of kind `Identifier`"),
-			Self::Marker(..) => panic!("Got `RuntimeValue` of kind `Marker`")
+			Self::Identifier(..) => panic!("Got `Value` of kind `Identifier`"),
+			Self::Marker(..) => panic!("Got `Value` of kind `Marker`")
 		}
 	}
 }
 
-impl_basic_conv!(from RuntimeBoolean => RuntimeValue as Boolean);
-impl_basic_conv!(from RuntimeString => RuntimeValue as String);
-impl_basic_conv!(from RuntimeNumber => RuntimeValue as Number);
-impl_basic_conv!(from RuntimeList => RuntimeValue as List);
-impl_basic_conv!(from RuntimeObject => RuntimeValue as Object);
-impl_basic_conv!(from RuntimeFunction => RuntimeValue as Function);
-impl_basic_conv!(from IntrinsicFunction => RuntimeValue as IntrinsicFunction);
-impl_basic_conv!(from MarkerKind => RuntimeValue as Marker);
+impl_basic_conv!(from RBoolean => Value as Boolean);
+impl_basic_conv!(from RString => Value as String);
+impl_basic_conv!(from RNumber => Value as Number);
+impl_basic_conv!(from RList => Value as List);
+impl_basic_conv!(from RObject => Value as Object);
+impl_basic_conv!(from RFunction => Value as Function);
+impl_basic_conv!(from RIntrinsicFunction => Value as IntrinsicFunction);
+impl_basic_conv!(from MarkerKind => Value as Marker);
 
-impl From<ast::expressions::Literal> for RuntimeValue {
+impl From<ast::expressions::Literal> for Value {
 	fn from(value: ast::expressions::Literal) -> Self {
 		use ast::expressions::Literal;
 
@@ -128,7 +128,7 @@ impl From<ast::expressions::Literal> for RuntimeValue {
 	}
 }
 
-impl Debug for RuntimeValue {
+impl Debug for Value {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Boolean(bool) => Debug::fmt(bool, f),
@@ -147,7 +147,7 @@ impl Debug for RuntimeValue {
 	}
 }
 
-impl Display for RuntimeValue {
+impl Display for Value {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::Boolean(value) => write!(f, "{value}"),
@@ -165,4 +165,4 @@ impl Display for RuntimeValue {
 	}
 }
 
-impl halloc::Allocatable for RuntimeValue {}
+impl halloc::Allocatable for Value {}

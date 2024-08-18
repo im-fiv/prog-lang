@@ -7,12 +7,12 @@ pub mod values;
 use std::collections::HashMap;
 
 use anyhow::Result;
-use context::RuntimeContext;
+use context::Context;
 pub use errors::{InterpretError, InterpretErrorKind};
 use halloc::Memory;
 use prog_parser::ast;
-use values::{CallSite, RuntimeFunction};
-pub use values::{RuntimePrimitive, RuntimeValue, RuntimeValueKind};
+use values::{CallSite, RFunction};
+pub use values::{RPrimitive, Value, ValueKind};
 
 /// Only to be used inside the interpreter impl
 macro_rules! create_error {
@@ -53,8 +53,8 @@ fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
 #[derive(Debug)]
 pub struct Interpreter {
 	pub memory: Memory,
-	pub function_map: HashMap<u64, RuntimeFunction>,
-	pub context: RuntimeContext,
+	pub function_map: HashMap<u64, RFunction>,
+	pub context: Context,
 
 	source: String,
 	file: String
@@ -65,7 +65,7 @@ impl Interpreter {
 		Self {
 			memory: Memory::new(),
 			function_map: HashMap::new(),
-			context: RuntimeContext::new(),
+			context: Context::new(),
 
 			source: String::new(),
 			file: String::new()
@@ -78,7 +78,7 @@ impl Interpreter {
 		file: F,
 		ast: ast::Program,
 		keep_marker: bool
-	) -> Result<RuntimeValue>
+	) -> Result<Value>
 	where
 		S: Into<String>,
 		F: Into<String> {
@@ -93,12 +93,12 @@ impl Interpreter {
 		result
 	}
 
-	pub fn execute(&mut self, ast: ast::Program, keep_marker: bool) -> Result<RuntimeValue> {
+	pub fn execute(&mut self, ast: ast::Program, keep_marker: bool) -> Result<Value> {
 		for statement in ast.statements {
 			let result = self.execute_statement(statement)?;
 
 			// In case of `return`, `break`, and `continue` statements
-			if let RuntimeValue::Marker(ref marker) = result {
+			if let Value::Marker(ref marker) = result {
 				if keep_marker {
 					return Ok(result);
 				}
@@ -107,14 +107,14 @@ impl Interpreter {
 					return Ok(*value.to_owned());
 				}
 
-				return Ok(RuntimeValue::Empty);
+				return Ok(Value::Empty);
 			}
 		}
 
-		Ok(RuntimeValue::Empty)
+		Ok(Value::Empty)
 	}
 
-	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<RuntimeValue> {
+	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<Value> {
 		match statement {
 			ast::Statement::VariableDefine(statement) => self.execute_variable_define(statement),
 			ast::Statement::VariableAssign(statement) => self.execute_variable_assign(statement),
@@ -129,17 +129,17 @@ impl Interpreter {
 		}
 	}
 
-	fn execute_variable_define(&mut self, statement: ast::VariableDefine) -> Result<RuntimeValue> {
+	fn execute_variable_define(&mut self, statement: ast::VariableDefine) -> Result<Value> {
 		let evaluated_value = match statement.value {
-			None => RuntimeValue::Empty,
+			None => Value::Empty,
 			Some(expression) => self.evaluate_expression(expression, false)?
 		};
 
 		self.context.insert(statement.name.0, evaluated_value);
-		Ok(RuntimeValue::Empty)
+		Ok(Value::Empty)
 	}
 
-	fn execute_variable_assign(&mut self, statement: ast::VariableAssign) -> Result<RuntimeValue> {
+	fn execute_variable_assign(&mut self, statement: ast::VariableAssign) -> Result<Value> {
 		let variable_name = statement.name.0;
 
 		let evaluated_value = self.evaluate_expression(statement.value, false)?;
@@ -153,10 +153,10 @@ impl Interpreter {
 			);
 		}
 
-		Ok(RuntimeValue::Empty)
+		Ok(Value::Empty)
 	}
 
-	fn execute_do_block(&mut self, statement: ast::DoBlock) -> Result<RuntimeValue> {
+	fn execute_do_block(&mut self, statement: ast::DoBlock) -> Result<Value> {
 		self.context.deeper();
 		let result = self.execute(
 			ast::Program {
@@ -169,18 +169,16 @@ impl Interpreter {
 		result
 	}
 
-	fn execute_return(&mut self, statement: ast::Return) -> Result<RuntimeValue> {
+	fn execute_return(&mut self, statement: ast::Return) -> Result<Value> {
 		let value = match statement.expression {
 			Some(expression) => self.evaluate_expression(expression, false)?,
-			None => RuntimeValue::Empty
+			None => Value::Empty
 		};
 
-		Ok(RuntimeValue::Marker(values::MarkerKind::Return(Box::new(
-			value
-		))))
+		Ok(Value::Marker(values::MarkerKind::Return(Box::new(value))))
 	}
 
-	fn execute_while_loop(&mut self, statement: ast::WhileLoop) -> Result<RuntimeValue> {
+	fn execute_while_loop(&mut self, statement: ast::WhileLoop) -> Result<Value> {
 		let mut evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
 
 		while evaluated.is_truthy() {
@@ -193,7 +191,7 @@ impl Interpreter {
 			)?;
 			self.context.shallower();
 
-			if let RuntimeValue::Marker(ref marker) = result {
+			if let Value::Marker(ref marker) = result {
 				match marker {
 					values::MarkerKind::Return(_) => return Ok(result),
 					values::MarkerKind::Break => break,
@@ -207,18 +205,18 @@ impl Interpreter {
 			evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
 		}
 
-		Ok(RuntimeValue::Empty)
+		Ok(Value::Empty)
 	}
 
-	fn execute_break(&mut self, _statement: ast::Break) -> Result<RuntimeValue> {
-		Ok(RuntimeValue::Marker(values::MarkerKind::Break))
+	fn execute_break(&mut self, _statement: ast::Break) -> Result<Value> {
+		Ok(Value::Marker(values::MarkerKind::Break))
 	}
 
-	fn execute_continue(&mut self, _statement: ast::Continue) -> Result<RuntimeValue> {
-		Ok(RuntimeValue::Marker(values::MarkerKind::Continue))
+	fn execute_continue(&mut self, _statement: ast::Continue) -> Result<Value> {
+		Ok(Value::Marker(values::MarkerKind::Continue))
 	}
 
-	fn execute_if(&mut self, statement: ast::If) -> Result<RuntimeValue> {
+	fn execute_if(&mut self, statement: ast::If) -> Result<Value> {
 		let evaluated = self.evaluate_expression(statement.condition, false)?;
 
 		if evaluated.is_truthy() {
@@ -231,11 +229,11 @@ impl Interpreter {
 			)?;
 			self.context.shallower();
 
-			if result.kind() == RuntimeValueKind::Marker {
+			if result.kind() == ValueKind::Marker {
 				return Ok(result);
 			}
 
-			return Ok(RuntimeValue::Empty);
+			return Ok(Value::Empty);
 		}
 
 		for branch in statement.elseif_branches {
@@ -251,11 +249,11 @@ impl Interpreter {
 				)?;
 				self.context.shallower();
 
-				if result.kind() == RuntimeValueKind::Marker {
+				if result.kind() == ValueKind::Marker {
 					return Ok(result);
 				}
 
-				return Ok(RuntimeValue::Empty);
+				return Ok(Value::Empty);
 			}
 		}
 
@@ -269,20 +267,17 @@ impl Interpreter {
 			)?;
 			self.context.shallower();
 
-			if result.kind() == RuntimeValueKind::Marker {
+			if result.kind() == ValueKind::Marker {
 				return Ok(result);
 			}
 
-			return Ok(RuntimeValue::Empty);
+			return Ok(Value::Empty);
 		}
 
-		Ok(RuntimeValue::Empty)
+		Ok(Value::Empty)
 	}
 
-	fn execute_expression_assign(
-		&mut self,
-		statement: ast::ExpressionAssign
-	) -> Result<RuntimeValue> {
+	fn execute_expression_assign(&mut self, statement: ast::ExpressionAssign) -> Result<Value> {
 		use ast::expressions::operators::BinaryOperator as Op;
 
 		let expression = match statement.expression {
@@ -318,8 +313,8 @@ impl Interpreter {
 	fn execute_expression_assign_list(
 		&mut self,
 		expression: ast::expressions::Binary,
-		value: RuntimeValue
-	) -> Result<RuntimeValue> {
+		value: Value
+	) -> Result<Value> {
 		let ast::expressions::Binary {
 			lhs,
 			rhs,
@@ -328,7 +323,7 @@ impl Interpreter {
 		} = expression;
 
 		let list_name = match self.evaluate_term(rhs.clone(), true)? {
-			RuntimeValue::Identifier(identifier) => identifier,
+			Value::Identifier(identifier) => identifier,
 			_ => {
 				create_error!(
 					self,
@@ -341,14 +336,14 @@ impl Interpreter {
 		};
 
 		let index = match self.evaluate_term(lhs.clone(), false)? {
-			RuntimeValue::Number(index) => index.get_owned() as i64,
+			Value::Number(index) => index.get_owned() as i64,
 			value => {
 				create_error!(
 					self,
 					position,
 					InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
-						kind: (RuntimeValueKind::List, rhs.position()),
-						expected_index_kind: RuntimeValueKind::Number,
+						kind: (ValueKind::List, rhs.position()),
+						expected_index_kind: ValueKind::Number,
 						index_kind: (value.kind(), lhs.position()),
 						because_negative: false
 					})
@@ -361,8 +356,8 @@ impl Interpreter {
 				self,
 				position,
 				InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
-					kind: (RuntimeValueKind::List, rhs.position()),
-					expected_index_kind: RuntimeValueKind::Number,
+					kind: (ValueKind::List, rhs.position()),
+					expected_index_kind: ValueKind::Number,
 					index_kind: (value.kind(), lhs.position()),
 					because_negative: true
 				})
@@ -371,7 +366,7 @@ impl Interpreter {
 
 		let index: usize = index.try_into()?;
 		let inner_list = match self.context.get_mut(&list_name)? {
-			RuntimeValue::List(inner_list) => inner_list,
+			Value::List(inner_list) => inner_list,
 			value => {
 				create_error!(
 					self,
@@ -384,19 +379,19 @@ impl Interpreter {
 		};
 
 		if index >= inner_list.get().len() {
-			inner_list.get_mut().resize(index + 1, RuntimeValue::Empty);
+			inner_list.get_mut().resize(index + 1, Value::Empty);
 		}
 
 		inner_list.get_mut()[index] = value;
 
-		Ok(RuntimeValue::Empty)
+		Ok(Value::Empty)
 	}
 
 	fn execute_expression_assign_object(
 		&mut self,
 		expression: ast::expressions::Binary,
-		value: RuntimeValue
-	) -> Result<RuntimeValue> {
+		value: Value
+	) -> Result<Value> {
 		let ast::expressions::Binary {
 			lhs,
 			rhs,
@@ -405,7 +400,7 @@ impl Interpreter {
 		} = expression.clone();
 
 		let object_name = match self.evaluate_term(lhs.clone(), true)? {
-			RuntimeValue::Identifier(identifier) => identifier,
+			Value::Identifier(identifier) => identifier,
 			_ => {
 				create_error!(
 					self,
@@ -418,16 +413,16 @@ impl Interpreter {
 		};
 
 		let entry_name = match self.evaluate_term(rhs.clone(), true)? {
-			RuntimeValue::Identifier(value) => value,
-			RuntimeValue::String(value) => value.get_owned(),
+			Value::Identifier(value) => value,
+			Value::String(value) => value.get_owned(),
 
 			value => {
 				create_error!(
 					self,
 					position,
 					InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
-						kind: (RuntimeValueKind::Object, lhs.position()),
-						expected_index_kind: RuntimeValueKind::String,
+						kind: (ValueKind::Object, lhs.position()),
+						expected_index_kind: ValueKind::String,
 						index_kind: (value.kind(), rhs.position()),
 						because_negative: false
 					})
@@ -436,7 +431,7 @@ impl Interpreter {
 		};
 
 		let inner_object = match self.context.get_mut(&object_name)? {
-			RuntimeValue::Object(inner_object) => inner_object,
+			Value::Object(inner_object) => inner_object,
 
 			value => {
 				create_error!(
@@ -455,14 +450,14 @@ impl Interpreter {
 
 		inner_object.get_mut().write(map);
 
-		Ok(RuntimeValue::Empty)
+		Ok(Value::Empty)
 	}
 
 	fn evaluate_expression(
 		&mut self,
 		expression: ast::Expression,
 		stop_on_ident: bool
-	) -> Result<RuntimeValue> {
+	) -> Result<Value> {
 		use ast::expressions::*;
 
 		match expression {
@@ -482,7 +477,7 @@ impl Interpreter {
 				)
 			}
 			Expression::Term(term) => self.evaluate_term(term, stop_on_ident),
-			Expression::Empty(_) => Ok(RuntimeValue::Empty)
+			Expression::Empty(_) => Ok(Value::Empty)
 		}
 	}
 
@@ -491,9 +486,9 @@ impl Interpreter {
 		operator: (ast::expressions::operators::UnaryOperator, ast::Position),
 		operand: ast::expressions::Term,
 		stop_on_ident: bool
-	) -> Result<RuntimeValue> {
+	) -> Result<Value> {
 		use ast::expressions::operators::UnaryOperator as Op;
-		use RuntimeValue as Rv;
+		use Value as V;
 
 		let operator_pos = operator.1.clone();
 		let operand_pos = operand.position();
@@ -502,15 +497,15 @@ impl Interpreter {
 		let evaluated_operand = self.evaluate_term(operand.clone(), stop_on_ident)?;
 
 		match (operator.0, evaluated_operand) {
-			(Op::Minus, Rv::Number(v)) => Ok(Rv::Number((-v.get_owned()).into())),
+			(Op::Minus, V::Number(v)) => Ok(V::Number((-v.get_owned()).into())),
 
-			(Op::Not, Rv::Boolean(v)) => Ok(Rv::Boolean((!v.get()).into())),
-			(Op::Not, Rv::String(v)) => Ok(Rv::Boolean(v.get().is_empty().into())),
-			(Op::Not, Rv::Number(v)) => Ok(Rv::Boolean((v.get_owned() == 0.0).into())),
-			(Op::Not, Rv::List(v)) => Ok(Rv::Boolean(v.get().is_empty().into())),
-			(Op::Not, Rv::Function(_)) => Ok(Rv::Boolean(false.into())),
-			(Op::Not, Rv::IntrinsicFunction(..)) => Ok(Rv::Boolean(false.into())),
-			(Op::Not, Rv::Empty) => Ok(Rv::Boolean(true.into())),
+			(Op::Not, V::Boolean(v)) => Ok(V::Boolean((!v.get()).into())),
+			(Op::Not, V::String(v)) => Ok(V::Boolean(v.get().is_empty().into())),
+			(Op::Not, V::Number(v)) => Ok(V::Boolean((v.get_owned() == 0.0).into())),
+			(Op::Not, V::List(v)) => Ok(V::Boolean(v.get().is_empty().into())),
+			(Op::Not, V::Function(_)) => Ok(V::Boolean(false.into())),
+			(Op::Not, V::IntrinsicFunction(..)) => Ok(V::Boolean(false.into())),
+			(Op::Not, V::Empty) => Ok(V::Boolean(true.into())),
 
 			(_, evaluated_operand) => {
 				create_error!(
@@ -531,9 +526,9 @@ impl Interpreter {
 		operator: (ast::expressions::operators::BinaryOperator, ast::Position),
 		rhs: ast::expressions::Term,
 		stop_on_ident: bool
-	) -> Result<RuntimeValue> {
+	) -> Result<Value> {
 		use ast::expressions::operators::BinaryOperator as Op;
-		use RuntimeValue as Rv;
+		use Value as V;
 
 		let lhs_position = lhs.position();
 		let rhs_position = rhs.position();
@@ -544,7 +539,7 @@ impl Interpreter {
 		// if performing an object access and rhs is a valid identifier,
 		// essentially force the `stop_on_ident` to `true`
 		let evaluated_rhs = match (operator.0 == Op::ObjectAccess, identifier_from_term(&rhs)) {
-			(true, Some(ident)) => RuntimeValue::Identifier(ident),
+			(true, Some(ident)) => Value::Identifier(ident),
 			_ => self.evaluate_term(rhs, stop_on_ident)?
 		};
 
@@ -568,118 +563,115 @@ impl Interpreter {
 
 				function.this = Some(Box::new($lhs.into()));
 
-				RuntimeValue::IntrinsicFunction(function.into())
+				Value::IntrinsicFunction(function.into())
 			}};
 		}
 
 		let evaluated_expr = match (operator.0, evaluated_lhs, evaluated_rhs) {
-			(Op::Add, Rv::Number(lhs), Rv::Number(rhs)) => {
-				Rv::Number((lhs.get_owned() + rhs.get_owned()).into())
+			(Op::Add, V::Number(lhs), V::Number(rhs)) => {
+				V::Number((lhs.get_owned() + rhs.get_owned()).into())
 			}
-			(Op::Subtract, Rv::Number(lhs), Rv::Number(rhs)) => {
-				Rv::Number((lhs.get_owned() - rhs.get_owned()).into())
+			(Op::Subtract, V::Number(lhs), V::Number(rhs)) => {
+				V::Number((lhs.get_owned() - rhs.get_owned()).into())
 			}
-			(Op::Divide, Rv::Number(lhs), Rv::Number(rhs)) => {
-				Rv::Number((lhs.get_owned() / rhs.get_owned()).into())
+			(Op::Divide, V::Number(lhs), V::Number(rhs)) => {
+				V::Number((lhs.get_owned() / rhs.get_owned()).into())
 			}
-			(Op::Multiply, Rv::Number(lhs), Rv::Number(rhs)) => {
-				Rv::Number((lhs.get_owned() * rhs.get_owned()).into())
+			(Op::Multiply, V::Number(lhs), V::Number(rhs)) => {
+				V::Number((lhs.get_owned() * rhs.get_owned()).into())
 			}
-			(Op::Modulo, Rv::Number(lhs), Rv::Number(rhs)) => {
-				Rv::Number((lhs.get_owned() % rhs.get_owned()).into())
+			(Op::Modulo, V::Number(lhs), V::Number(rhs)) => {
+				V::Number((lhs.get_owned() % rhs.get_owned()).into())
 			}
-			(Op::Gt, Rv::Number(lhs), Rv::Number(rhs)) => {
-				Rv::Boolean((lhs.get_owned() > rhs.get_owned()).into())
+			(Op::Gt, V::Number(lhs), V::Number(rhs)) => {
+				V::Boolean((lhs.get_owned() > rhs.get_owned()).into())
 			}
-			(Op::Lt, Rv::Number(lhs), Rv::Number(rhs)) => {
-				Rv::Boolean((lhs.get_owned() < rhs.get_owned()).into())
+			(Op::Lt, V::Number(lhs), V::Number(rhs)) => {
+				V::Boolean((lhs.get_owned() < rhs.get_owned()).into())
 			}
-			(Op::Gte, Rv::Number(lhs), Rv::Number(rhs)) => {
-				Rv::Boolean((lhs.get_owned() >= rhs.get_owned()).into())
+			(Op::Gte, V::Number(lhs), V::Number(rhs)) => {
+				V::Boolean((lhs.get_owned() >= rhs.get_owned()).into())
 			}
-			(Op::Lte, Rv::Number(lhs), Rv::Number(rhs)) => {
-				Rv::Boolean((lhs.get_owned() <= rhs.get_owned()).into())
-			}
-
-			(Op::Add, Rv::String(lhs), rhs) => Rv::String(format!("{}{}", lhs.get(), rhs).into()),
-
-			(Op::And, Rv::Boolean(lhs), Rv::Boolean(rhs)) => {
-				Rv::Boolean((lhs.get_owned() && rhs.get_owned()).into())
-			}
-			(Op::Or, Rv::Boolean(lhs), Rv::Boolean(rhs)) => {
-				Rv::Boolean((lhs.get_owned() || rhs.get_owned()).into())
+			(Op::Lte, V::Number(lhs), V::Number(rhs)) => {
+				V::Boolean((lhs.get_owned() <= rhs.get_owned()).into())
 			}
 
-			(Op::EqEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Rv::Boolean((lhs == rhs).into()),
-			(Op::EqEq, Rv::String(lhs), Rv::String(rhs)) => Rv::Boolean((lhs == rhs).into()),
-			(Op::EqEq, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs == rhs).into()),
-			(Op::EqEq, Rv::List(lhs), Rv::List(rhs)) => Rv::Boolean((lhs == rhs).into()),
-			(Op::EqEq, Rv::Object(lhs), Rv::Object(rhs)) => Rv::Boolean((lhs == rhs).into()),
-			(Op::EqEq, Rv::Function(lhs), Rv::Function(rhs)) => Rv::Boolean((lhs == rhs).into()),
-			(Op::EqEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => {
-				Rv::Boolean((lhs == rhs).into())
-			}
-			(Op::EqEq, Rv::Empty, Rv::Empty) => Rv::Boolean(true.into()),
+			(Op::Add, V::String(lhs), rhs) => V::String(format!("{}{}", lhs.get(), rhs).into()),
 
-			(Op::NotEq, Rv::Boolean(lhs), Rv::Boolean(rhs)) => Rv::Boolean((lhs != rhs).into()),
-			(Op::NotEq, Rv::String(lhs), Rv::String(rhs)) => Rv::Boolean((lhs != rhs).into()),
-			(Op::NotEq, Rv::Number(lhs), Rv::Number(rhs)) => Rv::Boolean((lhs != rhs).into()),
-			(Op::NotEq, Rv::List(lhs), Rv::List(rhs)) => Rv::Boolean((lhs != rhs).into()),
-			(Op::NotEq, Rv::Object(lhs), Rv::Object(rhs)) => Rv::Boolean((lhs != rhs).into()),
-			(Op::NotEq, Rv::Function(lhs), Rv::Function(rhs)) => Rv::Boolean((lhs != rhs).into()),
-			(Op::NotEq, Rv::IntrinsicFunction(lhs), Rv::IntrinsicFunction(rhs)) => {
-				Rv::Boolean((lhs != rhs).into())
+			(Op::And, V::Boolean(lhs), V::Boolean(rhs)) => {
+				V::Boolean((lhs.get_owned() && rhs.get_owned()).into())
 			}
-			(Op::NotEq, Rv::Empty, Rv::Empty) => Rv::Boolean(false.into()),
+			(Op::Or, V::Boolean(lhs), V::Boolean(rhs)) => {
+				V::Boolean((lhs.get_owned() || rhs.get_owned()).into())
+			}
 
-			(Op::ListAccess, Rv::Number(lhs), Rv::List(rhs)) => {
+			(Op::EqEq, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean((lhs == rhs).into()),
+			(Op::EqEq, V::String(lhs), V::String(rhs)) => V::Boolean((lhs == rhs).into()),
+			(Op::EqEq, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs == rhs).into()),
+			(Op::EqEq, V::List(lhs), V::List(rhs)) => V::Boolean((lhs == rhs).into()),
+			(Op::EqEq, V::Object(lhs), V::Object(rhs)) => V::Boolean((lhs == rhs).into()),
+			(Op::EqEq, V::Function(lhs), V::Function(rhs)) => V::Boolean((lhs == rhs).into()),
+			(Op::EqEq, V::IntrinsicFunction(lhs), V::IntrinsicFunction(rhs)) => {
+				V::Boolean((lhs == rhs).into())
+			}
+			(Op::EqEq, V::Empty, V::Empty) => V::Boolean(true.into()),
+
+			(Op::NotEq, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean((lhs != rhs).into()),
+			(Op::NotEq, V::String(lhs), V::String(rhs)) => V::Boolean((lhs != rhs).into()),
+			(Op::NotEq, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs != rhs).into()),
+			(Op::NotEq, V::List(lhs), V::List(rhs)) => V::Boolean((lhs != rhs).into()),
+			(Op::NotEq, V::Object(lhs), V::Object(rhs)) => V::Boolean((lhs != rhs).into()),
+			(Op::NotEq, V::Function(lhs), V::Function(rhs)) => V::Boolean((lhs != rhs).into()),
+			(Op::NotEq, V::IntrinsicFunction(lhs), V::IntrinsicFunction(rhs)) => {
+				V::Boolean((lhs != rhs).into())
+			}
+			(Op::NotEq, V::Empty, V::Empty) => V::Boolean(false.into()),
+
+			(Op::ListAccess, V::Number(lhs), V::List(rhs)) => {
 				rhs.get()
 					.get(lhs.get_owned() as usize)
 					.cloned()
-					.unwrap_or(RuntimeValue::Empty)
+					.unwrap_or(Value::Empty)
 			}
 
-			(Op::ObjectAccess, Rv::Object(lhs), Rv::Identifier(rhs)) => {
-				(**lhs.get())
-					.get(&rhs)
-					.cloned()
-					.unwrap_or(RuntimeValue::Empty)
+			(Op::ObjectAccess, V::Object(lhs), V::Identifier(rhs)) => {
+				(**lhs.get()).get(&rhs).cloned().unwrap_or(Value::Empty)
 			}
-			(Op::ObjectAccess, Rv::Object(lhs), Rv::String(rhs)) => {
+			(Op::ObjectAccess, V::Object(lhs), V::String(rhs)) => {
 				(**lhs.get())
 					.get(rhs.get())
 					.cloned()
-					.unwrap_or(RuntimeValue::Empty)
+					.unwrap_or(Value::Empty)
 			}
 
-			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::Identifier(rhs)) => {
+			(Op::ObjectAccess, V::Boolean(lhs), V::Identifier(rhs)) => {
 				primitive_object_access!(lhs, rhs)
 			}
-			(Op::ObjectAccess, Rv::String(lhs), Rv::Identifier(rhs)) => {
+			(Op::ObjectAccess, V::String(lhs), V::Identifier(rhs)) => {
 				primitive_object_access!(lhs, rhs)
 			}
-			(Op::ObjectAccess, Rv::Number(lhs), Rv::Identifier(rhs)) => {
+			(Op::ObjectAccess, V::Number(lhs), V::Identifier(rhs)) => {
 				primitive_object_access!(lhs, rhs)
 			}
-			(Op::ObjectAccess, Rv::List(lhs), Rv::Identifier(rhs)) => {
+			(Op::ObjectAccess, V::List(lhs), V::Identifier(rhs)) => {
 				primitive_object_access!(lhs, rhs)
 			}
 
-			(Op::ObjectAccess, Rv::Boolean(lhs), Rv::String(rhs)) => {
+			(Op::ObjectAccess, V::Boolean(lhs), V::String(rhs)) => {
 				primitive_object_access!(lhs, rhs.get_owned())
 			}
-			(Op::ObjectAccess, Rv::String(lhs), Rv::String(rhs)) => {
+			(Op::ObjectAccess, V::String(lhs), V::String(rhs)) => {
 				primitive_object_access!(lhs, rhs.get_owned())
 			}
-			(Op::ObjectAccess, Rv::Number(lhs), Rv::String(rhs)) => {
+			(Op::ObjectAccess, V::Number(lhs), V::String(rhs)) => {
 				primitive_object_access!(lhs, rhs.get_owned())
 			}
-			(Op::ObjectAccess, Rv::List(lhs), Rv::String(rhs)) => {
+			(Op::ObjectAccess, V::List(lhs), V::String(rhs)) => {
 				primitive_object_access!(lhs, rhs.get_owned())
 			}
 
-			(Op::EqEq, _, _) => Rv::Boolean(false.into()),
-			(Op::NotEq, _, _) => Rv::Boolean(true.into()),
+			(Op::EqEq, _, _) => V::Boolean(false.into()),
+			(Op::NotEq, _, _) => V::Boolean(true.into()),
 
 			(_, evaluated_lhs, evaluated_rhs) => {
 				create_error!(
@@ -701,7 +693,7 @@ impl Interpreter {
 		&mut self,
 		term: ast::expressions::Term,
 		stop_on_ident: bool
-	) -> Result<RuntimeValue> {
+	) -> Result<Value> {
 		use ast::expressions::*;
 
 		let position = term.position();
@@ -714,7 +706,7 @@ impl Interpreter {
 			Term::Literal(lit) => Ok(lit.into()),
 			Term::Identifier(ident, _) => {
 				match stop_on_ident {
-					true => Ok(RuntimeValue::Identifier(ident)),
+					true => Ok(Value::Identifier(ident)),
 					false => {
 						let error = create_error!(self, position, InterpretErrorKind::VariableDoesntExist(
 							errors::VariableDoesntExist(ident.clone())
@@ -728,7 +720,7 @@ impl Interpreter {
 		}
 	}
 
-	fn evaluate_function(&mut self, function: ast::expressions::Function) -> Result<RuntimeValue> {
+	fn evaluate_function(&mut self, function: ast::expressions::Function) -> Result<Value> {
 		use std::hash::{DefaultHasher, Hash, Hasher};
 
 		let mut hasher = DefaultHasher::new();
@@ -736,7 +728,7 @@ impl Interpreter {
 		let hash = hasher.finish();
 
 		if let Some(func) = self.function_map.get(&hash) {
-			return Ok(RuntimeValue::Function(func.to_owned()));
+			return Ok(Value::Function(func.to_owned()));
 		}
 
 		let captured_context = unsafe {
@@ -744,7 +736,7 @@ impl Interpreter {
 			self.memory.alloc(new_context).promote()
 		};
 
-		let converted = RuntimeFunction {
+		let converted = RFunction {
 			ast: Box::new(function),
 
 			source: self.source.to_owned(),
@@ -754,10 +746,10 @@ impl Interpreter {
 		};
 
 		self.function_map.insert(hash, converted.clone());
-		Ok(RuntimeValue::Function(converted))
+		Ok(Value::Function(converted))
 	}
 
-	fn evaluate_object(&mut self, object: ast::expressions::Object) -> Result<RuntimeValue> {
+	fn evaluate_object(&mut self, object: ast::expressions::Object) -> Result<Value> {
 		use std::collections::HashMap;
 
 		let mut value_map = HashMap::new();
@@ -792,10 +784,10 @@ impl Interpreter {
 		}
 
 		let allocated = unsafe { self.memory.alloc(value_map).promote() };
-		Ok(RuntimeValue::Object(allocated.into()))
+		Ok(Value::Object(allocated.into()))
 	}
 
-	fn evaluate_list(&mut self, list: ast::expressions::List) -> Result<RuntimeValue> {
+	fn evaluate_list(&mut self, list: ast::expressions::List) -> Result<Value> {
 		let mut values = vec![];
 
 		for expression in list.0 {
@@ -803,10 +795,10 @@ impl Interpreter {
 			values.push(value);
 		}
 
-		Ok(RuntimeValue::List(values.into()))
+		Ok(Value::List(values.into()))
 	}
 
-	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<RuntimeValue> {
+	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<Value> {
 		let call_site = CallSite {
 			source: self.source.clone(),
 			file: self.file.clone(),
@@ -830,7 +822,7 @@ impl Interpreter {
 
 		let function_expr = self.evaluate_expression(*call.function, false)?;
 
-		if let RuntimeValue::IntrinsicFunction(function) = function_expr {
+		if let Value::IntrinsicFunction(function) = function_expr {
 			let convert_error = |e: arg_parser::ArgumentParseError| {
 				match e {
 					arg_parser::ArgumentParseError::CountMismatch {
@@ -887,7 +879,7 @@ impl Interpreter {
 			return result;
 		}
 
-		if let RuntimeValue::Function(mut function) = function_expr {
+		if let Value::Function(mut function) = function_expr {
 			let got_len = call_args.len();
 			let expected_len = function.ast.arguments.len();
 
@@ -926,10 +918,8 @@ impl Interpreter {
 				let mut function_context = function.context.get_owned();
 				mem::swap(&mut self.context, &mut function_context);
 
-				self.context.insert(
-					String::from("self"),
-					RuntimeValue::Function(function.clone())
-				);
+				self.context
+					.insert(String::from("self"), Value::Function(function.clone()));
 
 				let argument_iter = function.ast.arguments.into_iter().zip(call_args);
 				for ((arg_name, _), arg_value) in argument_iter {

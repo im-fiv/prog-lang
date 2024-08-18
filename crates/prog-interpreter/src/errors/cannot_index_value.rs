@@ -1,14 +1,14 @@
 use ariadne::{ColorGenerator, Fmt, Label};
 use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
-use crate::RuntimeValueKind;
+use crate::ValueKind;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct CannotIndexValue {
-	pub kind: (RuntimeValueKind, Position),
-	pub expected_index_kind: RuntimeValueKind,
-	pub index_kind: (RuntimeValueKind, Position),
+	pub kind: (ValueKind, Position),
+	pub expected_index_kind: ValueKind,
+	pub index_kind: (ValueKind, Position),
 	pub because_negative: bool
 }
 

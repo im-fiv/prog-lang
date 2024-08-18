@@ -2,13 +2,13 @@ use ariadne::{ColorGenerator, Fmt, Label};
 use prog_parser::ast::expressions::operators::UnaryOperator;
 use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
-use crate::RuntimeValueKind;
+use crate::ValueKind;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct UnsupportedUnary {
 	pub operator: (UnaryOperator, Position),
-	pub operand: (RuntimeValueKind, Position)
+	pub operand: (ValueKind, Position)
 }
 
 impl AriadneCompatible for UnsupportedUnary {

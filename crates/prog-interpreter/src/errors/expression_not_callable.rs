@@ -1,11 +1,11 @@
 use ariadne::{ColorGenerator, Fmt, Label};
 use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
-use crate::RuntimeValueKind;
+use crate::ValueKind;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct ExpressionNotCallable(pub RuntimeValueKind);
+pub struct ExpressionNotCallable(pub ValueKind);
 
 impl AriadneCompatible for ExpressionNotCallable {
 	fn message(&self) -> String { String::from("expression is not callable") }

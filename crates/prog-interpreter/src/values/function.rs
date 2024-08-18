@@ -3,20 +3,20 @@ use std::fmt::{self, Debug, Display};
 use halloc::HeapMutator;
 use prog_parser::ast;
 
-use crate::context::RuntimeContext;
+use crate::context::Context;
 
 //* Note: `Debug` and `PartialEq` are implemented manually below
 #[derive(Clone)]
-pub struct RuntimeFunction {
+pub struct RFunction {
 	pub ast: Box<ast::expressions::Function>,
 
 	pub source: String,
 	pub file: String,
 
-	pub context: HeapMutator<'static, RuntimeContext>
+	pub context: HeapMutator<'static, Context>
 }
 
-impl Debug for RuntimeFunction {
+impl Debug for RFunction {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let arguments = self
 			.ast
@@ -34,7 +34,7 @@ impl Debug for RuntimeFunction {
 	}
 }
 
-impl PartialEq for RuntimeFunction {
+impl PartialEq for RFunction {
 	fn eq(&self, other: &Self) -> bool {
 		let ast = self.ast == other.ast;
 		let source = self.source == other.source;
@@ -44,7 +44,7 @@ impl PartialEq for RuntimeFunction {
 	}
 }
 
-impl Display for RuntimeFunction {
+impl Display for RFunction {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let arguments_str = self
 			.ast

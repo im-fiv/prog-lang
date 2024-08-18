@@ -4,27 +4,27 @@ use std::fmt::{self, Debug, Display};
 use anyhow::Result;
 use prog_parser::ast;
 
-use super::RuntimeValue;
+use super::Value;
 use crate::arg_parser::{ArgList, ParsedArg};
 use crate::Interpreter;
 
 //* Note: `Debug` and `PartialEq` are implemented manually below
 #[derive(Clone)]
-pub struct IntrinsicFunction {
-	pub pointer: IntrinsicFunctionPtr,
-	pub this: Option<Box<RuntimeValue>>,
+pub struct RIntrinsicFunction {
+	pub pointer: RIntrinsicFunctionPtr,
+	pub this: Option<Box<Value>>,
 	pub arguments: ArgList
 }
 
 #[derive(Debug)]
-pub struct IntrinsicFunctionData<'i> {
-	pub this: Option<RuntimeValue>,
+pub struct RIntrinsicFunctionData<'i> {
+	pub this: Option<Value>,
 	pub interpreter: &'i mut Interpreter,
 	pub arguments: HashMap<String, ParsedArg>,
 	pub call_site: CallSite
 }
 
-pub type IntrinsicFunctionPtr = fn(IntrinsicFunctionData) -> Result<RuntimeValue>;
+pub type RIntrinsicFunctionPtr = fn(RIntrinsicFunctionData) -> Result<Value>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallSite {
@@ -36,8 +36,8 @@ pub struct CallSite {
 	pub whole_pos: ast::Position
 }
 
-impl IntrinsicFunction {
-	pub fn new(pointer: IntrinsicFunctionPtr, arguments: ArgList) -> Self {
+impl RIntrinsicFunction {
+	pub fn new(pointer: RIntrinsicFunctionPtr, arguments: ArgList) -> Self {
 		Self {
 			pointer,
 			this: None,
@@ -50,8 +50,8 @@ impl IntrinsicFunction {
 		interpreter: &mut Interpreter,
 		arguments: HashMap<String, ParsedArg>,
 		call_site: CallSite
-	) -> Result<RuntimeValue> {
-		let data = IntrinsicFunctionData {
+	) -> Result<Value> {
+		let data = RIntrinsicFunctionData {
 			this: self.this.as_deref().cloned(),
 			interpreter,
 			arguments,
@@ -62,15 +62,15 @@ impl IntrinsicFunction {
 	}
 }
 
-impl PartialEq for IntrinsicFunction {
+impl PartialEq for RIntrinsicFunction {
 	fn eq(&self, other: &Self) -> bool { self.pointer == other.pointer }
 }
 
-impl Debug for IntrinsicFunction {
+impl Debug for RIntrinsicFunction {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Display::fmt(self, f) }
 }
 
-impl Display for IntrinsicFunction {
+impl Display for RIntrinsicFunction {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let args = format!("{:#?}", self.arguments);
 		write!(f, "<intrinsic func({}) @ {:?}>", args, self.pointer)

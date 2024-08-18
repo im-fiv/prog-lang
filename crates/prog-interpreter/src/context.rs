@@ -1,17 +1,18 @@
 use std::collections::HashMap;
+use std::fmt::{self, Debug};
 
 use anyhow::{bail, Result};
 
-use crate::RuntimeValue;
+use crate::Value;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct RuntimeContextFlags {
+pub struct ContextFlags {
 	pub con_stdout_allowed: bool,
 	pub imports_allowed: bool,
 	pub inputs_allowed: bool
 }
 
-impl Default for RuntimeContextFlags {
+impl Default for ContextFlags {
 	fn default() -> Self {
 		Self {
 			con_stdout_allowed: true,
@@ -23,17 +24,17 @@ impl Default for RuntimeContextFlags {
 
 //* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
-pub struct RuntimeContext {
+pub struct Context {
 	pub stdin: String,
 	pub stdout: String,
 
-	pub flags: RuntimeContextFlags,
+	pub flags: ContextFlags,
 
-	pub variables: HashMap<String, RuntimeValue>,
+	pub variables: HashMap<String, Value>,
 	pub parent: Option<Box<Self>>
 }
 
-impl RuntimeContext {
+impl Context {
 	pub fn new() -> Self {
 		let mut this = Self::new_clean();
 		this.variables = super::intrinsics::create_variable_table();
@@ -46,7 +47,7 @@ impl RuntimeContext {
 			stdin: String::new(),
 			stdout: String::new(),
 
-			flags: RuntimeContextFlags::default(),
+			flags: ContextFlags::default(),
 
 			variables: HashMap::new(),
 			parent: None
@@ -77,11 +78,7 @@ impl RuntimeContext {
 	pub fn shallower(&mut self) {
 		match self.parent.take() {
 			Some(parent) => *self = *parent,
-			None => {
-				eprintln!(
-					"Warning `RuntimeContext::shallower()` was called while not having a parent"
-				)
-			}
+			None => eprintln!("Warning `Context::shallower()` was called while not having a parent")
 		}
 	}
 
@@ -98,7 +95,7 @@ impl RuntimeContext {
 		}
 	}
 
-	pub fn get(&self, name: &str) -> Result<RuntimeValue> {
+	pub fn get(&self, name: &str) -> Result<Value> {
 		if let Some(var) = self.variables.get(name) {
 			return Ok(var.to_owned());
 		}
@@ -109,7 +106,7 @@ impl RuntimeContext {
 		}
 	}
 
-	pub fn get_mut(&mut self, name: &str) -> Result<&mut RuntimeValue> {
+	pub fn get_mut(&mut self, name: &str) -> Result<&mut Value> {
 		if let Some(var) = self.variables.get_mut(name) {
 			return Ok(var);
 		}
@@ -120,11 +117,11 @@ impl RuntimeContext {
 		}
 	}
 
-	pub fn insert(&mut self, name: String, value: RuntimeValue) -> Option<RuntimeValue> {
+	pub fn insert(&mut self, name: String, value: Value) -> Option<Value> {
 		self.variables.insert(name, value)
 	}
 
-	pub fn update(&mut self, name: String, value: RuntimeValue) -> Result<RuntimeValue> {
+	pub fn update(&mut self, name: String, value: Value) -> Result<Value> {
 		use std::collections::hash_map::Entry;
 
 		if !self.exists(&name) {
@@ -138,7 +135,7 @@ impl RuntimeContext {
 					Some(ref mut p) => p.update(name, value),
 					None => {
 						unreachable!(
-							"Match arm reached despite expecting `RuntimeContext::exists(\"{name}\")` to return `false`"
+							"Match arm reached despite expecting `Context::exists(\"{name}\")` to return `false`"
 						)
 					}
 				}
@@ -147,8 +144,8 @@ impl RuntimeContext {
 	}
 }
 
-impl std::fmt::Debug for RuntimeContext {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Debug for Context {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let mut debug_struct = f.debug_struct("Context");
 
 		debug_struct.field("flags", &self.flags);
@@ -162,8 +159,8 @@ impl std::fmt::Debug for RuntimeContext {
 	}
 }
 
-impl Default for RuntimeContext {
+impl Default for Context {
 	fn default() -> Self { Self::new_clean() }
 }
 
-impl halloc::Allocatable for RuntimeContext {}
+impl halloc::Allocatable for Context {}

@@ -8,12 +8,12 @@ use crate::errors;
 use crate::values::*;
 
 fn print_function(
-	IntrinsicFunctionData {
+	RIntrinsicFunctionData {
 		interpreter,
 		arguments,
 		..
-	}: IntrinsicFunctionData
-) -> Result<RuntimeValue> {
+	}: RIntrinsicFunctionData
+) -> Result<Value> {
 	let to_print = get_argument!(arguments => varargs: ...)
 		.into_iter()
 		.map(|arg| format!("{}", arg))
@@ -29,17 +29,17 @@ fn print_function(
 		println!("{to_print}");
 	}
 
-	Ok(RuntimeValue::Empty)
+	Ok(Value::Empty)
 }
 
 fn import_function(
-	IntrinsicFunctionData {
+	RIntrinsicFunctionData {
 		interpreter,
 		arguments,
 		call_site,
 		..
-	}: IntrinsicFunctionData
-) -> Result<RuntimeValue> {
+	}: RIntrinsicFunctionData
+) -> Result<Value> {
 	use std::mem::swap;
 
 	if !interpreter.context.flags.imports_allowed {
@@ -54,7 +54,7 @@ fn import_function(
 		));
 	}
 
-	let path_str = get_argument!(arguments => path: RuntimeString).get_owned();
+	let path_str = get_argument!(arguments => path: RString).get_owned();
 
 	let mut path = std::path::Path::new(&path_str).to_path_buf();
 
@@ -93,13 +93,13 @@ fn import_function(
 }
 
 fn input_function(
-	IntrinsicFunctionData {
+	RIntrinsicFunctionData {
 		interpreter,
 		arguments,
 		call_site,
 		..
-	}: IntrinsicFunctionData
-) -> Result<RuntimeValue> {
+	}: RIntrinsicFunctionData
+) -> Result<Value> {
 	use text_io::read;
 
 	if !interpreter.context.flags.inputs_allowed {
@@ -114,7 +114,7 @@ fn input_function(
 		));
 	}
 
-	let message = get_argument!(arguments => message: RuntimeString?);
+	let message = get_argument!(arguments => message: RString?);
 
 	if let Some(message) = message {
 		print!("{}", message.get());
@@ -131,20 +131,20 @@ fn input_function(
 		.stdin
 		.push_str(&format!("{result}\n")[..]);
 
-	Ok(RuntimeValue::String(result.into()))
+	Ok(Value::String(result.into()))
 }
 
 fn raw_print_function(
-	IntrinsicFunctionData {
+	RIntrinsicFunctionData {
 		interpreter,
 		arguments,
 		..
-	}: IntrinsicFunctionData
-) -> Result<RuntimeValue> {
+	}: RIntrinsicFunctionData
+) -> Result<Value> {
 	use std::io;
 	use std::io::Write;
 
-	let text = get_argument!(arguments => string: RuntimeString).get_owned();
+	let text = get_argument!(arguments => string: RString).get_owned();
 	interpreter.context.stdout.push_str(&text);
 
 	if interpreter.context.flags.con_stdout_allowed {
@@ -152,18 +152,18 @@ fn raw_print_function(
 		io::stdout().flush().unwrap();
 	}
 
-	Ok(RuntimeValue::Empty)
+	Ok(Value::Empty)
 }
 
 fn assert_function(
-	IntrinsicFunctionData {
+	RIntrinsicFunctionData {
 		arguments,
 		call_site,
 		..
-	}: IntrinsicFunctionData
-) -> Result<RuntimeValue> {
-	let value = get_argument!(arguments => value: RuntimeValue);
-	let message = get_argument!(arguments => message: RuntimeString?).map(|str| str.get_owned());
+	}: RIntrinsicFunctionData
+) -> Result<Value> {
+	let value = get_argument!(arguments => value: Value);
+	let message = get_argument!(arguments => message: RString?).map(|str| str.get_owned());
 
 	if !value.is_truthy() {
 		bail!(crate::InterpretError::new(
@@ -174,58 +174,59 @@ fn assert_function(
 		));
 	}
 
-	Ok(RuntimeValue::Empty)
+	Ok(Value::Empty)
 }
 
 fn dump_ctx_function(
-	IntrinsicFunctionData { interpreter, .. }: IntrinsicFunctionData
-) -> Result<RuntimeValue> {
+	RIntrinsicFunctionData { interpreter, .. }: RIntrinsicFunctionData
+) -> Result<Value> {
 	println!("{:#?}", interpreter.context);
-	Ok(RuntimeValue::Empty)
+	Ok(Value::Empty)
 }
 
-pub fn create_variable_table() -> HashMap<String, RuntimeValue> {
+pub fn create_variable_table() -> HashMap<String, Value> {
 	let mut map = HashMap::new();
 
 	map.insert(
 		String::from("print"),
-		IntrinsicFunction::new(print_function, ArgList::new(vec![Arg::Variadic("varargs")])).into()
+		RIntrinsicFunction::new(print_function, ArgList::new(vec![Arg::Variadic("varargs")]))
+			.into()
 	);
 
 	map.insert(
 		String::from("import"),
-		IntrinsicFunction::new(
+		RIntrinsicFunction::new(
 			import_function,
-			ArgList::new(vec![Arg::Required("path", RuntimeValueKind::String)])
+			ArgList::new(vec![Arg::Required("path", ValueKind::String)])
 		)
 		.into()
 	);
 
 	map.insert(
 		String::from("input"),
-		IntrinsicFunction::new(
+		RIntrinsicFunction::new(
 			input_function,
-			ArgList::new(vec![Arg::Optional("message", RuntimeValueKind::String)])
+			ArgList::new(vec![Arg::Optional("message", ValueKind::String)])
 		)
 		.into()
 	);
 
 	map.insert(
 		String::from("raw_print"),
-		IntrinsicFunction::new(
+		RIntrinsicFunction::new(
 			raw_print_function,
-			ArgList::new(vec![Arg::Optional("string", RuntimeValueKind::String)])
+			ArgList::new(vec![Arg::Optional("string", ValueKind::String)])
 		)
 		.into()
 	);
 
 	map.insert(
 		String::from("assert"),
-		IntrinsicFunction::new(
+		RIntrinsicFunction::new(
 			assert_function,
 			ArgList::new(vec![
-				Arg::Required("value", RuntimeValueKind::Boolean),
-				Arg::Optional("message", RuntimeValueKind::String),
+				Arg::Required("value", ValueKind::Boolean),
+				Arg::Optional("message", ValueKind::String),
 			])
 		)
 		.into()
@@ -233,7 +234,7 @@ pub fn create_variable_table() -> HashMap<String, RuntimeValue> {
 
 	map.insert(
 		String::from("dump_ctx"),
-		IntrinsicFunction::new(dump_ctx_function, ArgList::new_empty()).into()
+		RIntrinsicFunction::new(dump_ctx_function, ArgList::new_empty()).into()
 	);
 
 	map

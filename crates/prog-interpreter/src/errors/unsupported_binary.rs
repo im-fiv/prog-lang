@@ -2,14 +2,14 @@ use ariadne::{ColorGenerator, Fmt, Label};
 use prog_parser::ast::expressions::operators::BinaryOperator;
 use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
-use crate::RuntimeValueKind;
+use crate::ValueKind;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct UnsupportedBinary {
-	pub lhs: (RuntimeValueKind, Position),
+	pub lhs: (ValueKind, Position),
 	pub operator: (BinaryOperator, Position),
-	pub rhs: (RuntimeValueKind, Position)
+	pub rhs: (ValueKind, Position)
 }
 
 impl AriadneCompatible for UnsupportedBinary {

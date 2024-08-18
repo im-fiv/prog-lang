@@ -1,11 +1,11 @@
 use ariadne::{ColorGenerator, Fmt, Label};
 use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
-use crate::RuntimeValueKind;
+use crate::ValueKind;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct ExpressionNotAssignable(pub Option<RuntimeValueKind>);
+pub struct ExpressionNotAssignable(pub Option<ValueKind>);
 
 impl AriadneCompatible for ExpressionNotAssignable {
 	fn message(&self) -> String { String::from("expression cannot be assigned to") }

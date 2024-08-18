@@ -13,15 +13,15 @@ fn parse_empty() {
 #[test]
 fn parse_required() {
 	let arg_list = ArgList::new(vec![
-		Arg::Required("arg1", RuntimeValueKind::Boolean),
-		Arg::Required("arg2", RuntimeValueKind::Number),
-		Arg::Required("arg3", RuntimeValueKind::String),
+		Arg::Required("arg1", ValueKind::Boolean),
+		Arg::Required("arg2", ValueKind::Number),
+		Arg::Required("arg3", ValueKind::String),
 	]);
 
 	let parsed = arg_list.verify(&[
-		RuntimeValue::Boolean(true.into()),
-		RuntimeValue::Number(3.14.into()),
-		RuntimeValue::String(String::from("hello, world!").into())
+		Value::Boolean(true.into()),
+		Value::Number(3.14.into()),
+		Value::String(String::from("hello, world!").into())
 	]);
 
 	assert!(parsed.is_ok());
@@ -36,15 +36,12 @@ fn parse_required() {
 #[test]
 fn parse_mixed() {
 	let arg_list = ArgList::new(vec![
-		Arg::Required("arg1", RuntimeValueKind::Boolean),
-		Arg::Required("arg2", RuntimeValueKind::Number),
-		Arg::Optional("arg3", RuntimeValueKind::String),
+		Arg::Required("arg1", ValueKind::Boolean),
+		Arg::Required("arg2", ValueKind::Number),
+		Arg::Optional("arg3", ValueKind::String),
 	]);
 
-	let parsed = arg_list.verify(&[
-		RuntimeValue::Boolean(true.into()),
-		RuntimeValue::Number(3.14.into())
-	]);
+	let parsed = arg_list.verify(&[Value::Boolean(true.into()), Value::Number(3.14.into())]);
 
 	assert!(parsed.is_ok());
 
@@ -58,19 +55,19 @@ fn parse_mixed() {
 #[test]
 fn parse_variadic() {
 	let arg_list = ArgList::new(vec![
-		Arg::Required("arg1", RuntimeValueKind::Boolean),
-		Arg::Required("arg2", RuntimeValueKind::Number),
+		Arg::Required("arg1", ValueKind::Boolean),
+		Arg::Required("arg2", ValueKind::Number),
 		Arg::Variadic("arg3"),
 	]);
 
 	let parsed = arg_list.verify(&[
-		RuntimeValue::Boolean(true.into()),
-		RuntimeValue::Number(3.14.into()),
+		Value::Boolean(true.into()),
+		Value::Number(3.14.into()),
 		// Variadic arguments
-		RuntimeValue::Boolean(true.into()),
-		RuntimeValue::Number(3.14.into()),
-		RuntimeValue::Boolean(true.into()),
-		RuntimeValue::Number(3.14.into())
+		Value::Boolean(true.into()),
+		Value::Number(3.14.into()),
+		Value::Boolean(true.into()),
+		Value::Number(3.14.into())
 	]);
 
 	assert!(parsed.is_ok());
@@ -84,21 +81,18 @@ fn parse_variadic() {
 #[test]
 fn getting_arguments() {
 	let arg_list = ArgList::new(vec![
-		Arg::Required("arg1", RuntimeValueKind::Boolean),
-		Arg::Required("arg2", RuntimeValueKind::Number),
+		Arg::Required("arg1", ValueKind::Boolean),
+		Arg::Required("arg2", ValueKind::Number),
 	]);
 
-	let parsed = arg_list.verify(&[
-		RuntimeValue::Boolean(true.into()),
-		RuntimeValue::Number(3.14.into())
-	]);
+	let parsed = arg_list.verify(&[Value::Boolean(true.into()), Value::Number(3.14.into())]);
 
 	assert!(parsed.is_ok());
 
 	let parsed = parsed.unwrap();
 
-	let arg1 = get_argument!(parsed => arg1: RuntimeBoolean);
-	let arg2 = get_argument!(parsed => arg2: RuntimeNumber);
+	let arg1 = get_argument!(parsed => arg1: RBoolean);
+	let arg2 = get_argument!(parsed => arg2: RNumber);
 
 	assert_eq!(arg1.get_owned(), true);
 	assert_eq!(arg2.get_owned(), 3.14);
@@ -107,24 +101,24 @@ fn getting_arguments() {
 #[test]
 #[should_panic]
 fn getting_nonexistent_arguments() {
-	let arg_list = ArgList::new(vec![Arg::Required("arg1", RuntimeValueKind::Boolean)]);
+	let arg_list = ArgList::new(vec![Arg::Required("arg1", ValueKind::Boolean)]);
 
-	let parsed = arg_list.verify(&[RuntimeValue::Boolean(true.into())]);
+	let parsed = arg_list.verify(&[Value::Boolean(true.into())]);
 
 	assert!(parsed.is_ok());
 
 	let parsed = parsed.unwrap();
 
-	get_argument!(parsed => arg1: RuntimeBoolean);
-	get_argument!(parsed => arg2: RuntimeString);
+	get_argument!(parsed => arg1: RBoolean);
+	get_argument!(parsed => arg2: RString);
 }
 
 #[test]
 #[should_panic]
 fn getting_arguments_incorrectly() {
-	let arg_list = ArgList::new(vec![Arg::Required("arg1", RuntimeValueKind::Boolean)]);
+	let arg_list = ArgList::new(vec![Arg::Required("arg1", ValueKind::Boolean)]);
 
-	let parsed = arg_list.verify(&[RuntimeValue::Boolean(true.into())]);
+	let parsed = arg_list.verify(&[Value::Boolean(true.into())]);
 
 	assert!(parsed.is_ok());
 
@@ -137,7 +131,7 @@ fn getting_arguments_incorrectly() {
 fn parse_count_mismatch() {
 	let arg_list = ArgList::new_empty();
 
-	let parsed = arg_list.verify(&[RuntimeValue::String(
+	let parsed = arg_list.verify(&[Value::String(
 		String::from("this argument shouldn't be here!").into()
 	)]);
 
@@ -161,9 +155,9 @@ fn parse_count_mismatch() {
 
 #[test]
 fn parse_incorrect_type() {
-	let arg_list = ArgList::new(vec![Arg::Required("arg1", RuntimeValueKind::Number)]);
+	let arg_list = ArgList::new(vec![Arg::Required("arg1", ValueKind::Number)]);
 
-	let parsed = arg_list.verify(&[RuntimeValue::String(
+	let parsed = arg_list.verify(&[Value::String(
 		String::from("this argument is of incorrect type!").into()
 	)]);
 
@@ -178,8 +172,8 @@ fn parse_incorrect_type() {
 	} = error
 	{
 		assert_eq!(index, 0);
-		assert_eq!(expected, RuntimeValueKind::Number.to_string());
-		assert_eq!(got, RuntimeValueKind::String.to_string());
+		assert_eq!(expected, ValueKind::Number.to_string());
+		assert_eq!(got, ValueKind::String.to_string());
 	} else {
 		panic!("Error is not of type `IncorrectType`");
 	}
@@ -191,8 +185,8 @@ fn invalid_arg_list() {
 	let arg_list = ArgList::new(vec![Arg::Variadic("variadic1"), Arg::Variadic("variadic2")]);
 
 	let _ = arg_list.verify(&[
-		RuntimeValue::String(String::from("this test should panic").into()),
-		RuntimeValue::String(String::from("so it doesn't matter").into()),
-		RuntimeValue::String(String::from("which arguments we input").into())
+		Value::String(String::from("this test should panic").into()),
+		Value::String(String::from("so it doesn't matter").into()),
+		Value::String(String::from("which arguments we input").into())
 	]);
 }

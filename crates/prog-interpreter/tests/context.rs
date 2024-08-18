@@ -1,11 +1,11 @@
-use prog_interpreter::context::RuntimeContext;
+use prog_interpreter::context::Context;
 use prog_interpreter::values::*;
 
 #[test]
 fn insert_and_get_variable() {
-	let some_value = RuntimeValue::Boolean(true.into());
+	let some_value = Value::Boolean(true.into());
 
-	let mut context = RuntimeContext::new_clean();
+	let mut context = Context::new_clean();
 	context.insert(String::from("some_variable"), some_value.clone());
 
 	let got_value = context.get("some_variable").unwrap();
@@ -15,12 +15,12 @@ fn insert_and_get_variable() {
 
 #[test]
 fn update_variable() {
-	let some_value = RuntimeValue::Boolean(true.into());
+	let some_value = Value::Boolean(true.into());
 
-	let mut context = RuntimeContext::new_clean();
+	let mut context = Context::new_clean();
 	context.insert(String::from("some_variable"), some_value.clone());
 
-	let new_value = RuntimeValue::Boolean(false.into());
+	let new_value = Value::Boolean(false.into());
 	let old_value = context
 		.update(String::from("some_variable"), new_value.clone())
 		.unwrap();
@@ -34,20 +34,20 @@ fn update_variable() {
 #[test]
 #[should_panic]
 fn get_nonexistent_variable() {
-	let context = RuntimeContext::new_clean();
+	let context = Context::new_clean();
 	let _ = context.get(&"some_variable").unwrap();
 }
 
 #[test]
 fn get_variable_mutable() {
-	let some_value = RuntimeValue::Boolean(true.into());
+	let some_value = Value::Boolean(true.into());
 
-	let mut context = RuntimeContext::new_clean();
+	let mut context = Context::new_clean();
 	context.insert(String::from("some_variable"), some_value.clone());
 
 	let value_ref = context.get_mut("some_variable").unwrap();
 
-	if let RuntimeValue::Boolean(inner_value) = value_ref {
+	if let Value::Boolean(inner_value) = value_ref {
 		// Inverting the value
 		*inner_value = (!inner_value.get_owned()).into();
 	} else {
@@ -55,14 +55,14 @@ fn get_variable_mutable() {
 	}
 
 	let got_value = context.get("some_variable").unwrap();
-	assert_eq!(got_value, RuntimeValue::Boolean(false.into()));
+	assert_eq!(got_value, Value::Boolean(false.into()));
 }
 
 #[test]
 fn subcontexts() {
-	let some_value = RuntimeValue::Boolean(true.into());
+	let some_value = Value::Boolean(true.into());
 
-	let mut context = RuntimeContext::new_clean();
+	let mut context = Context::new_clean();
 
 	context.deeper();
 	context.insert(String::from("some_variable"), some_value);

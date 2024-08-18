@@ -1,10 +1,10 @@
 use std::fmt::Display;
 
-use super::RuntimeValue;
+use super::Value;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MarkerKind {
-	Return(Box<RuntimeValue>),
+	Return(Box<Value>),
 	Break,
 	Continue
 }
