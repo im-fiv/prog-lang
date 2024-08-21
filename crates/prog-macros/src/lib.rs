@@ -172,3 +172,80 @@ pub fn get_this(input: pm::TokenStream) -> pm::TokenStream {
 	}}
 	.into()
 }
+
+/// Separates the enum variant fields into separate structs
+#[proc_macro]
+pub fn extract_fields(input: pm::TokenStream) -> pm::TokenStream {
+	use proc_macro2::Span;
+	use syn::punctuated::Punctuated;
+	use syn::{token, Field, FieldMutability, Fields, FieldsUnnamed, Type, Visibility};
+
+	let mut item = parse_macro_input!(input as syn::ItemEnum);
+	let item_vis = &item.vis;
+	let item_attrs = &item.attrs;
+
+	let mut struct_variants = vec![];
+
+	for variant in &mut item.variants {
+		let variant_ident = &variant.ident;
+
+		let expanded_fields = match &variant.fields {
+			Fields::Unnamed(fields) => {
+				let types = fields
+					.unnamed
+					.iter()
+					.map(|f| {
+						let f_ty = &f.ty;
+						quote! { #item_vis #f_ty }
+					})
+					.collect::<Vec<_>>();
+
+				quote! {( #(#types),* );}
+			}
+			Fields::Unit => quote! {;},
+			Fields::Named(fields) => {
+				let fields = fields
+					.named
+					.iter()
+					.map(|f| {
+						let f_ident = &f.ident;
+						let f_ty = &f.ty;
+
+						quote! { #item_vis #f_ident : #f_ty }
+					})
+					.collect::<Vec<_>>();
+
+				quote! {{ #(#fields),* }}
+			}
+		};
+
+		struct_variants.push(quote! {
+			#(#item_attrs)*
+			#item_vis struct #variant_ident #expanded_fields
+		});
+
+		let mut punctuated = Punctuated::new();
+		punctuated.push(Field {
+			attrs: vec![],
+
+			vis: Visibility::Inherited,
+			mutability: FieldMutability::None,
+
+			ident: None,
+			colon_token: None,
+
+			ty: Type::Verbatim(quote! { #variant_ident })
+		});
+
+		variant.fields = Fields::Unnamed(FieldsUnnamed {
+			paren_token: token::Paren(Span::call_site()),
+			unnamed: punctuated
+		});
+	}
+
+	quote! {
+		#item
+		#(#struct_variants)*
+	}
+	.into()
+}

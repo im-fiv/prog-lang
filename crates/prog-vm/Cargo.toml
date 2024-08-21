@@ -1,0 +1,11 @@
+[package]
+name = "prog-vm"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+indent = "0.1.1"
+anyhow = { workspace = true }
+serde = { workspace = true }
+prog-parser = { workspace = true }
+prog-macros = { workspace = true }

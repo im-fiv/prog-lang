@@ -1,6 +1,12 @@
 use clap::{Args, Parser, Subcommand};
 
+/// Default input file path
 pub const DEFAULT_INPUT_FP: &str = "input.prog";
+/// Default bytecode output file path
+pub const DEFAULT_OUTPUT_BC_FP: &str = "output.progc";
+/// Default human-readable bytecode output file path
+pub const DEFAULT_OUTPUT_BC_FMT_FP: &str = "output.progc.txt";
+/// Default server serving port
 pub const DEFAULT_SERVER_PORT: u16 = 80;
 
 #[derive(Debug, Parser)]
@@ -22,6 +28,10 @@ pub enum CLISubcommand {
 	/// Interpret a file
 	Run(RunCommand),
 
+	#[cfg(feature = "vm")]
+	/// Compile a file to bytecode
+	Compile(CompileCommand),
+
 	#[cfg(feature = "api")]
 	/// Launch REST server
 	Serve(ServeCommand)
@@ -32,6 +42,18 @@ pub struct RunCommand {
 	#[arg(default_value = DEFAULT_INPUT_FP)]
 	/// Target file path
 	pub file_path: String
+}
+
+#[derive(Debug, Args)]
+pub struct CompileCommand {
+	#[arg(default_value = DEFAULT_INPUT_FP)]
+	/// Target file path
+	pub file_path: String,
+
+	// TODO: allow customization of output file paths
+	#[arg(long, short, default_value_t = false)]
+	/// Run the file after compilation
+	pub run: bool
 }
 
 #[cfg(feature = "api")]
