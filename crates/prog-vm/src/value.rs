@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::ops::*;
 
 use anyhow::{anyhow, bail, Result};
@@ -12,8 +11,6 @@ pub enum Value {
 	Boolean(bool),
 	String(String),
 	Number(f64),
-	List(Vec<Value>),
-	Object(HashMap<String, Value>),
 	Function {
 		arity: usize,
 		instructions: Vec<Instruction>
@@ -23,11 +20,6 @@ pub enum Value {
 		arity: Option<usize>,
 		pointer: fn(&mut VM) -> Result<()>
 	},
-	Class {
-		name: String,
-		fields: HashMap<String, Value>
-	},
-	ClassInstance,
 	Empty
 }
 
@@ -161,12 +153,8 @@ impl Not for Value {
 			Self::Boolean(v) => !v,
 			Self::Number(v) => v == 0.0,
 			Self::String(v) => v.is_empty(),
-			Self::List(v) => v.is_empty(),
-			Self::Object(v) => v.is_empty(),
 			Self::Function { .. } => false,
 			Self::IntrinsicFunction { .. } => false,
-			Self::Class { .. } => false,
-			Self::ClassInstance => false,
 			Self::Empty => true
 		})
 	}
