@@ -84,7 +84,8 @@ fn execute_run_command(args: cli::RunCommand) {
 
 #[cfg(feature = "vm")]
 fn execute_compile_command(args: cli::CompileCommand) {
-	use prog_vm::{Compiler, Instruction};
+	use prog_compiler::Compiler;
+	use prog_vm::Instruction;
 
 	fn format_bytecode(bc: &[Instruction]) -> String {
 		bc.iter()

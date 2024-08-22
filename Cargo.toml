@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = []
-vm = ["prog-vm", "dep:serde", "dep:bincode"]
+vm = ["prog-compiler", "prog-vm", "dep:serde", "dep:bincode"]
 repl = ["dep:rustyline"]
 serde = [
 	"dep:serde",
@@ -33,6 +33,7 @@ pest = "2.7.11"
 pest_derive = "2.7.11"
 prog-parser = { path = "./crates/prog-parser" }
 prog-interpreter = { path = "./crates/prog-interpreter" }
+prog-compiler = { path = "./crates/prog-compiler" }
 prog-vm = { path = "./crates/prog-vm" }
 prog-utils = { path = "./crates/prog-utils" }
 prog-macros = { path = "./crates/prog-macros" }
@@ -47,6 +48,7 @@ prog-parser = { workspace = true }
 prog-interpreter = { workspace = true }
 prog-utils = { workspace = true }
 
+prog-compiler = { workspace = true, optional = true }
 prog-vm = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }

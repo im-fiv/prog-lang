@@ -3,10 +3,11 @@ use std::collections::HashMap;
 use std::ops::*;
 
 use anyhow::{anyhow, bail, Result};
+use serde::{Deserialize, Serialize};
 
 use crate::{Instruction, VM};
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {
 	Boolean(bool),
 	String(String),

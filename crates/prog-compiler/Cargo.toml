@@ -1,0 +1,9 @@
+[package]
+name = "prog-compiler"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+prog-parser = { workspace = true }
+prog-vm = { workspace = true }

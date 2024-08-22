@@ -1,8 +1,7 @@
 use anyhow::Result;
 use prog_parser::ast;
-
-use crate::instruction::*;
-use crate::Value;
+use prog_vm::instruction::*;
+use prog_vm::Value;
 
 #[derive(Debug)]
 pub struct Compiler {

@@ -1129,6 +1129,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "prog-compiler"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "prog-parser",
+ "prog-vm",
+]
+
+[[package]]
 name = "prog-interpreter"
 version = "0.0.0"
 dependencies = [
@@ -1155,6 +1164,7 @@ dependencies = [
  "clap",
  "env_logger",
  "pest",
+ "prog-compiler",
  "prog-interpreter",
  "prog-parser",
  "prog-utils",
