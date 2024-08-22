@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::io::Write;
 use std::vec::IntoIter;
 
 use anyhow::{anyhow, bail, Result};
@@ -13,9 +12,7 @@ fn create_intrinsics() -> HashMap<String, Value> {
 	entries.push({
 		fn print_function(vm: &mut VM) -> Result<()> {
 			fn error(value: impl std::fmt::Debug) -> anyhow::Error {
-				anyhow!(
-					"Expected last argument to be a positive whole number, found `{value:?}`"
-				)
+				anyhow!("Expected last argument to be a positive whole number, found `{value:?}`")
 			}
 
 			let mut arg_count = match vm.execute_pop(POP)? {
@@ -55,6 +52,7 @@ fn create_intrinsics() -> HashMap<String, Value> {
 
 	entries.push({
 		fn raw_print_function(vm: &mut VM) -> Result<()> {
+			use std::io::Write;
 			let arg = vm.execute_pop(POP)?;
 
 			print!("{arg}");
@@ -62,7 +60,6 @@ fn create_intrinsics() -> HashMap<String, Value> {
 
 			Ok(())
 		}
-
 
 		("raw_print".to_string(), Value::IntrinsicFunction {
 			arity: Some(1),
@@ -209,9 +206,7 @@ impl VM {
 	}
 
 	#[inline(always)]
-	fn execute_ret(&mut self, _inst: RET) -> Result<Value> {
-		self.execute_pop(POP)
-	}
+	fn execute_ret(&mut self, _inst: RET) -> Result<Value> { self.execute_pop(POP) }
 
 	fn execute_newfunc(&mut self, inst: NEWFUNC) -> Result<()> {
 		let arity = inst.0;
