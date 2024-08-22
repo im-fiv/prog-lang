@@ -33,8 +33,7 @@ fn execute_bytecode(bytecode: Vec<u8>) {
 	use prog_vm::{Instruction, VM};
 
 	let instructions = bincode::deserialize::<Vec<Instruction>>(&bytecode).unwrap();
-	let mut vm = VM::new(instructions);
-	vm.define_intrinsics();
+	let mut vm = VM::new(instructions).unwrap();
 
 	match vm.run() {
 		Ok(v) => {

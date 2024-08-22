@@ -8,9 +8,6 @@ use crate::Value;
 extract_fields! {
 	#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 	pub enum Instruction {
-		/// Debug-prints the stack
-		DUMPSTACK,
-
 		PUSH(Value),
 		POP,
 		DUP(usize),
@@ -48,8 +45,6 @@ impl Display for Instruction {
 		use indent::indent_all_by;
 
 		match self {
-			Self::DUMPSTACK(_) => write!(f, "DUMPSTACK"),
-
 			Self::PUSH(inst) => write!(f, "PUSH {}", inst.0),
 			Self::POP(_) => write!(f, "POP"),
 			Self::DUP(inst) => write!(f, "DUP {}", inst.0),

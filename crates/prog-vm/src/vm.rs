@@ -7,10 +7,72 @@ use anyhow::{anyhow, bail, Result};
 use crate::instruction::*;
 use crate::Value;
 
-pub trait Executable<I> {
-	type Output;
+fn create_intrinsics() -> HashMap<String, Value> {
+	let mut entries = vec![];
 
-	fn execute(&mut self, inst: I) -> Result<Self::Output>;
+	entries.push({
+		fn print_function(vm: &mut VM) -> Result<()> {
+			fn error(value: impl std::fmt::Debug) -> anyhow::Error {
+				anyhow!(
+					"Expected last argument to be a positive whole number, found `{value:?}`"
+				)
+			}
+
+			let mut arg_count = match vm.execute_pop(POP)? {
+				Value::Number(v) => {
+					if v.is_sign_negative() || v.fract() != 0.0 {
+						return Err(error(v));
+					}
+
+					v as usize
+				}
+
+				v => return Err(error(v))
+			};
+
+			let mut args = vec![];
+			while arg_count > 0 {
+				args.push(vm.execute_pop(POP)?);
+				arg_count -= 1;
+			}
+			args.reverse();
+
+			let args_str = args
+				.into_iter()
+				.map(|a| format!("{a}"))
+				.collect::<Vec<_>>()
+				.join("");
+			println!("{args_str}");
+
+			Ok(())
+		}
+
+		("print".to_string(), Value::IntrinsicFunction {
+			arity: None,
+			pointer: print_function
+		})
+	});
+
+	entries.push({
+		fn raw_print_function(vm: &mut VM) -> Result<()> {
+			let arg = vm.execute_pop(POP)?;
+
+			print!("{arg}");
+			std::io::stdout().flush().unwrap();
+
+			Ok(())
+		}
+
+
+		("raw_print".to_string(), Value::IntrinsicFunction {
+			arity: Some(1),
+			pointer: raw_print_function
+		})
+	});
+
+	let mut map = HashMap::new();
+	map.extend(entries);
+	map
 }
 
 #[derive(Debug)]
@@ -23,86 +85,33 @@ pub struct VM {
 }
 
 impl VM {
-	pub fn new(instructions: Vec<Instruction>) -> Self {
+	pub fn new(instructions: Vec<Instruction>) -> Result<Self> {
 		let instructions = instructions.into_iter();
 
-		Self {
-			stack: vec![],
+		let mut this = Self {
+			stack: Vec::with_capacity(2_usize.pow(16)),
 			bindings: HashMap::new(),
 
 			instructions,
 			labels: HashMap::new()
-		}
+		};
+		this.define_intrinsics()?;
+
+		Ok(this)
 	}
 
-	pub fn define_intrinsics(&mut self) {
-		{
-			fn print_function(vm: &mut VM) -> Result<()> {
-				fn error(value: impl std::fmt::Debug) -> anyhow::Error {
-					anyhow!(
-						"Expected last argument to be a positive whole number, found `{value:?}`"
-					)
-				}
-
-				let mut arg_count = match vm.execute(POP)? {
-					Value::Number(v) => {
-						if v.is_sign_negative() || v.fract() != 0.0 {
-							return Err(error(v));
-						}
-
-						v as usize
-					}
-
-					v => return Err(error(v))
-				};
-
-				let mut args = vec![];
-				while arg_count > 0 {
-					args.push(vm.execute(POP)?);
-					arg_count -= 1;
-				}
-				args.reverse();
-
-				let args_str = args
-					.into_iter()
-					.map(|a| format!("{a}"))
-					.collect::<Vec<_>>()
-					.join("");
-				println!("{args_str}");
-
-				Ok(())
-			}
-
-			self.execute(PUSH(Value::IntrinsicFunction {
-				arity: None,
-				pointer: print_function
-			}))
-			.unwrap();
-			self.execute(STORE("print".to_string())).unwrap();
+	fn define_intrinsics(&mut self) -> Result<()> {
+		for (name, value) in create_intrinsics() {
+			self.execute_push(PUSH(value))?;
+			self.execute_store(STORE(name))?;
 		}
 
-		{
-			fn raw_print_function(vm: &mut VM) -> Result<()> {
-				let arg = vm.execute(POP)?;
-
-				print!("{arg}");
-				std::io::stdout().flush().unwrap();
-
-				Ok(())
-			}
-
-			self.execute(PUSH(Value::IntrinsicFunction {
-				arity: Some(1),
-				pointer: raw_print_function
-			}))
-			.unwrap();
-			self.execute(STORE("raw_print".to_string())).unwrap()
-		}
+		Ok(())
 	}
 
 	pub fn run(&mut self) -> Result<Option<Value>> {
 		while let Some(inst) = self.instructions.next() {
-			let value = self.execute(inst)?;
+			let value = self.execute_instruction(inst)?;
 
 			if value.is_some() {
 				return Ok(value);
@@ -111,113 +120,75 @@ impl VM {
 
 		Ok(None)
 	}
-}
 
-impl Executable<Instruction> for VM {
-	type Output = Option<Value>;
-
-	fn execute(&mut self, inst: Instruction) -> Result<Self::Output> {
+	fn execute_instruction(&mut self, inst: Instruction) -> Result<Option<Value>> {
 		use Instruction as I;
 
-		macro_rules! match_and_discard {
-			($value:expr => $($variant:ident)|*) => {
-				match $value {
-					$(
-						I::$variant(inst) => { let _ = self.execute(inst)?; }
-					)*
-
-					I::RET(_)
-					| I::JMP(_)
-					| I::JT(_)
-					| I::JTF(_) => unreachable!()
-				}
-			};
-		}
-
 		match inst {
-			I::RET(inst) => return Some(self.execute(inst)).transpose(),
-			I::JMP(inst) => return self.execute(inst),
-			I::JT(inst) => return self.execute(inst),
-			I::JTF(inst) => return self.execute(inst),
+			I::RET(inst) => return Some(self.execute_ret(inst)).transpose(),
+			I::JMP(inst) => return self.execute_jmp(inst),
+			I::JT(inst) => return self.execute_jt(inst),
+			I::JTF(inst) => return self.execute_jtf(inst),
 
 			_ => {}
 		}
 
-		match_and_discard!(inst =>
-			DUMPSTACK
+		match inst {
+			I::PUSH(inst) => self.execute_push(inst),
+			I::POP(inst) => self.execute_pop(inst).map(|_| ()),
+			I::DUP(inst) => self.execute_dup(inst),
+			I::LOAD(inst) => self.execute_load(inst),
+			I::STORE(inst) => self.execute_store(inst),
+			I::RET(_) => unreachable!(),
+			I::NEWFUNC(inst) => self.execute_newfunc(inst),
+			I::LABEL(inst) => self.execute_label(inst),
 
-			| PUSH
-			| POP
-			| DUP
-			| LOAD
-			| STORE
-			| NEWFUNC
-			| LABEL
+			I::CALL(inst) => self.execute_call(inst),
+			I::JMP(_) => unreachable!(),
+			I::JT(_) => unreachable!(),
+			I::JTF(_) => unreachable!(),
 
-			| CALL
+			I::ADD(inst) => self.execute_add(inst),
+			I::SUB(inst) => self.execute_sub(inst),
+			I::MUL(inst) => self.execute_mul(inst),
+			I::DIV(inst) => self.execute_div(inst),
+			I::NEG(inst) => self.execute_neg(inst),
+			I::NOT(inst) => self.execute_not(inst),
 
-			| ADD
-			| SUB
-			| MUL
-			| DIV
-			| NEG
-			| NOT
-
-			| EQ
-			| GT
-			| LT
-			| GTE
-			| LTE
-		);
+			I::EQ(inst) => self.execute_eq(inst),
+			I::GT(inst) => self.execute_gt(inst),
+			I::LT(inst) => self.execute_lt(inst),
+			I::GTE(inst) => self.execute_gte(inst),
+			I::LTE(inst) => self.execute_lte(inst)
+		}?;
 
 		Ok(None)
 	}
-}
 
-impl Executable<DUMPSTACK> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: DUMPSTACK) -> Result<Self::Output> {
-		dbg!(&self.stack);
-		Ok(())
-	}
-}
-
-impl Executable<PUSH> for VM {
-	type Output = ();
-
-	fn execute(&mut self, inst: PUSH) -> Result<Self::Output> {
+	#[inline(always)]
+	fn execute_push(&mut self, inst: PUSH) -> Result<()> {
 		self.stack.push(inst.0);
 		Ok(())
 	}
-}
 
-impl Executable<POP> for VM {
-	type Output = Value;
-
-	fn execute(&mut self, _inst: POP) -> Result<Self::Output> {
+	#[inline(always)]
+	fn execute_pop(&mut self, _inst: POP) -> Result<Value> {
 		self.stack.pop().ok_or(anyhow!("Stack is empty"))
 	}
-}
 
-impl Executable<DUP> for VM {
-	type Output = ();
-
-	fn execute(&mut self, inst: DUP) -> Result<Self::Output> {
+	#[inline(always)]
+	fn execute_dup(&mut self, inst: DUP) -> Result<()> {
 		let value = self.stack.get(inst.0).cloned().ok_or(anyhow!(
 			"Value at index {} does not exist (stack length is {})",
 			inst.0,
 			self.stack.len()
 		))?;
 
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<LOAD> for VM {
-	type Output = ();
-
-	fn execute(&mut self, inst: LOAD) -> Result<Self::Output> {
+	#[inline(always)]
+	fn execute_load(&mut self, inst: LOAD) -> Result<()> {
 		let name = inst.0;
 		let value = self
 			.bindings
@@ -225,58 +196,43 @@ impl Executable<LOAD> for VM {
 			.cloned()
 			.ok_or(anyhow!("Binding `{}` does not exist", name))?;
 
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<STORE> for VM {
-	type Output = ();
-
-	fn execute(&mut self, inst: STORE) -> Result<Self::Output> {
+	#[inline(always)]
+	fn execute_store(&mut self, inst: STORE) -> Result<()> {
 		let name = inst.0;
-		let value = self.execute(POP)?;
+		let value = self.execute_pop(POP)?;
 
 		self.bindings.insert(name, value);
 		Ok(())
 	}
-}
 
-impl Executable<RET> for VM {
-	type Output = Value;
+	#[inline(always)]
+	fn execute_ret(&mut self, _inst: RET) -> Result<Value> {
+		self.execute_pop(POP)
+	}
 
-	fn execute(&mut self, _inst: RET) -> Result<Self::Output> { self.execute(POP) }
-}
-
-impl Executable<NEWFUNC> for VM {
-	type Output = ();
-
-	fn execute(&mut self, inst: NEWFUNC) -> Result<Self::Output> {
+	fn execute_newfunc(&mut self, inst: NEWFUNC) -> Result<()> {
 		let arity = inst.0;
 		let instructions = inst.1;
 
-		self.execute(PUSH(Value::Function {
+		self.execute_push(PUSH(Value::Function {
 			arity,
 			instructions
 		}))
 	}
-}
 
-impl Executable<LABEL> for VM {
-	type Output = ();
-
-	fn execute(&mut self, inst: LABEL) -> Result<Self::Output> {
+	#[inline(always)]
+	fn execute_label(&mut self, inst: LABEL) -> Result<()> {
 		let label_name = inst.0.clone();
 		self.labels.insert(label_name, inst);
 
 		Ok(())
 	}
-}
 
-impl Executable<CALL> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: CALL) -> Result<Self::Output> {
-		let (arity, instructions) = match self.execute(POP)? {
+	fn execute_call(&mut self, _inst: CALL) -> Result<()> {
+		let (arity, instructions) = match self.execute_pop(POP)? {
 			Value::Function {
 				arity,
 				instructions
@@ -300,7 +256,7 @@ impl Executable<CALL> for VM {
 
 		let mut reversed_args = Vec::with_capacity(arity);
 		for _ in 0..arity {
-			let arg = self.execute(POP)?;
+			let arg = self.execute_pop(POP)?;
 			reversed_args.push(arg);
 		}
 		self.stack.extend(reversed_args);
@@ -308,18 +264,15 @@ impl Executable<CALL> for VM {
 		let prev_instructions = std::mem::replace(&mut self.instructions, instructions.into_iter());
 
 		if let Some(val) = self.run()? {
-			self.execute(PUSH(val))?;
+			self.execute_push(PUSH(val))?;
 		}
 
 		self.instructions = prev_instructions;
 		Ok(())
 	}
-}
 
-impl Executable<JMP> for VM {
-	type Output = Option<Value>;
-
-	fn execute(&mut self, inst: JMP) -> Result<Self::Output> {
+	#[inline(always)]
+	fn execute_jmp(&mut self, inst: JMP) -> Result<Option<Value>> {
 		let label_name = inst.0;
 		let label = self
 			.labels
@@ -334,13 +287,10 @@ impl Executable<JMP> for VM {
 
 		Ok(value)
 	}
-}
 
-impl Executable<JT> for VM {
-	type Output = Option<Value>;
-
-	fn execute(&mut self, inst: JT) -> Result<Self::Output> {
-		let condition = match self.execute(POP)? {
+	#[inline(always)]
+	fn execute_jt(&mut self, inst: JT) -> Result<Option<Value>> {
+		let condition = match self.execute_pop(POP)? {
 			Value::Boolean(v) => v,
 			v => bail!("Instruction expected a boolean, found `{v:?}`")
 		};
@@ -349,150 +299,114 @@ impl Executable<JT> for VM {
 			return Ok(None);
 		}
 
-		self.execute(JMP(inst.0))
+		self.execute_jmp(JMP(inst.0))
 	}
-}
 
-impl Executable<JTF> for VM {
-	type Output = Option<Value>;
-
-	fn execute(&mut self, inst: JTF) -> Result<Self::Output> {
-		let condition = match self.execute(POP)? {
+	#[inline(always)]
+	fn execute_jtf(&mut self, inst: JTF) -> Result<Option<Value>> {
+		let condition = match self.execute_pop(POP)? {
 			Value::Boolean(v) => v,
 			v => bail!("Instruction expected a boolean, found `{v:?}`")
 		};
 
 		match condition {
-			true => self.execute(JMP(inst.0)),
-			false => self.execute(JMP(inst.1))
+			true => self.execute_jmp(JMP(inst.0)),
+			false => self.execute_jmp(JMP(inst.1))
 		}
 	}
-}
 
-impl Executable<ADD> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: ADD) -> Result<Self::Output> {
-		let rhs = self.execute(POP)?;
-		let lhs = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_add(&mut self, _inst: ADD) -> Result<()> {
+		let rhs = self.execute_pop(POP)?;
+		let lhs = self.execute_pop(POP)?;
 
 		let value = (lhs + rhs)?;
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<SUB> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: SUB) -> Result<Self::Output> {
-		let rhs = self.execute(POP)?;
-		let lhs = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_sub(&mut self, _inst: SUB) -> Result<()> {
+		let rhs = self.execute_pop(POP)?;
+		let lhs = self.execute_pop(POP)?;
 
 		let value = (lhs - rhs)?;
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<MUL> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: MUL) -> Result<Self::Output> {
-		let rhs = self.execute(POP)?;
-		let lhs = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_mul(&mut self, _inst: MUL) -> Result<()> {
+		let rhs = self.execute_pop(POP)?;
+		let lhs = self.execute_pop(POP)?;
 
 		let value = (lhs * rhs)?;
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<DIV> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: DIV) -> Result<Self::Output> {
-		let rhs = self.execute(POP)?;
-		let lhs = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_div(&mut self, _inst: DIV) -> Result<()> {
+		let rhs = self.execute_pop(POP)?;
+		let lhs = self.execute_pop(POP)?;
 
 		let value = (lhs / rhs)?;
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<NEG> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: NEG) -> Result<Self::Output> {
-		let operand = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_neg(&mut self, _inst: NEG) -> Result<()> {
+		let operand = self.execute_pop(POP)?;
 		let value = (-operand)?;
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<NOT> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: NOT) -> Result<Self::Output> {
-		let operand = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_not(&mut self, _inst: NOT) -> Result<()> {
+		let operand = self.execute_pop(POP)?;
 		let value = !operand;
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<EQ> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: EQ) -> Result<Self::Output> {
-		let rhs = self.execute(POP)?;
-		let lhs = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_eq(&mut self, _inst: EQ) -> Result<()> {
+		let rhs = self.execute_pop(POP)?;
+		let lhs = self.execute_pop(POP)?;
 
 		let value = lhs == rhs;
-		self.execute(PUSH(Value::Boolean(value)))
+		self.execute_push(PUSH(Value::Boolean(value)))
 	}
-}
 
-impl Executable<GT> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: GT) -> Result<Self::Output> {
-		let rhs = self.execute(POP)?;
-		let lhs = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_gt(&mut self, _inst: GT) -> Result<()> {
+		let rhs = self.execute_pop(POP)?;
+		let lhs = self.execute_pop(POP)?;
 
 		let value = lhs.gt(&rhs)?;
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<LT> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: LT) -> Result<Self::Output> {
-		let rhs = self.execute(POP)?;
-		let lhs = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_lt(&mut self, _inst: LT) -> Result<()> {
+		let rhs = self.execute_pop(POP)?;
+		let lhs = self.execute_pop(POP)?;
 
 		let value = lhs.lt(&rhs)?;
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<GTE> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: GTE) -> Result<Self::Output> {
-		let rhs = self.execute(POP)?;
-		let lhs = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_gte(&mut self, _inst: GTE) -> Result<()> {
+		let rhs = self.execute_pop(POP)?;
+		let lhs = self.execute_pop(POP)?;
 
 		let value = lhs.gte(&rhs)?;
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
-}
 
-impl Executable<LTE> for VM {
-	type Output = ();
-
-	fn execute(&mut self, _inst: LTE) -> Result<Self::Output> {
-		let rhs = self.execute(POP)?;
-		let lhs = self.execute(POP)?;
+	#[inline(always)]
+	fn execute_lte(&mut self, _inst: LTE) -> Result<()> {
+		let rhs = self.execute_pop(POP)?;
+		let lhs = self.execute_pop(POP)?;
 
 		let value = lhs.lte(&rhs)?;
-		self.execute(PUSH(value))
+		self.execute_push(PUSH(value))
 	}
 }
