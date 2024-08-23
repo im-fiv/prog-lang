@@ -2,8 +2,71 @@ use std::fmt::{self, Display};
 
 use prog_macros::extract_fields;
 use serde::{Deserialize, Serialize};
+use indent::indent_all_by;
 
 use crate::Value;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Bytecode {
+	pub(crate) instructions: Vec<Instruction>
+}
+
+impl Bytecode {
+	pub fn new(instructions: Vec<Instruction>) -> Self {
+		Self { instructions }
+	}
+
+	pub fn as_bytes(&self) -> bincode::Result<Vec<u8>> {
+		bincode::serialize(&self)
+	}
+
+	pub fn from_bytes(bytes: &[u8]) -> bincode::Result<Self> {
+		bincode::deserialize(bytes)
+	}
+}
+
+impl Display for Bytecode {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let mut index = 0;
+
+		while index < self.instructions.len() {
+			let inst = &self.instructions[index];
+			write!(f, "{inst}\n")?;
+
+			match inst {
+				Instruction::LABEL(inst) => {
+					let start = index + 1;
+					let end = start + inst.length;
+					let inner_instructions = &self.instructions[start..end];
+	
+					let inner_bytecode = Self {
+						instructions: inner_instructions.to_vec()
+					};
+	
+					let formatted_inner = format!("{inner_bytecode}");
+					write!(f, "{}", indent_all_by(4, formatted_inner))?;
+	
+					index = end - 1;
+				}
+
+				Instruction::NEWFUNC(inst) => {
+					let inner_bytecode = Self {
+						instructions: inst.1.to_vec()
+					};
+
+					let formatted_inner = format!("{inner_bytecode}");
+					write!(f, "{}", indent_all_by(4, formatted_inner))?;
+				}
+
+				_ => {}
+			}
+
+			index = index + 1;
+		}
+
+		Ok(())
+	}
+}
 
 extract_fields! {
 	#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -46,8 +109,6 @@ extract_fields! {
 
 impl Display for Instruction {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		use indent::indent_all_by;
-
 		match self {
 			Self::PUSH(inst) => write!(f, "PUSH {}", inst.0),
 			Self::POP(_) => write!(f, "POP"),
@@ -66,7 +127,8 @@ impl Display for Instruction {
 				write!(f, "NEWFUNC {}\n{}", inst.0, indent_all_by(4, strings))
 			}
 			Self::LABEL(inst) => {
-				write!(f, "LABEL {} {} {}", inst.name, inst.start, inst.length)
+				// TODO: inst.start
+				write!(f, "LABEL {} _ {}", inst.name, inst.length)
 			}
 
 			Self::CALL(_) => write!(f, "CALL"),

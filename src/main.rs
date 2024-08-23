@@ -29,11 +29,11 @@ fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
 }
 
 #[cfg(feature = "vm")]
-fn execute_bytecode(bytecode: Vec<u8>) {
-	use prog_vm::{Instruction, VM};
+fn execute_bytecode(bytes: &[u8]) {
+	use prog_vm::{Bytecode, VM};
 
-	let instructions = bincode::deserialize::<Vec<Instruction>>(&bytecode).unwrap();
-	let mut vm = VM::new(instructions).unwrap();
+	let bytecode = Bytecode::from_bytes(&bytes).unwrap();
+	let mut vm = VM::new(bytecode).unwrap();
 
 	match vm.run() {
 		Ok(v) => {
@@ -61,7 +61,7 @@ fn execute_run_command(args: cli::RunCommand) {
 		#[cfg(feature = "vm")]
 		{
 			let bytecode = std::fs::read(&args.file_path).unwrap();
-			return execute_bytecode(bytecode);
+			return execute_bytecode(&bytecode);
 		}
 	}
 
@@ -84,14 +84,6 @@ fn execute_run_command(args: cli::RunCommand) {
 #[cfg(feature = "vm")]
 fn execute_compile_command(args: cli::CompileCommand) {
 	use prog_compiler::Compiler;
-	use prog_vm::Instruction;
-
-	fn format_bytecode(bc: &[Instruction]) -> String {
-		bc.iter()
-			.map(|inst| format!("{inst}"))
-			.collect::<Vec<_>>()
-			.join("\n")
-	}
 
 	let contents = read_file(&args.file_path);
 
@@ -108,14 +100,14 @@ fn execute_compile_command(args: cli::CompileCommand) {
 
 	// TODO: allow customization of output file paths
 	let bytecode = bytecode.unwrap();
-	let serialized = bincode::serialize(&bytecode).unwrap();
-	let human_readable = format_bytecode(&bytecode);
+	let serialized = bytecode.as_bytes().unwrap();
+	let human_readable = format!("{bytecode}");
 
 	std::fs::write(cli::DEFAULT_OUTPUT_BC_FP, &serialized).unwrap();
 	std::fs::write(cli::DEFAULT_OUTPUT_BC_FMT_FP, human_readable).unwrap();
 
 	if args.run {
-		execute_bytecode(serialized);
+		execute_bytecode(&serialized);
 	}
 }
 

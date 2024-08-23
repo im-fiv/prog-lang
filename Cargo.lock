@@ -1159,7 +1159,6 @@ dependencies = [
  "actix-files",
  "actix-web",
  "anyhow",
- "bincode",
  "cfg-if",
  "clap",
  "env_logger",
@@ -1212,6 +1211,7 @@ name = "prog-vm"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "bincode",
  "indent",
  "prog-macros",
  "prog-parser",

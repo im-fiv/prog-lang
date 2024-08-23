@@ -11,8 +11,10 @@ pub struct Compiler {
 impl Compiler {
 	pub fn new() -> Self { Self { label_counter: 0 } }
 
-	pub fn compile(&mut self, ast: ast::Program) -> Result<Vec<Instruction>> {
-		self.compile_statements(ast.statements)
+	pub fn compile(&mut self, ast: ast::Program) -> Result<Bytecode> {
+		Ok(Bytecode::new(
+			self.compile_statements(ast.statements)?
+		))
 	}
 
 	fn current_label(&self) -> String { format!("L{}", self.label_counter) }
@@ -226,6 +228,7 @@ impl Compiler {
 		Ok(emitted)
 	}
 
+	// TODO: fix jumps outer->condition (falsy)->outer
 	fn compile_if(&mut self, statement: ast::If) -> Result<Vec<Instruction>> {
 		let mut emitted = vec![];
 
