@@ -78,7 +78,7 @@ pub struct VM {
 
 	instructions: Vec<Instruction>,
 	ip: usize,
-	labels: HashMap<String, LABELMARKER>
+	labels: HashMap<String, LABEL>
 }
 
 impl VM {
@@ -92,7 +92,6 @@ impl VM {
 			labels: HashMap::new()
 		};
 
-		Self::index_labels(&mut this.instructions, &mut this.labels, 0);
 		this.define_intrinsics()?;
 
 		Ok(this)
@@ -105,54 +104,6 @@ impl VM {
 		}
 
 		Ok(())
-	}
-
-	fn index_labels(
-		instructions: &mut Vec<Instruction>,
-		labels: &mut HashMap<String, LABELMARKER>,
-		offset: usize
-	) -> usize {
-		let mut idx = 0;
-
-		while idx < instructions.len() {
-			match &mut instructions[idx] {
-				Instruction::LABEL(inst) => {
-					let label_name = inst.0.clone();
-					let label_start = offset + idx;
-
-					let mut nested_instructions = inst.1.drain(..).collect::<Vec<_>>();
-					let nested_length = Self::index_labels(
-						&mut nested_instructions,
-						labels,
-						offset + label_start + 1
-					);
-
-					let labelmarker = LABELMARKER {
-						name: label_name.clone(),
-						start: label_start + 1,
-						length: nested_length
-					};
-
-					labels.insert(label_name.clone(), labelmarker);
-
-					instructions.splice((idx + 1)..(idx + 1), nested_instructions.into_iter());
-
-					idx += nested_length + 1;
-				}
-
-				Instruction::NEWFUNC(inst) => {
-					let mut func_instructions = inst.1.drain(..).collect::<Vec<_>>();
-					let func_length = Self::index_labels(&mut func_instructions, labels, 0);
-					*inst = NEWFUNC(inst.0, func_instructions);
-
-					idx += func_length;
-				}
-
-				_ => idx += 1
-			}
-		}
-
-		instructions.len()
 	}
 
 	pub fn run(&mut self) -> Result<Option<Value>> {
@@ -187,8 +138,7 @@ impl VM {
 			I::STORE(inst) => self.execute_store(inst),
 			I::RET(_) => unreachable!(),
 			I::NEWFUNC(inst) => self.execute_newfunc(inst),
-			I::LABEL(_) => unreachable!(),
-			I::LABELMARKER(inst) => self.execute_labelmarker(inst),
+			I::LABEL(inst) => self.execute_label(inst),
 
 			I::CALL(inst) => self.execute_call(inst),
 			I::JMP(inst) => self.execute_jmp(inst),
@@ -269,8 +219,28 @@ impl VM {
 	}
 
 	#[inline(always)]
-	fn execute_labelmarker(&mut self, inst: LABELMARKER) -> Result<()> {
-		self.ip = inst.start + inst.length;
+	fn execute_label(&mut self, inst: LABEL) -> Result<()> {
+		use std::collections::hash_map::Entry;
+
+		match self.labels.entry(inst.name.clone()) {
+			Entry::Vacant(e) => {
+				let start = self.ip + 1;
+				let label = LABEL {
+					name: inst.name,
+					start,
+					length: inst.length
+				};
+
+				self.ip = label.start + label.length - 1;
+				e.insert(label);
+			}
+
+			Entry::Occupied(e) => {
+				let label = e.get();
+				self.ip = label.start + label.length;
+			}
+		}
+
 		Ok(())
 	}
 

@@ -15,8 +15,7 @@ extract_fields! {
 		STORE(String),
 		RET,
 		NEWFUNC(usize, Vec<Instruction>),
-		LABEL(String, Vec<Instruction>),
-		LABELMARKER {
+		LABEL {
 			name: String,
 			start: usize,
 			length: usize
@@ -67,21 +66,7 @@ impl Display for Instruction {
 				write!(f, "NEWFUNC {}\n{}", inst.0, indent_all_by(4, strings))
 			}
 			Self::LABEL(inst) => {
-				let strings = inst
-					.1
-					.iter()
-					.map(|inst| format!("{inst}"))
-					.collect::<Vec<_>>()
-					.join("\n");
-
-				write!(f, "LABEL {}\n{}", inst.0, indent_all_by(4, strings))
-			}
-			Self::LABELMARKER(inst) => {
-				write!(
-					f,
-					"LABELMARKER {} {} {}",
-					inst.name, inst.start, inst.length
-				)
+				write!(f, "LABEL {} {} {}", inst.name, inst.start, inst.length)
 			}
 
 			Self::CALL(_) => write!(f, "CALL"),
