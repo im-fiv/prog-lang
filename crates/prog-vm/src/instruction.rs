@@ -1,8 +1,8 @@
 use std::fmt::{self, Display};
 
+use indent::indent_all_by;
 use prog_macros::extract_fields;
 use serde::{Deserialize, Serialize};
-use indent::indent_all_by;
 
 use crate::Value;
 
@@ -12,17 +12,11 @@ pub struct Bytecode {
 }
 
 impl Bytecode {
-	pub fn new(instructions: Vec<Instruction>) -> Self {
-		Self { instructions }
-	}
+	pub fn new(instructions: Vec<Instruction>) -> Self { Self { instructions } }
 
-	pub fn as_bytes(&self) -> bincode::Result<Vec<u8>> {
-		bincode::serialize(&self)
-	}
+	pub fn as_bytes(&self) -> bincode::Result<Vec<u8>> { bincode::serialize(&self) }
 
-	pub fn from_bytes(bytes: &[u8]) -> bincode::Result<Self> {
-		bincode::deserialize(bytes)
-	}
+	pub fn from_bytes(bytes: &[u8]) -> bincode::Result<Self> { bincode::deserialize(bytes) }
 }
 
 impl Display for Bytecode {
@@ -38,14 +32,14 @@ impl Display for Bytecode {
 					let start = index + 1;
 					let end = start + inst.length;
 					let inner_instructions = &self.instructions[start..end];
-	
+
 					let inner_bytecode = Self {
 						instructions: inner_instructions.to_vec()
 					};
-	
+
 					let formatted_inner = format!("{inner_bytecode}");
 					write!(f, "{}", indent_all_by(4, formatted_inner))?;
-	
+
 					index = end - 1;
 				}
 

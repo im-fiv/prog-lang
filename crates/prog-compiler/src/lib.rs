@@ -12,9 +12,7 @@ impl Compiler {
 	pub fn new() -> Self { Self { label_counter: 0 } }
 
 	pub fn compile(&mut self, ast: ast::Program) -> Result<Bytecode> {
-		Ok(Bytecode::new(
-			self.compile_statements(ast.statements)?
-		))
+		Ok(Bytecode::new(self.compile_statements(ast.statements)?))
 	}
 
 	fn current_label(&self) -> String { format!("L{}", self.label_counter) }

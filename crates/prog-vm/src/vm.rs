@@ -84,7 +84,7 @@ pub struct VM {
 impl VM {
 	pub fn new(bytecode: Bytecode) -> Result<Self> {
 		let instructions = bytecode.instructions;
-		
+
 		let mut this = Self {
 			stack: Vec::with_capacity(2_usize.pow(16)),
 			bindings: HashMap::new(),
