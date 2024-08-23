@@ -231,17 +231,17 @@ impl Compiler {
 		let mut emitted = vec![];
 
 		// Body label
-		let body_label = self.new_label();
+		let body_name = self.new_label();
 		let body_insts = self.compile_statements(statement.statements)?;
 		emitted.push(Instruction::LABEL(LABEL {
-			name: body_label.clone(),
+			name: body_name.clone(),
 			start: 0,
 			length: body_insts.len()
 		}));
 		emitted.extend(body_insts);
 
 		// Condition label
-		let condition_label = self.new_label();
+		let condition_name = self.new_label();
 		let mut condition_insts = self.compile_expression(statement.condition)?;
 
 		let (has_else_branch, has_else_if_branches) = (
@@ -252,15 +252,15 @@ impl Compiler {
 		let mut elseif_branches = vec![];
 
 		for (idx, branch) in statement.elseif_branches.into_iter().enumerate() {
-			let branch_cond_label = self.new_label();
-			let branch_body_label = self.new_label();
+			let branch_cond_name = self.new_label();
+			let branch_body_name = self.new_label();
 
 			let branch_cond_insts = self.compile_expression(branch.condition)?;
 			let branch_body_insts = self.compile_statements(branch.statements)?;
 
 			elseif_branches.push((
-				(branch_cond_label.clone(), branch_cond_insts),
-				(branch_body_label, branch_body_insts)
+				(branch_cond_name.clone(), branch_cond_insts),
+				(branch_body_name, branch_body_insts)
 			));
 
 			// Link the previous branch via a jump
@@ -271,53 +271,51 @@ impl Compiler {
 			let prev_branch = elseif_branches.get_mut(idx - 1).unwrap();
 			prev_branch.0 .1.push(Instruction::JTF(JTF(
 				prev_branch.1 .0.clone(),
-				branch_cond_label
+				branch_cond_name
 			)));
 		}
 
 		let mut else_branch = None;
 		if let Some(branch) = statement.else_branch.clone() {
-			let branch_body_label = self.new_label();
+			let branch_body_name = self.new_label();
 			let branch_body_insts = self.compile_statements(branch.statements)?;
 
-			else_branch = Some((branch_body_label, branch_body_insts));
+			else_branch = Some((branch_body_name, branch_body_insts));
 		}
 
 		match (has_else_branch, has_else_if_branches) {
 			(false, false) => {
-				condition_insts.push(Instruction::JT(JT(body_label)));
+				condition_insts.push(Instruction::JT(JT(body_name)));
 			}
 
 			(true, false) => {
-				let else_branch = else_branch.unwrap();
-				let else_label = else_branch.0.clone();
+				let (else_name, else_insts) = else_branch.unwrap();
 
 				// Inserting the `else` branch label
 				emitted.push(Instruction::LABEL(LABEL {
-					name: else_label.clone(),
+					name: else_name.clone(),
 					start: 0,
-					length: else_branch.1.len()
+					length: else_insts.len()
 				}));
-				emitted.extend(else_branch.1);
+				emitted.extend(else_insts);
 
-				condition_insts.push(Instruction::JTF(JTF(body_label, else_label)));
+				condition_insts.push(Instruction::JTF(JTF(body_name, else_name)));
 			}
 
 			(false, true) => {
-				let first_branch_cond_label = elseif_branches
+				let first_branch_cond_name = elseif_branches
 					.first()
 					.map(|(cond, _)| &cond.0)
 					.cloned()
 					.unwrap();
 
-				condition_insts.push(Instruction::JTF(JTF(body_label, first_branch_cond_label)));
+				condition_insts.push(Instruction::JTF(JTF(body_name, first_branch_cond_name)));
 			}
 
 			(true, true) => {
-				let else_branch = else_branch.unwrap();
-				let else_label = else_branch.0.clone();
+				let (else_name, else_insts) = else_branch.unwrap();
 
-				let first_branch_cond_label = elseif_branches
+				let first_branch_cond_name = elseif_branches
 					.first()
 					.map(|(cond, _)| &cond.0)
 					.cloned()
@@ -327,20 +325,20 @@ impl Compiler {
 
 				// Inserting the `else` branch label
 				emitted.push(Instruction::LABEL(LABEL {
-					name: else_label.clone(),
+					name: else_name.clone(),
 					start: 0,
-					length: else_branch.1.len()
+					length: else_insts.len()
 				}));
-				emitted.extend(else_branch.1);
+				emitted.extend(else_insts);
 
 				// 1. Jump to the `if` body if the condition is true
 				// 2. Otherwise, jump to the first `else-if` branch
-				condition_insts.push(Instruction::JTF(JTF(body_label, first_branch_cond_label)));
+				condition_insts.push(Instruction::JTF(JTF(body_name, first_branch_cond_name)));
 				// 3. If none matches, finally jump to the `else` branch
 				last_branch
 					.0
 					 .1
-					.push(Instruction::JTF(JTF(last_branch.1 .0.clone(), else_label)));
+					.push(Instruction::JTF(JTF(last_branch.1 .0.clone(), else_name)));
 			}
 		}
 
@@ -362,13 +360,13 @@ impl Compiler {
 
 		// Inserting the condition label
 		emitted.push(Instruction::LABEL(LABEL {
-			name: condition_label.clone(),
+			name: condition_name.clone(),
 			start: 0,
 			length: condition_insts.len()
 		}));
 		emitted.extend(condition_insts);
 
-		emitted.push(Instruction::JMP(JMP(condition_label))); // After all labels have been defined, jump to the condition
+		emitted.push(Instruction::JMP(JMP(condition_name))); // After all labels have been defined, jump to the condition
 		Ok(emitted)
 	}
 }
