@@ -16,6 +16,11 @@ extract_fields! {
 		RET,
 		NEWFUNC(usize, Vec<Instruction>),
 		LABEL(String, Vec<Instruction>),
+		LABELMARKER {
+			name: String,
+			start: usize,
+			length: usize
+		},
 
 		CALL,
 		/// Unconditional jump
@@ -70,6 +75,13 @@ impl Display for Instruction {
 					.join("\n");
 
 				write!(f, "LABEL {}\n{}", inst.0, indent_all_by(4, strings))
+			}
+			Self::LABELMARKER(inst) => {
+				write!(
+					f,
+					"LABELMARKER {} {} {}",
+					inst.name, inst.start, inst.length
+				)
 			}
 
 			Self::CALL(_) => write!(f, "CALL"),

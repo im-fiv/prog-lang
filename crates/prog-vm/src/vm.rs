@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::vec::IntoIter;
 
 use anyhow::{anyhow, bail, Result};
 
@@ -77,21 +76,23 @@ pub struct VM {
 	pub stack: Vec<Value>,
 	pub bindings: HashMap<String, Value>,
 
-	instructions: IntoIter<Instruction>,
-	labels: HashMap<String, LABEL>
+	instructions: Vec<Instruction>,
+	ip: usize,
+	labels: HashMap<String, LABELMARKER>
 }
 
 impl VM {
 	pub fn new(instructions: Vec<Instruction>) -> Result<Self> {
-		let instructions = instructions.into_iter();
-
 		let mut this = Self {
 			stack: Vec::with_capacity(2_usize.pow(16)),
 			bindings: HashMap::new(),
 
 			instructions,
+			ip: 0,
 			labels: HashMap::new()
 		};
+
+		Self::index_labels(&mut this.instructions, &mut this.labels, 0);
 		this.define_intrinsics()?;
 
 		Ok(this)
@@ -106,9 +107,60 @@ impl VM {
 		Ok(())
 	}
 
+	fn index_labels(
+		instructions: &mut Vec<Instruction>,
+		labels: &mut HashMap<String, LABELMARKER>,
+		offset: usize
+	) -> usize {
+		let mut idx = 0;
+
+		while idx < instructions.len() {
+			match &mut instructions[idx] {
+				Instruction::LABEL(inst) => {
+					let label_name = inst.0.clone();
+					let label_start = offset + idx;
+
+					let mut nested_instructions = inst.1.drain(..).collect::<Vec<_>>();
+					let nested_length = Self::index_labels(
+						&mut nested_instructions,
+						labels,
+						offset + label_start + 1
+					);
+
+					let labelmarker = LABELMARKER {
+						name: label_name.clone(),
+						start: label_start + 1,
+						length: nested_length
+					};
+
+					labels.insert(label_name.clone(), labelmarker);
+
+					instructions.splice((idx + 1)..(idx + 1), nested_instructions.into_iter());
+
+					idx += nested_length + 1;
+				}
+
+				Instruction::NEWFUNC(inst) => {
+					let mut func_instructions = inst.1.drain(..).collect::<Vec<_>>();
+					let func_length = Self::index_labels(&mut func_instructions, labels, 0);
+					*inst = NEWFUNC(inst.0, func_instructions);
+
+					idx += func_length;
+				}
+
+				_ => idx += 1
+			}
+		}
+
+		instructions.len()
+	}
+
 	pub fn run(&mut self) -> Result<Option<Value>> {
-		while let Some(inst) = self.instructions.next() {
+		while self.ip < self.instructions.len() {
+			let inst = self.instructions[self.ip].clone();
 			let value = self.execute_instruction(inst)?;
+
+			self.ip += 1;
 
 			if value.is_some() {
 				return Ok(value);
@@ -123,9 +175,6 @@ impl VM {
 
 		match inst {
 			I::RET(inst) => return Some(self.execute_ret(inst)).transpose(),
-			I::JMP(inst) => return self.execute_jmp(inst),
-			I::JT(inst) => return self.execute_jt(inst),
-			I::JTF(inst) => return self.execute_jtf(inst),
 
 			_ => {}
 		}
@@ -138,12 +187,13 @@ impl VM {
 			I::STORE(inst) => self.execute_store(inst),
 			I::RET(_) => unreachable!(),
 			I::NEWFUNC(inst) => self.execute_newfunc(inst),
-			I::LABEL(inst) => self.execute_label(inst),
+			I::LABEL(_) => unreachable!(),
+			I::LABELMARKER(inst) => self.execute_labelmarker(inst),
 
 			I::CALL(inst) => self.execute_call(inst),
-			I::JMP(_) => unreachable!(),
-			I::JT(_) => unreachable!(),
-			I::JTF(_) => unreachable!(),
+			I::JMP(inst) => self.execute_jmp(inst),
+			I::JT(inst) => self.execute_jt(inst),
+			I::JTF(inst) => self.execute_jtf(inst),
 
 			I::ADD(inst) => self.execute_add(inst),
 			I::SUB(inst) => self.execute_sub(inst),
@@ -219,14 +269,14 @@ impl VM {
 	}
 
 	#[inline(always)]
-	fn execute_label(&mut self, inst: LABEL) -> Result<()> {
-		let label_name = inst.0.clone();
-		self.labels.insert(label_name, inst);
-
+	fn execute_labelmarker(&mut self, inst: LABELMARKER) -> Result<()> {
+		self.ip = inst.start + inst.length;
 		Ok(())
 	}
 
 	fn execute_call(&mut self, _inst: CALL) -> Result<()> {
+		use std::mem::replace;
+
 		let (arity, instructions) = match self.execute_pop(POP)? {
 			Value::Function {
 				arity,
@@ -256,49 +306,47 @@ impl VM {
 		}
 		self.stack.extend(reversed_args);
 
-		let prev_instructions = std::mem::replace(&mut self.instructions, instructions.into_iter());
+		let prev_instructions = replace(&mut self.instructions, instructions);
+		let prev_ip = replace(&mut self.ip, 0);
 
 		if let Some(val) = self.run()? {
 			self.execute_push(PUSH(val))?;
 		}
 
 		self.instructions = prev_instructions;
+		self.ip = prev_ip;
+
 		Ok(())
 	}
 
 	#[inline(always)]
-	fn execute_jmp(&mut self, inst: JMP) -> Result<Option<Value>> {
+	fn execute_jmp(&mut self, inst: JMP) -> Result<()> {
 		let label_name = inst.0;
 		let label = self
 			.labels
 			.get(&label_name)
-			.cloned()
 			.ok_or(anyhow!("Label with name `{label_name}` does not exist"))?;
 
-		let prev_instructions = std::mem::replace(&mut self.instructions, label.1.into_iter());
-
-		let value = self.run()?;
-		self.instructions = prev_instructions;
-
-		Ok(value)
+		self.ip = label.start - 1;
+		Ok(())
 	}
 
 	#[inline(always)]
-	fn execute_jt(&mut self, inst: JT) -> Result<Option<Value>> {
+	fn execute_jt(&mut self, inst: JT) -> Result<()> {
 		let condition = match self.execute_pop(POP)? {
 			Value::Boolean(v) => v,
 			v => bail!("Instruction expected a boolean, found `{v:?}`")
 		};
 
-		if !condition {
-			return Ok(None);
+		if condition {
+			return self.execute_jmp(JMP(inst.0));
 		}
 
-		self.execute_jmp(JMP(inst.0))
+		Ok(())
 	}
 
 	#[inline(always)]
-	fn execute_jtf(&mut self, inst: JTF) -> Result<Option<Value>> {
+	fn execute_jtf(&mut self, inst: JTF) -> Result<()> {
 		let condition = match self.execute_pop(POP)? {
 			Value::Boolean(v) => v,
 			v => bail!("Instruction expected a boolean, found `{v:?}`")
