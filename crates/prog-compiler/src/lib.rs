@@ -199,38 +199,45 @@ impl Compiler {
 	}
 
 	fn compile_while(&mut self, statement: ast::WhileLoop) -> Result<Vec<Instruction>> {
+		use intermediate::{ConditionalBranch, IntermediateLabel};
+
 		let mut emitted = vec![];
 
-		let condition_label = self.new_label();
-		let body_label = self.new_label();
+		let mut r#while = ConditionalBranch {
+			condition: IntermediateLabel {
+				name: self.new_label(),
+				instructions: self.compile_expression(statement.condition)?
+			},
 
-		// Condition label
-		let mut condition_insts = self.compile_expression(statement.condition)?;
-		condition_insts.push(Instruction::JT(JT(body_label.clone()))); // If the condition holds, jump to the body
-		emitted.push(Instruction::LABEL(LABEL {
-			name: condition_label.clone(),
-			start: 0,
-			length: condition_insts.len()
-		}));
-		emitted.extend(condition_insts);
+			body: IntermediateLabel {
+				name: self.new_label(),
+				instructions: self.compile_statements(statement.statements)?
+			}
+		};
 
-		// Body label
-		let mut body_insts = self.compile_statements(statement.statements)?;
-		body_insts.push(Instruction::JMP(JMP(condition_label.clone()))); // Jump to the condition after each iteration
-		emitted.push(Instruction::LABEL(LABEL {
-			name: body_label,
-			start: 0,
-			length: body_insts.len()
-		}));
-		emitted.extend(body_insts);
+		// If the condition holds, jump to the body
+		r#while
+			.condition
+			.instructions
+			.push(Instruction::JT(JT(r#while.body.name.clone())));
 
-		emitted.push(Instruction::JMP(JMP(condition_label))); // After all labels have been defined, jump to the condition
+		// Jump to the condition after each iteration
+		r#while
+			.body
+			.instructions
+			.push(Instruction::JMP(JMP(r#while.condition.name.clone())));
+
+		emitted.extend(r#while.condition.flatten());
+		emitted.extend(r#while.body.flatten());
+
+		// After all labels have been defined, jump to the condition
+		emitted.push(Instruction::JMP(JMP(r#while.condition.name)));
 		Ok(emitted)
 	}
 
 	// TODO: fix jumps outer->condition (falsy)->outer
 	fn compile_if(&mut self, statement: ast::If) -> Result<Vec<Instruction>> {
-		use intermediate::{IntermediateLabel, ConditionalBranch, UnconditionalBranch};
+		use intermediate::{ConditionalBranch, IntermediateLabel, UnconditionalBranch};
 
 		let mut emitted = vec![];
 
@@ -268,10 +275,13 @@ impl Compiler {
 			}
 
 			let prev_branch: &mut ConditionalBranch = elseif_branches.last_mut().unwrap();
-			prev_branch.condition.instructions.push(Instruction::JTF(JTF(
-				prev_branch.body.name.clone(),
-				branch.condition.name.clone()
-			)));
+			prev_branch
+				.condition
+				.instructions
+				.push(Instruction::JTF(JTF(
+					prev_branch.body.name.clone(),
+					branch.condition.name.clone()
+				)));
 
 			elseif_branches.push(branch);
 		}
@@ -292,11 +302,9 @@ impl Compiler {
 			(None, false) => {
 				// If no branches are present, generate a jump to the `if` body
 				// if the condition is truthy
-				r#if.condition.instructions.push(
-					Instruction::JT(JT(
-						r#if.body.name
-					))
-				);
+				r#if.condition
+					.instructions
+					.push(Instruction::JT(JT(r#if.body.name)));
 			}
 
 			(Some(else_branch), false) => {
@@ -306,12 +314,9 @@ impl Compiler {
 				// Emitting a `JTF` instruction:
 				// If the `if` condition is truthy, jump to the `if` body.
 				// Otherwise, jump to the `else` branch's body
-				r#if.condition.instructions.push(
-					Instruction::JTF(JTF(
-						r#if.body.name,
-						else_branch.body.name
-					))
-				);
+				r#if.condition
+					.instructions
+					.push(Instruction::JTF(JTF(r#if.body.name, else_branch.body.name)));
 			}
 
 			(None, true) => {
@@ -320,12 +325,10 @@ impl Compiler {
 				// Emitting a `JTF` instruction:
 				// If the `if` condition is truthy, jump to the `if` body.
 				// Otherwise, jump to the first `else-if` branch's body
-				r#if.condition.instructions.push(
-					Instruction::JTF(JTF(
-						r#if.body.name,
-						first_branch.condition.name.clone()
-					))
-				);
+				r#if.condition.instructions.push(Instruction::JTF(JTF(
+					r#if.body.name,
+					first_branch.condition.name.clone()
+				)));
 			}
 
 			(Some(else_branch), true) => {
@@ -337,19 +340,18 @@ impl Compiler {
 
 				// 1. Jump to the `if` body if the condition is true
 				// 2. Otherwise, jump to the first `else-if` branch's condition
-				r#if.condition.instructions.push(
-					Instruction::JTF(JTF(
-						r#if.body.name,
-						first_branch.condition.name.clone()
-					))
-				);
+				r#if.condition.instructions.push(Instruction::JTF(JTF(
+					r#if.body.name,
+					first_branch.condition.name.clone()
+				)));
 				// 3. If not a single `else-if` branch's condition matches, finally jump to the `else` branch's body
-				last_branch.condition.instructions.push(
-					Instruction::JTF(JTF(
+				last_branch
+					.condition
+					.instructions
+					.push(Instruction::JTF(JTF(
 						last_branch.body.name.clone(),
 						else_branch.body.name
-					))
-				);
+					)));
 			}
 		}
 
