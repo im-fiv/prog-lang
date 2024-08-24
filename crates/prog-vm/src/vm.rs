@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Result};
 
-use crate::instruction::*;
+use crate::bytecode::*;
 use crate::Value;
 
 fn create_intrinsics() -> HashMap<String, Value> {

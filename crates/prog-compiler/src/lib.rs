@@ -2,7 +2,7 @@ mod intermediate;
 
 use anyhow::Result;
 use prog_parser::ast;
-use prog_vm::instruction::*;
+use prog_vm::bytecode::*;
 use prog_vm::Value;
 
 #[derive(Debug)]

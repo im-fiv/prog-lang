@@ -1,4 +1,4 @@
-use prog_vm::instruction::*;
+use prog_vm::bytecode::*;
 
 #[derive(Debug, Clone)]
 pub(crate) struct IntermediateLabel {
