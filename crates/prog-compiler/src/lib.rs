@@ -215,6 +215,8 @@ impl Compiler {
 			}
 		};
 
+		emitted.push(Instruction::JMP(JMP(r#while.condition.name.clone())));
+
 		// If the condition holds, jump to the body
 		r#while
 			.condition
@@ -229,13 +231,10 @@ impl Compiler {
 
 		emitted.extend(r#while.condition.flatten());
 		emitted.extend(r#while.body.flatten());
-
-		// After all labels have been defined, jump to the condition
-		emitted.push(Instruction::JMP(JMP(r#while.condition.name)));
+		
 		Ok(emitted)
 	}
 
-	// TODO: fix jumps outer->condition (falsy)->outer
 	fn compile_if(&mut self, statement: ast::If) -> Result<Vec<Instruction>> {
 		use intermediate::{ConditionalBranch, IntermediateLabel, UnconditionalBranch};
 
@@ -252,6 +251,7 @@ impl Compiler {
 				instructions: self.compile_statements(statement.statements)?
 			}
 		};
+		emitted.push(Instruction::JMP(JMP(r#if.condition.name.clone())));
 		emitted.extend(r#if.body.flatten());
 
 		let mut elseif_branches = vec![];
@@ -362,8 +362,6 @@ impl Compiler {
 
 		// Inserting the condition label
 		emitted.extend(r#if.condition.flatten());
-
-		emitted.push(Instruction::JMP(JMP(r#if.condition.name))); // After all labels have been defined, jump to the condition
 
 		Ok(emitted)
 	}
