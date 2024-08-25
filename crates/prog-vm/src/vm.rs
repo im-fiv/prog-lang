@@ -113,7 +113,11 @@ impl VM {
 		Ok(())
 	}
 
-	fn index_labels(instructions: &[Instruction], offset: usize, labels: &mut HashMap<String, LABEL>) {
+	fn index_labels(
+		instructions: &[Instruction],
+		offset: usize,
+		labels: &mut HashMap<String, LABEL>
+	) {
 		let mut ip = 0;
 
 		while ip < instructions.len() {
@@ -139,9 +143,7 @@ impl VM {
 		}
 	}
 
-	pub fn run(&mut self) -> Result<Option<Value>> {
-		self.run_until(self.instructions.len())
-	}
+	pub fn run(&mut self) -> Result<Option<Value>> { self.run_until(self.instructions.len()) }
 
 	fn run_until(&mut self, max_ip: usize) -> Result<Option<Value>> {
 		while self.ip < max_ip {
@@ -339,9 +341,17 @@ impl VM {
 
 		if self.debug {
 			println!("[JMP]\t\tname = {label_name}");
-			println!("[JMP]\t\tstart ({}) = {}", label.start + 1, self.instructions[label.start]);
+			println!(
+				"[JMP]\t\tstart ({}) = {}",
+				label.start + 1,
+				self.instructions[label.start]
+			);
 			println!("[JMP]\t\tlength = {}", label.length);
-			println!("[JMP]\t\tend ({}) = {}", label.end() + 1, self.instructions[label.end()]);
+			println!(
+				"[JMP]\t\tend ({}) = {}",
+				label.end() + 1,
+				self.instructions[label.end()]
+			);
 		}
 
 		// Instruction pointer is incremented after the execution of `JMP`,
