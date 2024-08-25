@@ -67,6 +67,7 @@ impl std::fmt::Display for Value {
 			Self::Boolean(v) => write!(f, "{v}"),
 			Self::String(v) => write!(f, "{v}"),
 			Self::Number(v) => write!(f, "{v}"),
+			Self::Empty => write!(f, "none"),
 
 			v => todo!("{v}")
 		}

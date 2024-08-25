@@ -139,3 +139,9 @@ impl Display for Instruction {
 		}
 	}
 }
+
+impl LABEL {
+	pub const fn end(&self) -> usize {
+		self.start + self.length
+	}
+}

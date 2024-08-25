@@ -98,6 +98,7 @@ impl VM {
 			labels: HashMap::new()
 		};
 
+		Self::index_labels(&this.instructions, 0, &mut this.labels);
 		this.define_intrinsics()?;
 
 		Ok(this)
@@ -112,19 +113,34 @@ impl VM {
 		Ok(())
 	}
 
-	pub fn run(&mut self) -> Result<Option<Value>> {
-		while self.ip < self.instructions.len() {
-			let inst = self.instructions[self.ip].clone();
-			let value = self.execute_instruction(inst)?;
+	fn index_labels(instructions: &[Instruction], offset: usize, labels: &mut HashMap<String, LABEL>) {
+		let mut ip = 0;
 
-			self.ip += 1;
+		while ip < instructions.len() {
+			let inst = &instructions[ip];
 
-			if value.is_some() {
-				return Ok(value);
+			match inst {
+				Instruction::LABEL(inst) => {
+					let start = ip + 1;
+					let end = start + inst.length;
+					let label_instructions = &instructions[start..end];
+
+					Self::index_labels(label_instructions, start + offset, labels);
+
+					let mut inst = inst.clone();
+					inst.start = start + offset;
+
+					labels.insert(inst.name.clone(), inst);
+					ip = end - 1;
+				}
+
+				_ => ip += 1
 			}
 		}
+	}
 
-		Ok(None)
+	pub fn run(&mut self) -> Result<Option<Value>> {
+		self.run_until(self.instructions.len())
 	}
 
 	fn run_until(&mut self, max_ip: usize) -> Result<Option<Value>> {
@@ -249,26 +265,13 @@ impl VM {
 
 	#[inline(always)]
 	fn execute_label(&mut self, inst: LABEL) -> Result<()> {
-		use std::collections::hash_map::Entry;
+		let label = self
+			.labels
+			.get(&inst.name)
+			.ok_or(anyhow!("Label with name `{}` does not exist", inst.name))?;
 
-		match self.labels.entry(inst.name.clone()) {
-			Entry::Vacant(e) => {
-				let start = self.ip + 1;
-				let label = LABEL {
-					name: inst.name,
-					start,
-					length: inst.length
-				};
-
-				self.ip = label.start + label.length - 1;
-				e.insert(label);
-			}
-
-			Entry::Occupied(e) => {
-				let label = e.get();
-				self.ip = label.start + label.length;
-			}
-		}
+		// The reasoning for the `- 1` is the same as with `JMP`
+		self.ip = label.end() - 1;
 
 		Ok(())
 	}
@@ -334,6 +337,15 @@ impl VM {
 			.get(&label_name)
 			.ok_or(anyhow!("Label with name `{label_name}` does not exist"))?;
 
+		if self.debug {
+			println!("[JMP]\t\tname = {label_name}");
+			println!("[JMP]\t\tstart ({}) = {}", label.start + 1, self.instructions[label.start]);
+			println!("[JMP]\t\tlength = {}", label.length);
+			println!("[JMP]\t\tend ({}) = {}", label.end() + 1, self.instructions[label.end()]);
+		}
+
+		// Instruction pointer is incremented after the execution of `JMP`,
+		// so we subtract 1 to avoid skipping the first label instruction
 		self.ip = label.start - 1;
 		Ok(())
 	}
