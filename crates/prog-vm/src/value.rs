@@ -16,12 +16,14 @@ pub enum Value {
 		start: usize,
 		length: usize
 	},
+	Empty,
+
+	// * Important note: any variants that serde should skip must be below all other variants
 	#[serde(skip)]
 	IntrinsicFunction {
 		arity: Option<usize>,
 		pointer: fn(&mut VM) -> Result<()>
-	},
-	Empty
+	}
 }
 
 impl Value {
