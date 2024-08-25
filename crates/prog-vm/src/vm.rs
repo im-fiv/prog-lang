@@ -76,18 +76,22 @@ pub struct VM {
 	pub stack: Vec<Value>,
 	pub bindings: HashMap<String, Value>,
 
+	pub debug: bool,
+
 	instructions: Vec<Instruction>,
 	ip: usize,
 	labels: HashMap<String, LABEL>
 }
 
 impl VM {
-	pub fn new(bytecode: Bytecode) -> Result<Self> {
+	pub fn new(bytecode: Bytecode, debug: bool) -> Result<Self> {
 		let instructions = bytecode.instructions;
 
 		let mut this = Self {
 			stack: Vec::with_capacity(2_usize.pow(16)),
 			bindings: HashMap::new(),
+
+			debug,
 
 			instructions,
 			ip: 0,
@@ -123,8 +127,27 @@ impl VM {
 		Ok(None)
 	}
 
+	fn run_until(&mut self, max_ip: usize) -> Result<Option<Value>> {
+		while self.ip < max_ip {
+			let inst = self.instructions[self.ip].clone();
+			let value = self.execute_instruction(inst)?;
+
+			self.ip += 1;
+
+			if value.is_some() {
+				return Ok(value);
+			}
+		}
+
+		Ok(None)
+	}
+
 	fn execute_instruction(&mut self, inst: Instruction) -> Result<Option<Value>> {
 		use Instruction as I;
+
+		if self.debug {
+			println!("[{ip}]\t{inst}", ip = self.ip + 1);
+		}
 
 		match inst {
 			I::RET(inst) => return Some(self.execute_ret(inst)).transpose(),
@@ -211,12 +234,16 @@ impl VM {
 	fn execute_ret(&mut self, _inst: RET) -> Result<Value> { self.execute_pop(POP) }
 
 	fn execute_newfunc(&mut self, inst: NEWFUNC) -> Result<()> {
-		let arity = inst.0;
-		let instructions = inst.1;
+		let arity = inst.arity;
+		let start = self.ip + 1;
+		let length = inst.length;
+
+		self.ip += length;
 
 		self.execute_push(PUSH(Value::Function {
 			arity,
-			instructions
+			start,
+			length
 		}))
 	}
 
@@ -246,22 +273,32 @@ impl VM {
 		Ok(())
 	}
 
+	fn execute_intrinsic_call(
+		&mut self,
+		arity: Option<usize>,
+		pointer: fn(&mut Self) -> Result<()>
+	) -> Result<()> {
+		if let Some(arity) = arity {
+			if self.stack.len() < arity {
+				bail!("Expected {} arguments, found {}", arity, self.stack.len());
+			}
+		}
+
+		pointer(self)
+	}
+
 	fn execute_call(&mut self, _inst: CALL) -> Result<()> {
 		use std::mem::replace;
 
-		let (arity, instructions) = match self.execute_pop(POP)? {
+		let (arity, start, length) = match self.execute_pop(POP)? {
 			Value::Function {
 				arity,
-				instructions
-			} => (arity, instructions),
-			Value::IntrinsicFunction { arity, pointer } => {
-				if let Some(arity) = arity {
-					if self.stack.len() < arity {
-						bail!("Expected {} arguments, found {}", arity, self.stack.len());
-					}
-				}
+				start,
+				length
+			} => (arity, start, length),
 
-				return pointer(self);
+			Value::IntrinsicFunction { arity, pointer } => {
+				return self.execute_intrinsic_call(arity, pointer);
 			}
 
 			v => bail!("Value `{v:?}` is not callable")
@@ -278,14 +315,12 @@ impl VM {
 		}
 		self.stack.extend(reversed_args);
 
-		let prev_instructions = replace(&mut self.instructions, instructions);
-		let prev_ip = replace(&mut self.ip, 0);
+		let prev_ip = replace(&mut self.ip, start);
 
-		if let Some(val) = self.run()? {
+		if let Some(val) = self.run_until(start + length)? {
 			self.execute_push(PUSH(val))?;
 		}
 
-		self.instructions = prev_instructions;
 		self.ip = prev_ip;
 
 		Ok(())

@@ -29,11 +29,11 @@ fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
 }
 
 #[cfg(feature = "vm")]
-fn execute_bytecode(bytes: &[u8]) {
+fn execute_bytecode(bytes: &[u8], debug: bool) {
 	use prog_vm::{Bytecode, VM};
 
 	let bytecode = Bytecode::from_bytes(&bytes).unwrap();
-	let mut vm = VM::new(bytecode).unwrap();
+	let mut vm = VM::new(bytecode, debug).unwrap();
 
 	match vm.run() {
 		Ok(v) => {
@@ -61,7 +61,7 @@ fn execute_run_command(args: cli::RunCommand) {
 		#[cfg(feature = "vm")]
 		{
 			let bytecode = std::fs::read(&args.file_path).unwrap();
-			return execute_bytecode(&bytecode);
+			return execute_bytecode(&bytecode, args.debug);
 		}
 	}
 
@@ -107,7 +107,7 @@ fn execute_compile_command(args: cli::CompileCommand) {
 	std::fs::write(cli::DEFAULT_OUTPUT_BC_FMT_FP, human_readable).unwrap();
 
 	if args.run {
-		execute_bytecode(&serialized);
+		execute_bytecode(&serialized, args.debug);
 	}
 }
 

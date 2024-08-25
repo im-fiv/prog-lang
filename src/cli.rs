@@ -41,7 +41,11 @@ pub enum CLISubcommand {
 pub struct RunCommand {
 	#[arg(default_value = DEFAULT_INPUT_FP)]
 	/// Target file path
-	pub file_path: String
+	pub file_path: String,
+
+	#[arg(long, short, default_value_t = false)]
+	/// Enable debug information
+	pub debug: bool
 }
 
 #[derive(Debug, Args)]
@@ -53,7 +57,11 @@ pub struct CompileCommand {
 	// TODO: allow customization of output file paths
 	#[arg(long, short, default_value_t = false)]
 	/// Run the file after compilation
-	pub run: bool
+	pub run: bool,
+
+	#[arg(long, short, default_value_t = false, requires = "run")]
+	/// Enable debug information
+	pub debug: bool
 }
 
 #[cfg(feature = "api")]

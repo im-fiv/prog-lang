@@ -119,8 +119,9 @@ impl Compiler {
 		&mut self,
 		function: ast::expressions::Function
 	) -> Result<Vec<Instruction>> {
-		let argc = function.arguments.len();
+		let mut emitted = vec![];
 
+		let arity = function.arguments.len();
 		let mut func_instructions = vec![];
 
 		for (arg, _) in function.arguments {
@@ -132,7 +133,14 @@ impl Compiler {
 			func_instructions.extend(stmt_instructions);
 		}
 
-		Ok(vec![Instruction::NEWFUNC(NEWFUNC(argc, func_instructions))])
+		emitted.push(Instruction::NEWFUNC(NEWFUNC {
+			arity,
+			start: 0,
+			length: func_instructions.len()
+		}));
+		emitted.extend(func_instructions);
+
+		Ok(emitted)
 	}
 
 	fn compile_literal(&mut self, literal: ast::expressions::Literal) -> Result<Vec<Instruction>> {
@@ -231,7 +239,7 @@ impl Compiler {
 
 		emitted.extend(r#while.condition.flatten());
 		emitted.extend(r#while.body.flatten());
-		
+
 		Ok(emitted)
 	}
 

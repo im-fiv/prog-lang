@@ -4,7 +4,7 @@ use std::ops::*;
 use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::{Instruction, VM};
+use crate::VM;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {
@@ -13,7 +13,8 @@ pub enum Value {
 	Number(f64),
 	Function {
 		arity: usize,
-		instructions: Vec<Instruction>
+		start: usize,
+		length: usize
 	},
 	#[serde(skip)]
 	IntrinsicFunction {

@@ -21,6 +21,23 @@ impl Bytecode {
 
 impl Display for Bytecode {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		macro_rules! nested_instruction {
+			($index:ident, $length:expr) => {{
+				let start = $index + 1;
+				let end = start + $length;
+				let inner_instructions = &self.instructions[start..end];
+
+				let inner_bytecode = Self {
+					instructions: inner_instructions.to_vec()
+				};
+
+				let formatted_inner = format!("{inner_bytecode}");
+				write!(f, "{}", indent_all_by(4, formatted_inner))?;
+
+				$index = end - 1;
+			}};
+		}
+
 		let mut index = 0;
 
 		while index < self.instructions.len() {
@@ -28,29 +45,8 @@ impl Display for Bytecode {
 			write!(f, "{inst}\n")?;
 
 			match inst {
-				Instruction::LABEL(inst) => {
-					let start = index + 1;
-					let end = start + inst.length;
-					let inner_instructions = &self.instructions[start..end];
-
-					let inner_bytecode = Self {
-						instructions: inner_instructions.to_vec()
-					};
-
-					let formatted_inner = format!("{inner_bytecode}");
-					write!(f, "{}", indent_all_by(4, formatted_inner))?;
-
-					index = end - 1;
-				}
-
-				Instruction::NEWFUNC(inst) => {
-					let inner_bytecode = Self {
-						instructions: inst.1.to_vec()
-					};
-
-					let formatted_inner = format!("{inner_bytecode}");
-					write!(f, "{}", indent_all_by(4, formatted_inner))?;
-				}
+				Instruction::LABEL(inst) => nested_instruction!(index, inst.length),
+				Instruction::NEWFUNC(inst) => nested_instruction!(index, inst.length),
 
 				_ => {}
 			}
@@ -71,7 +67,11 @@ extract_fields! {
 		LOAD(String),
 		STORE(String),
 		RET,
-		NEWFUNC(usize, Vec<Instruction>),
+		NEWFUNC {
+			arity: usize,
+			start: usize,
+			length: usize
+		},
 		LABEL {
 			name: String,
 			start: usize,
@@ -111,14 +111,8 @@ impl Display for Instruction {
 			Self::STORE(inst) => write!(f, "STORE {}", inst.0),
 			Self::RET(_) => write!(f, "RET"),
 			Self::NEWFUNC(inst) => {
-				let strings = inst
-					.1
-					.iter()
-					.map(|inst| format!("{inst}"))
-					.collect::<Vec<_>>()
-					.join("\n");
-
-				write!(f, "NEWFUNC {}\n{}", inst.0, indent_all_by(4, strings))
+				// TODO: inst.start
+				write!(f, "NEWFUNC {} _ {}", inst.arity, inst.length)
 			}
 			Self::LABEL(inst) => {
 				// TODO: inst.start
