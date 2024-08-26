@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::ops::*;
 
 use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
@@ -27,6 +26,64 @@ pub enum Value {
 }
 
 impl Value {
+	pub fn add(self, rhs: Self) -> Result<Self> {
+		match (self, rhs) {
+			(Self::Number(lhs), Self::Number(rhs)) => Ok(Value::Number(lhs + rhs)),
+
+			(Self::String(lhs), Self::Boolean(rhs)) => Ok(Value::String(format!("{lhs}{rhs}"))),
+			(Self::String(lhs), Self::String(rhs)) => Ok(Value::String(format!("{lhs}{rhs}"))),
+			(Self::String(lhs), Self::Number(rhs)) => Ok(Value::String(format!("{lhs}{rhs}"))),
+
+			(lhs, rhs) => bail!("Cannot perform binary add on `{lhs:?}` and `{rhs:?}`")
+		}
+	}
+
+	pub fn sub(self, rhs: Self) -> Result<Self> {
+		match (self, rhs) {
+			(Self::Number(lhs), Self::Number(rhs)) => Ok(Value::Number(lhs - rhs)),
+
+			(lhs, rhs) => bail!("Cannot perform binary sub on `{lhs:?}` and `{rhs:?}`")
+		}
+	}
+
+	pub fn mul(self, rhs: Self) -> Result<Self> {
+		match (self, rhs) {
+			(Self::Number(lhs), Self::Number(rhs)) => Ok(Value::Number(lhs * rhs)),
+
+			(lhs, rhs) => bail!("Cannot perform binary mul on `{lhs:?}` and `{rhs:?}`")
+		}
+	}
+
+	pub fn div(self, rhs: Self) -> Result<Self> {
+		match (self, rhs) {
+			(Self::Number(lhs), Self::Number(rhs)) => Ok(Value::Number(lhs / rhs)),
+
+			(lhs, rhs) => bail!("Cannot perform binary div on `{lhs:?}` and `{rhs:?}`")
+		}
+	}
+
+	pub fn neg(self) -> Result<Self> {
+		match self {
+			Self::Number(v) => Ok(Self::Number(-v)),
+			v => bail!("Cannot perform unary neg on `{v:?}`")
+		}
+	}
+
+	pub fn truthy(&self) -> bool {
+		match self {
+			Self::Boolean(v) => *v,
+			Self::Number(v) => *v != 0.0,
+			Self::String(v) => !v.is_empty(),
+			Self::Function { .. } => true,
+			Self::IntrinsicFunction { .. } => true,
+			Self::Empty => false
+		}
+	}
+
+	pub fn not(self) -> Self {
+		Value::Boolean(!self.truthy())
+	}
+
 	pub fn custom_partial_cmp(&self, other: &Self) -> Result<Ordering> {
 		self.partial_cmp(other)
 			.ok_or(anyhow!("Cannot compare `{self:?}` and `{other:?}`"))
@@ -76,58 +133,6 @@ impl std::fmt::Display for Value {
 	}
 }
 
-impl Add for Value {
-	type Output = Result<Value>;
-
-	fn add(self, rhs: Self) -> Self::Output {
-		match (self, rhs) {
-			(Self::Number(lhs), Self::Number(rhs)) => Ok(Value::Number(lhs + rhs)),
-
-			(Self::String(lhs), Self::Boolean(rhs)) => Ok(Value::String(format!("{lhs}{rhs}"))),
-			(Self::String(lhs), Self::String(rhs)) => Ok(Value::String(format!("{lhs}{rhs}"))),
-			(Self::String(lhs), Self::Number(rhs)) => Ok(Value::String(format!("{lhs}{rhs}"))),
-
-			(lhs, rhs) => bail!("Cannot perform binary add on `{lhs:?}` and `{rhs:?}`")
-		}
-	}
-}
-
-impl Sub for Value {
-	type Output = Result<Value>;
-
-	fn sub(self, rhs: Self) -> Self::Output {
-		match (self, rhs) {
-			(Self::Number(lhs), Self::Number(rhs)) => Ok(Value::Number(lhs - rhs)),
-
-			(lhs, rhs) => bail!("Cannot perform binary sub on `{lhs:?}` and `{rhs:?}`")
-		}
-	}
-}
-
-impl Mul for Value {
-	type Output = Result<Value>;
-
-	fn mul(self, rhs: Self) -> Self::Output {
-		match (self, rhs) {
-			(Self::Number(lhs), Self::Number(rhs)) => Ok(Value::Number(lhs * rhs)),
-
-			(lhs, rhs) => bail!("Cannot perform binary mul on `{lhs:?}` and `{rhs:?}`")
-		}
-	}
-}
-
-impl Div for Value {
-	type Output = Result<Value>;
-
-	fn div(self, rhs: Self) -> Self::Output {
-		match (self, rhs) {
-			(Self::Number(lhs), Self::Number(rhs)) => Ok(Value::Number(lhs / rhs)),
-
-			(lhs, rhs) => bail!("Cannot perform binary div on `{lhs:?}` and `{rhs:?}`")
-		}
-	}
-}
-
 impl PartialOrd for Value {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 		match (self, other) {
@@ -135,31 +140,5 @@ impl PartialOrd for Value {
 
 			_ => None
 		}
-	}
-}
-
-impl Neg for Value {
-	type Output = Result<Value>;
-
-	fn neg(self) -> Self::Output {
-		match self {
-			Self::Number(v) => Ok(Self::Number(-v)),
-			v => bail!("Cannot perform unary neg on `{v:?}`")
-		}
-	}
-}
-
-impl Not for Value {
-	type Output = Value;
-
-	fn not(self) -> Self::Output {
-		Value::Boolean(match self {
-			Self::Boolean(v) => !v,
-			Self::Number(v) => v == 0.0,
-			Self::String(v) => v.is_empty(),
-			Self::Function { .. } => false,
-			Self::IntrinsicFunction { .. } => false,
-			Self::Empty => true
-		})
 	}
 }
