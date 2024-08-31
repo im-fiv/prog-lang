@@ -392,9 +392,7 @@ impl VM {
 		let rhs = self.execute_pop(POP)?;
 		let lhs = self.execute_pop(POP)?;
 
-		self.execute_push(PUSH(
-			lhs.add(rhs)?
-		))
+		self.execute_push(PUSH(lhs.add(rhs)?))
 	}
 
 	#[inline(always)]
@@ -402,9 +400,7 @@ impl VM {
 		let rhs = self.execute_pop(POP)?;
 		let lhs = self.execute_pop(POP)?;
 
-		self.execute_push(PUSH(
-			lhs.sub(rhs)?
-		))
+		self.execute_push(PUSH(lhs.sub(rhs)?))
 	}
 
 	#[inline(always)]
@@ -412,9 +408,7 @@ impl VM {
 		let rhs = self.execute_pop(POP)?;
 		let lhs = self.execute_pop(POP)?;
 
-		self.execute_push(PUSH(
-			lhs.mul(rhs)?
-		))
+		self.execute_push(PUSH(lhs.mul(rhs)?))
 	}
 
 	#[inline(always)]
@@ -422,27 +416,21 @@ impl VM {
 		let rhs = self.execute_pop(POP)?;
 		let lhs = self.execute_pop(POP)?;
 
-		self.execute_push(PUSH(
-			lhs.div(rhs)?
-		))
+		self.execute_push(PUSH(lhs.div(rhs)?))
 	}
 
 	#[inline(always)]
 	fn execute_neg(&mut self, _inst: NEG) -> Result<()> {
 		let operand = self.execute_pop(POP)?;
 
-		self.execute_push(PUSH(
-			operand.neg()?
-		))
+		self.execute_push(PUSH(operand.neg()?))
 	}
 
 	#[inline(always)]
 	fn execute_not(&mut self, _inst: NOT) -> Result<()> {
 		let operand = self.execute_pop(POP)?;
 
-		self.execute_push(PUSH(
-			operand.not()
-		))
+		self.execute_push(PUSH(operand.not()))
 	}
 
 	#[inline(always)]

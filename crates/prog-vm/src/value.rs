@@ -80,9 +80,7 @@ impl Value {
 		}
 	}
 
-	pub fn not(self) -> Self {
-		Value::Boolean(!self.truthy())
-	}
+	pub fn not(self) -> Self { Value::Boolean(!self.truthy()) }
 
 	pub fn custom_partial_cmp(&self, other: &Self) -> Result<Ordering> {
 		self.partial_cmp(other)
