@@ -114,6 +114,22 @@ impl Value {
 			Self::Marker(..) => panic!("Got `Value` of kind `Marker`")
 		}
 	}
+
+	/// Extract the inner `String` of either `Value::String` or `Value::Identifier`,
+	/// panics of the `Value` is of other variant.
+	pub fn extract_identifier(&self) -> &str {
+		match self {
+			Self::String(v) => v.get(),
+			Self::Identifier(v) => v,
+
+			_ => {
+				panic!(
+					"expected value of variant `String` or `Identifier`, got `{}`",
+					self.kind()
+				)
+			}
+		}
+	}
 }
 
 impl_basic_conv!(from RBoolean => Value as Boolean);

@@ -654,227 +654,109 @@ impl Interpreter {
 			}};
 		}
 
-		// TODO: get rid of code repetition with (ObjectAccess, _, Identifier and String)
 		let evaluated_expr = match (operator.0, evaluated_lhs, evaluated_rhs) {
-			(Op::Add, V::Number(lhs), V::Number(rhs)) => {
-				V::Number((lhs.get_owned() + rhs.get_owned()).into())
-			}
-			(Op::Subtract, V::Number(lhs), V::Number(rhs)) => {
-				V::Number((lhs.get_owned() - rhs.get_owned()).into())
-			}
-			(Op::Divide, V::Number(lhs), V::Number(rhs)) => {
-				V::Number((lhs.get_owned() / rhs.get_owned()).into())
-			}
-			(Op::Multiply, V::Number(lhs), V::Number(rhs)) => {
-				V::Number((lhs.get_owned() * rhs.get_owned()).into())
-			}
-			(Op::Modulo, V::Number(lhs), V::Number(rhs)) => {
-				V::Number((lhs.get_owned() % rhs.get_owned()).into())
-			}
-			(Op::Gt, V::Number(lhs), V::Number(rhs)) => {
-				V::Boolean((lhs.get_owned() > rhs.get_owned()).into())
-			}
-			(Op::Lt, V::Number(lhs), V::Number(rhs)) => {
-				V::Boolean((lhs.get_owned() < rhs.get_owned()).into())
-			}
-			(Op::Gte, V::Number(lhs), V::Number(rhs)) => {
-				V::Boolean((lhs.get_owned() >= rhs.get_owned()).into())
-			}
-			(Op::Lte, V::Number(lhs), V::Number(rhs)) => {
-				V::Boolean((lhs.get_owned() <= rhs.get_owned()).into())
-			}
+			(Op::Add, V::Number(lhs), V::Number(rhs)) => V::Number(lhs + rhs),
+			(Op::Subtract, V::Number(lhs), V::Number(rhs)) => V::Number(lhs - rhs),
+			(Op::Divide, V::Number(lhs), V::Number(rhs)) => V::Number(lhs / rhs),
+			(Op::Multiply, V::Number(lhs), V::Number(rhs)) => V::Number(lhs * rhs),
+			(Op::Modulo, V::Number(lhs), V::Number(rhs)) => V::Number(lhs % rhs),
+			(Op::Gt, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs > rhs).into()),
+			(Op::Lt, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs < rhs).into()),
+			(Op::Gte, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs >= rhs).into()),
+			(Op::Lte, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs <= rhs).into()),
 
 			(Op::Add, V::String(lhs), rhs) => V::String(format!("{}{}", lhs.get(), rhs).into()),
 
-			(Op::And, V::Boolean(lhs), V::Boolean(rhs)) => {
-				V::Boolean((lhs.get_owned() && rhs.get_owned()).into())
-			}
-			(Op::Or, V::Boolean(lhs), V::Boolean(rhs)) => {
-				V::Boolean((lhs.get_owned() || rhs.get_owned()).into())
+			(Op::And, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean(lhs & rhs),
+			(Op::Or, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean(lhs | rhs),
+
+			(Op::EqEq, lhs, rhs) => V::Boolean((lhs == rhs).into()),
+			(Op::NotEq, lhs, rhs) => V::Boolean((lhs != rhs).into()),
+
+			(Op::ListAccess, V::Number(lhs), V::List(rhs)) => rhs[lhs].clone(),
+
+			(Op::ObjectAccess, V::Object(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+				let rhs = rhs.extract_identifier();
+				let entries = &**(lhs.get());
+
+				entries.get(rhs).cloned().unwrap_or(Value::Empty)
 			}
 
-			(Op::EqEq, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean((lhs == rhs).into()),
-			(Op::EqEq, V::String(lhs), V::String(rhs)) => V::Boolean((lhs == rhs).into()),
-			(Op::EqEq, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs == rhs).into()),
-			(Op::EqEq, V::List(lhs), V::List(rhs)) => V::Boolean((lhs == rhs).into()),
-			(Op::EqEq, V::Object(lhs), V::Object(rhs)) => V::Boolean((lhs == rhs).into()),
-			(Op::EqEq, V::Function(lhs), V::Function(rhs)) => V::Boolean((lhs == rhs).into()),
-			(Op::EqEq, V::IntrinsicFunction(lhs), V::IntrinsicFunction(rhs)) => {
-				V::Boolean((lhs == rhs).into())
-			}
-			(Op::EqEq, V::Class(lhs), V::Class(rhs)) => V::Boolean((lhs == rhs).into()),
-			(Op::EqEq, V::ClassInstance(lhs), V::ClassInstance(rhs)) => {
-				V::Boolean((lhs == rhs).into())
-			}
-			(Op::EqEq, V::Empty, V::Empty) => V::Boolean(true.into()),
-
-			(Op::NotEq, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean((lhs != rhs).into()),
-			(Op::NotEq, V::String(lhs), V::String(rhs)) => V::Boolean((lhs != rhs).into()),
-			(Op::NotEq, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs != rhs).into()),
-			(Op::NotEq, V::List(lhs), V::List(rhs)) => V::Boolean((lhs != rhs).into()),
-			(Op::NotEq, V::Object(lhs), V::Object(rhs)) => V::Boolean((lhs != rhs).into()),
-			(Op::NotEq, V::Function(lhs), V::Function(rhs)) => V::Boolean((lhs != rhs).into()),
-			(Op::NotEq, V::IntrinsicFunction(lhs), V::IntrinsicFunction(rhs)) => {
-				V::Boolean((lhs != rhs).into())
-			}
-			(Op::NotEq, V::Class(lhs), V::Class(rhs)) => V::Boolean((lhs != rhs).into()),
-			(Op::NotEq, V::ClassInstance(lhs), V::ClassInstance(rhs)) => {
-				V::Boolean((lhs != rhs).into())
-			}
-			(Op::NotEq, V::Empty, V::Empty) => V::Boolean(false.into()),
-
-			(Op::ListAccess, V::Number(lhs), V::List(rhs)) => {
-				rhs.get()
-					.get(lhs.get_owned() as usize)
-					.cloned()
-					.unwrap_or(Value::Empty)
-			}
-
-			(Op::ObjectAccess, V::Object(lhs), V::Identifier(rhs)) => {
-				(**lhs.get()).get(&rhs).cloned().unwrap_or(Value::Empty)
-			}
-			(Op::ObjectAccess, V::Object(lhs), V::String(rhs)) => {
-				(**lhs.get())
-					.get(rhs.get())
-					.cloned()
-					.unwrap_or(Value::Empty)
-			}
-
-			(Op::ObjectAccess, V::Boolean(lhs), V::Identifier(rhs)) => {
+			(Op::ObjectAccess, V::Boolean(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+				let rhs = rhs.extract_identifier().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
-			(Op::ObjectAccess, V::String(lhs), V::Identifier(rhs)) => {
+			(Op::ObjectAccess, V::String(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+				let rhs = rhs.extract_identifier().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
-			(Op::ObjectAccess, V::Number(lhs), V::Identifier(rhs)) => {
+			(Op::ObjectAccess, V::Number(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+				let rhs = rhs.extract_identifier().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
-			(Op::ObjectAccess, V::List(lhs), V::Identifier(rhs)) => {
+			(Op::ObjectAccess, V::List(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+				let rhs = rhs.extract_identifier().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
-			(Op::ObjectAccess, V::Class(lhs), V::Identifier(rhs)) => {
-				let field = (*lhs.fields).get(&rhs).unwrap_or(&Value::Empty);
 
-				if field.kind() == ValueKind::Empty {
+			(Op::ObjectAccess, V::Class(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+				let rhs = rhs.extract_identifier().to_owned();
+				let field = (*lhs.fields).get(&rhs).cloned();
+
+				field.ok_or_else(|| {
 					create_error!(
 						self,
 						whole_position,
 						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
 							rhs,
 							rhs_position
-						))
+						));
+						no_bail
 					)
-				}
-
-				field.to_owned()
+				})?
 			}
-			(Op::ObjectAccess, V::ClassInstance(lhs), V::Identifier(rhs)) => {
-				if let Some(val) = (*lhs.fields).get(&rhs).cloned() {
+			(Op::ObjectAccess, V::ClassInstance(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+				let rhs = rhs.extract_identifier().to_owned();
+
+				let instance_fields = &*lhs.fields;
+				let class_fields = &*lhs.class.fields;
+
+				if let Some(val) = instance_fields.get(&rhs).cloned() {
 					return Ok(val);
 				}
 
-				if let Some(mut val) = (*lhs.class.fields).get(&rhs).cloned() {
-					if let Value::Function(func) = &mut val {
-						let has_args = !func.ast.arguments.is_empty();
-
-						if has_args {
-							let first_arg = &func.ast.arguments.first().as_ref().unwrap().0;
-
-							if first_arg == "self" {
-								// Insert `self` into scope
-								let mut context = func.context.take();
-								context.insert(String::from("self"), lhs.into());
-								func.context.write(context);
-
-								// Remove `self` argument
-								func.ast.arguments.remove(0);
-							}
-						}
-					}
-
-					return Ok(val);
-				}
-
-				create_error!(
-					self,
-					whole_position,
-					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
-						rhs,
-						rhs_position
-					))
-				)
-			}
-
-			(Op::ObjectAccess, V::Boolean(lhs), V::String(rhs)) => {
-				primitive_object_access!(lhs, rhs.get_owned())
-			}
-			(Op::ObjectAccess, V::String(lhs), V::String(rhs)) => {
-				primitive_object_access!(lhs, rhs.get_owned())
-			}
-			(Op::ObjectAccess, V::Number(lhs), V::String(rhs)) => {
-				primitive_object_access!(lhs, rhs.get_owned())
-			}
-			(Op::ObjectAccess, V::List(lhs), V::String(rhs)) => {
-				primitive_object_access!(lhs, rhs.get_owned())
-			}
-			(Op::ObjectAccess, V::Class(lhs), V::String(rhs)) => {
-				let rhs = rhs.get_owned();
-				let field = (*lhs.fields).get(&rhs).unwrap_or(&Value::Empty);
-
-				if field.kind() == ValueKind::Empty {
+				let mut field = class_fields.get(&rhs).cloned().ok_or_else(|| {
 					create_error!(
 						self,
 						whole_position,
 						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
 							rhs,
 							rhs_position
-						))
+						));
+						no_bail
 					)
-				}
+				})?;
 
-				field.to_owned()
-			}
-			(Op::ObjectAccess, V::ClassInstance(lhs), V::String(rhs)) => {
-				let rhs = rhs.get_owned();
+				if let Value::Function(func) = &mut field {
+					let has_arguments = !func.ast.arguments.is_empty();
 
-				if let Some(val) = (*lhs.fields).get(&rhs).cloned() {
-					return Ok(val);
-				}
+					if has_arguments {
+						let first_argument_name = &func.ast.arguments.first().unwrap().0;
 
-				if let Some(mut val) = (*lhs.class.fields).get(&rhs).cloned() {
-					if let Value::Function(func) = &mut val {
-						let has_args = !func.ast.arguments.is_empty();
+						if first_argument_name == "self" {
+							// Insert `self` into scope
+							let mut context = func.context.take();
+							context.insert(String::from("self"), lhs.into());
+							func.context.write(context);
 
-						if has_args {
-							let first_arg = &func.ast.arguments.first().as_ref().unwrap().0;
-
-							if first_arg == "self" {
-								// Insert `self` into scope
-								let mut context = func.context.take();
-								context.insert(String::from("self"), lhs.into());
-								func.context.write(context);
-
-								// Remove `self` argument
-								func.ast.arguments.remove(0);
-							}
+							// Remove `self` argument from the function
+							func.ast.arguments.remove(0);
 						}
 					}
-
-					return Ok(val);
 				}
 
-				create_error!(
-					self,
-					whole_position,
-					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
-						rhs,
-						rhs_position
-					))
-				)
+				field
 			}
-
-			(Op::EqEq, _, _) => V::Boolean(false.into()),
-			(Op::NotEq, _, _) => V::Boolean(true.into()),
 
 			(_, evaluated_lhs, evaluated_rhs) => {
 				create_error!(

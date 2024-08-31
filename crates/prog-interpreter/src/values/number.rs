@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
+use std::ops::{Add, Div, Mul, Rem, Sub};
 
 use super::{RIntrinsicFunction, RPrimitive};
 
 //* Note: `Debug` is implemented manually below
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, PartialOrd)]
 pub struct RNumber(f64);
 
 impl RPrimitive for RNumber {
@@ -15,6 +16,36 @@ impl RPrimitive for RNumber {
 	fn get_mut(&mut self) -> &mut Self::Inner { &mut self.0 }
 
 	fn dispatch_map(&self) -> HashMap<String, RIntrinsicFunction> { HashMap::new() }
+}
+
+impl Add for RNumber {
+	type Output = Self;
+
+	fn add(self, rhs: Self) -> Self::Output { Self(self.0 + rhs.0) }
+}
+
+impl Sub for RNumber {
+	type Output = Self;
+
+	fn sub(self, rhs: Self) -> Self::Output { Self(self.0 - rhs.0) }
+}
+
+impl Div for RNumber {
+	type Output = Self;
+
+	fn div(self, rhs: Self) -> Self::Output { Self(self.0 / rhs.0) }
+}
+
+impl Mul for RNumber {
+	type Output = Self;
+
+	fn mul(self, rhs: Self) -> Self::Output { Self(self.0 * rhs.0) }
+}
+
+impl Rem for RNumber {
+	type Output = Self;
+
+	fn rem(self, rhs: Self) -> Self::Output { Self(self.0 % rhs.0) }
 }
 
 impl From<f64> for RNumber {

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
+use std::ops::Index;
 
 use anyhow::Result;
 use prog_macros::get_this;
@@ -36,6 +37,21 @@ impl RPrimitive for RList {
 		);
 
 		map
+	}
+}
+
+impl Index<usize> for RList {
+	type Output = Value;
+
+	fn index(&self, index: usize) -> &Self::Output { self.0.get(index).unwrap_or(&Value::Empty) }
+}
+
+impl Index<RNumber> for RList {
+	type Output = Value;
+
+	fn index(&self, index: RNumber) -> &Self::Output {
+		let index = index.get_owned() as usize;
+		&self[index]
 	}
 }
 

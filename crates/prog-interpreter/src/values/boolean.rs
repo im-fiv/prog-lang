@@ -1,4 +1,5 @@
 use std::fmt::{self, Debug, Display};
+use std::ops::{BitAnd, BitOr};
 
 use super::RPrimitive;
 
@@ -12,6 +13,18 @@ impl RPrimitive for RBoolean {
 	fn get(&self) -> &Self::Inner { &self.0 }
 
 	fn get_mut(&mut self) -> &mut Self::Inner { &mut self.0 }
+}
+
+impl BitAnd for RBoolean {
+	type Output = Self;
+
+	fn bitand(self, rhs: Self) -> Self::Output { Self(self.0 & rhs.0) }
+}
+
+impl BitOr for RBoolean {
+	type Output = Self;
+
+	fn bitor(self, rhs: Self) -> Self::Output { Self(self.0 | rhs.0) }
 }
 
 impl From<bool> for RBoolean {
