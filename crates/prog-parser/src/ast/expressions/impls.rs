@@ -10,12 +10,11 @@ use super::*;
 impl Expression {
 	pub fn position(&self) -> Position {
 		match self {
-			Self::Unary(value) => value.position.clone(),
-			Self::Binary(value) => value.position.clone(),
-			Self::Term(value) => value.position(),
-			Self::Empty(value) => {
-				value
-					.to_owned()
+			Self::Unary(expr) => expr.position.clone(),
+			Self::Binary(expr) => expr.position.clone(),
+			Self::Term(expr) => expr.position(),
+			Self::Empty(expr) => {
+				expr.to_owned()
 					.expect("Position of `Expression::Empty` is `None`")
 			}
 		}
@@ -25,14 +24,14 @@ impl Expression {
 impl Term {
 	pub fn position(&self) -> Position {
 		match self {
-			Self::Extern(value) => value.1.clone(),
-			Self::Object(value) => value.1.clone(),
-			Self::List(value) => value.1.clone(),
-			Self::Call(value) => value.position.clone(),
-			Self::Function(value) => value.position.clone(),
-			Self::Literal(value) => value.position(),
-			Self::Identifier(_, value) => value.to_owned(),
-			Self::Expression(value) => value.position()
+			Self::Extern(ext) => ext.1.clone(),
+			Self::Object(obj) => obj.1.clone(),
+			Self::List(list) => list.1.clone(),
+			Self::Call(call) => call.position.clone(),
+			Self::Function(func) => func.position.clone(),
+			Self::Literal(lit) => lit.position(),
+			Self::Identifier(_, pos) => pos.to_owned(),
+			Self::Expression(expr) => expr.position()
 		}
 	}
 }
@@ -40,9 +39,9 @@ impl Term {
 impl Literal {
 	pub fn position(&self) -> Position {
 		match self {
-			Self::Boolean(_, value) => value,
-			Self::String(_, value) => value,
-			Self::Number(_, value) => value
+			Self::Boolean(_, pos) => pos,
+			Self::String(_, pos) => pos,
+			Self::Number(_, pos) => pos
 		}
 		.to_owned()
 	}
@@ -174,9 +173,9 @@ impl Display for operators::UnaryOperator {
 impl Display for Expression {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::Unary(value) => write!(f, "{value}"),
-			Self::Binary(value) => write!(f, "{value}"),
-			Self::Term(value) => write!(f, "{value}"),
+			Self::Unary(expr) => write!(f, "{expr}"),
+			Self::Binary(expr) => write!(f, "{expr}"),
+			Self::Term(expr) => write!(f, "{expr}"),
 			Self::Empty(_) => write!(f, "")
 		}
 	}
@@ -184,17 +183,21 @@ impl Display for Expression {
 
 impl Display for Unary {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		use operators::UnaryOperator as Op;
+
 		match self.operator.0 {
-			operators::UnaryOperator::Minus => write!(f, "{}{}", self.operator.0, self.operand),
-			operators::UnaryOperator::Not => write!(f, "{} {}", self.operator.0, self.operand)
+			Op::Minus => write!(f, "{}{}", self.operator.0, self.operand),
+			Op::Not => write!(f, "{} {}", self.operator.0, self.operand)
 		}
 	}
 }
 
 impl Display for Binary {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		use operators::BinaryOperator as Op;
+
 		match self.operator.0 {
-			operators::BinaryOperator::ListAccess | operators::BinaryOperator::ObjectAccess => {
+			Op::ListAccess | Op::ObjectAccess => {
 				write!(f, "{}{}{}", self.lhs, self.operator.0, self.rhs)
 			}
 
@@ -206,14 +209,14 @@ impl Display for Binary {
 impl Display for Term {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::Extern(value) => write!(f, "{value}"),
-			Self::Object(value) => write!(f, "{value}"),
-			Self::List(value) => write!(f, "{value}"),
-			Self::Call(value) => write!(f, "{value}"),
-			Self::Function(value) => write!(f, "{value}"),
-			Self::Literal(value) => write!(f, "{value}"),
-			Self::Identifier(value, _) => write!(f, "{value}"),
-			Self::Expression(value) => write!(f, "{value}")
+			Self::Extern(ext) => write!(f, "{ext}"),
+			Self::Object(obj) => write!(f, "{obj}"),
+			Self::List(list) => write!(f, "{list}"),
+			Self::Call(call) => write!(f, "{call}"),
+			Self::Function(func) => write!(f, "{func}"),
+			Self::Literal(lit) => write!(f, "{lit}"),
+			Self::Identifier(ident, _) => write!(f, "{ident}"),
+			Self::Expression(expr) => write!(f, "{expr}")
 		}
 	}
 }
@@ -279,9 +282,9 @@ impl Display for Function {
 impl Display for Literal {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::Boolean(value, _) => write!(f, "{value}"),
-			Self::String(value, _) => write!(f, "{value}"),
-			Self::Number(value, _) => write!(f, "{value}")
+			Self::Boolean(val, _) => write!(f, "{val}"),
+			Self::String(val, _) => write!(f, "{val}"),
+			Self::Number(val, _) => write!(f, "{val}")
 		}
 	}
 }
