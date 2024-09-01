@@ -27,6 +27,7 @@ pub struct Binary {
 
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Term {
+	Extern(Extern),
 	Object(Object),
 	List(List),
 	Call(Call),
@@ -35,6 +36,9 @@ pub enum Term {
 	Identifier(String, Position),
 	Expression(Box<Expression>)
 }
+
+#[derive(Debug, Clone, PartialEq, Hash)]
+pub struct Extern(pub Box<Expression>, pub Position);
 
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Object(pub Vec<ObjectEntry>, pub Position);

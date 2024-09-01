@@ -9,7 +9,8 @@ use crate::Value;
 pub struct ContextFlags {
 	pub con_stdout_allowed: bool,
 	pub imports_allowed: bool,
-	pub inputs_allowed: bool
+	pub inputs_allowed: bool,
+	pub externs_allowed: bool
 }
 
 impl Default for ContextFlags {
@@ -17,7 +18,8 @@ impl Default for ContextFlags {
 		Self {
 			con_stdout_allowed: true,
 			imports_allowed: true,
-			inputs_allowed: true
+			inputs_allowed: true,
+			externs_allowed: true
 		}
 	}
 }
@@ -36,13 +38,6 @@ pub struct Context {
 
 impl Context {
 	pub fn new() -> Self {
-		let mut this = Self::new_clean();
-		this.variables = super::intrinsics::create_variable_table();
-
-		this
-	}
-
-	pub fn new_clean() -> Self {
 		Self {
 			stdin: String::new(),
 			stdout: String::new(),
@@ -67,7 +62,7 @@ impl Context {
 	}
 
 	pub fn deeper(&mut self) {
-		let child_context = Self::new_clean();
+		let child_context = Self::new();
 		let original_context = std::mem::replace(self, child_context);
 
 		// `self` here is already the child context
@@ -160,7 +155,7 @@ impl Debug for Context {
 }
 
 impl Default for Context {
-	fn default() -> Self { Self::new_clean() }
+	fn default() -> Self { Self::new() }
 }
 
 impl halloc::Allocatable for Context {}

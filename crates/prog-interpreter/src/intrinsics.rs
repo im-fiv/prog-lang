@@ -165,6 +165,7 @@ fn assert_function(
 	let value = get_argument!(arguments => value: Value);
 	let message = get_argument!(arguments => message: RString?).map(|str| str.get_owned());
 
+	// TODO: fix `source` and `file` fields being empty
 	if !value.is_truthy() {
 		bail!(crate::InterpretError::new(
 			call_site.source,
@@ -189,15 +190,20 @@ pub fn create_variable_table() -> HashMap<String, Value> {
 
 	map.insert(
 		String::from("print"),
-		RIntrinsicFunction::new(print_function, ArgList::new(vec![Arg::Variadic("varargs")]))
-			.into()
+		RIntrinsicFunction::new(
+			print_function,
+			ArgList::new(vec![Arg::Variadic("varargs")]),
+			true
+		)
+		.into()
 	);
 
 	map.insert(
 		String::from("import"),
 		RIntrinsicFunction::new(
 			import_function,
-			ArgList::new(vec![Arg::Required("path", ValueKind::String)])
+			ArgList::new(vec![Arg::Required("path", ValueKind::String)]),
+			true
 		)
 		.into()
 	);
@@ -206,7 +212,8 @@ pub fn create_variable_table() -> HashMap<String, Value> {
 		String::from("input"),
 		RIntrinsicFunction::new(
 			input_function,
-			ArgList::new(vec![Arg::Optional("message", ValueKind::String)])
+			ArgList::new(vec![Arg::Optional("message", ValueKind::String)]),
+			true
 		)
 		.into()
 	);
@@ -215,7 +222,8 @@ pub fn create_variable_table() -> HashMap<String, Value> {
 		String::from("raw_print"),
 		RIntrinsicFunction::new(
 			raw_print_function,
-			ArgList::new(vec![Arg::Optional("string", ValueKind::String)])
+			ArgList::new(vec![Arg::Optional("string", ValueKind::String)]),
+			false
 		)
 		.into()
 	);
@@ -227,14 +235,15 @@ pub fn create_variable_table() -> HashMap<String, Value> {
 			ArgList::new(vec![
 				Arg::Required("value", ValueKind::Boolean),
 				Arg::Optional("message", ValueKind::String),
-			])
+			]),
+			true
 		)
 		.into()
 	);
 
 	map.insert(
 		String::from("dump_ctx"),
-		RIntrinsicFunction::new(dump_ctx_function, ArgList::new_empty()).into()
+		RIntrinsicFunction::new(dump_ctx_function, ArgList::new_empty(), false).into()
 	);
 
 	map

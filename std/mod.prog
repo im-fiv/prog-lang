@@ -1,0 +1,10 @@
+def std = {}
+
+std.print = extern "print"
+std.import = extern "import"
+std.input = extern "input"
+std.raw_print = extern "raw_print"
+std.assert = extern "assert"
+std.dump_ctx = extern "dump_ctx"
+
+return std

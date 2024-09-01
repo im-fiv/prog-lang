@@ -1,12 +1,12 @@
 export default {
 	keywords: [
-		'true', 'false', 'def', 'func', 'do', 'end',
-		'return', 'while', 'break', 'continue', 'if',
-		'then', 'none', 'self', 'class'
+		'def', 'func', 'do', 'end', 'return', 'while',
+		'break', 'continue', 'if', 'then', 'none',
+		'self', 'class', 'extern'
 	],
 
 	typeKeywords: [
-		'void'
+		'true', 'false', 'void'
 	],
 
 	intrinsics: [

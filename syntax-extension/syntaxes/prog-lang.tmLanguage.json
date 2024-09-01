@@ -15,7 +15,7 @@
 			"include": "#operators"
 		},
 		{
-			"match": "\\b(def|class)\\b",
+			"match": "\\b(def|class|extern)\\b",
 			"name": "keyword.other.definition.prog-lang"
 		},
 		{

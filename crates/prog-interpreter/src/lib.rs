@@ -56,6 +56,7 @@ fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
 pub struct Interpreter {
 	pub memory: Memory,
 	pub function_map: HashMap<u64, RFunction>,
+	pub externs: HashMap<String, Value>,
 	pub context: Context,
 
 	source: String,
@@ -64,9 +65,25 @@ pub struct Interpreter {
 
 impl Interpreter {
 	pub fn new() -> Self {
+		let mut this = Self::new_clean();
+		this.externs = intrinsics::create_variable_table();
+
+		for (name, item) in &this.externs {
+			if let Value::IntrinsicFunction(func) = item {
+				if func.bring_into_scope {
+					this.context.variables.insert(name.clone(), item.to_owned());
+				}
+			}
+		}
+
+		this
+	}
+
+	pub fn new_clean() -> Self {
 		Self {
 			memory: Memory::new(),
 			function_map: HashMap::new(),
+			externs: HashMap::new(),
 			context: Context::new(),
 
 			source: String::new(),
@@ -703,17 +720,15 @@ impl Interpreter {
 				let rhs = rhs.extract_identifier().to_owned();
 				let field = (*lhs.fields).get(&rhs).cloned();
 
-				field.ok_or_else(|| {
-					create_error!(
-						self,
-						whole_position,
-						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
-							rhs,
-							rhs_position
-						));
-						no_bail
-					)
-				})?
+				field.ok_or(create_error!(
+					self,
+					whole_position,
+					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
+						rhs,
+						rhs_position
+					));
+					no_bail
+				))?
 			}
 			(Op::ObjectAccess, V::ClassInstance(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
 				let rhs = rhs.extract_identifier().to_owned();
@@ -725,17 +740,15 @@ impl Interpreter {
 					return Ok(val);
 				}
 
-				let mut field = class_fields.get(&rhs).cloned().ok_or_else(|| {
-					create_error!(
-						self,
-						whole_position,
-						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
-							rhs,
-							rhs_position
-						));
-						no_bail
-					)
-				})?;
+				let mut field = class_fields.get(&rhs).cloned().ok_or(create_error!(
+					self,
+					whole_position,
+					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
+						rhs,
+						rhs_position
+					));
+					no_bail
+				))?;
 
 				if let Value::Function(func) = &mut field {
 					let has_arguments = !func.ast.arguments.is_empty();
@@ -784,6 +797,7 @@ impl Interpreter {
 		let position = term.position();
 
 		match term {
+			Term::Extern(ext) => self.evaluate_extern(ext),
 			Term::Object(obj) => self.evaluate_object(obj),
 			Term::List(list) => self.evaluate_list(list),
 			Term::Call(call) => self.evaluate_call(call),
@@ -832,6 +846,42 @@ impl Interpreter {
 
 		self.function_map.insert(hash, converted.clone());
 		Ok(Value::Function(converted))
+	}
+
+	fn evaluate_extern(&mut self, ext: ast::expressions::Extern) -> Result<Value> {
+		if !self.context.flags.externs_allowed {
+			create_error!(
+				self,
+				ext.1,
+				InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
+					thing: String::from("externs"),
+					plural: true
+				})
+			)
+		}
+
+		let value_pos = ext.0.position();
+		let value = match self.evaluate_expression(*ext.0, false)? {
+			Value::String(v) => v.get_owned(),
+			v => {
+				create_error!(
+					self,
+					value_pos,
+					InterpretErrorKind::InvalidExternArgument(errors::InvalidExternArgument(
+						v.kind()
+					))
+				)
+			}
+		};
+
+		self.externs.get(&value).cloned().ok_or(create_error!(
+			self,
+			value_pos,
+			InterpretErrorKind::NonExistentExternItem(errors::NonExistentExternItem(
+				value
+			));
+			no_bail
+		))
 	}
 
 	fn evaluate_object(&mut self, object: ast::expressions::Object) -> Result<Value> {

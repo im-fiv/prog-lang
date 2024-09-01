@@ -5,7 +5,7 @@ use prog_interpreter::values::*;
 fn insert_and_get_variable() {
 	let some_value = Value::Boolean(true.into());
 
-	let mut context = Context::new_clean();
+	let mut context = Context::new();
 	context.insert(String::from("some_variable"), some_value.clone());
 
 	let got_value = context.get("some_variable").unwrap();
@@ -17,7 +17,7 @@ fn insert_and_get_variable() {
 fn update_variable() {
 	let some_value = Value::Boolean(true.into());
 
-	let mut context = Context::new_clean();
+	let mut context = Context::new();
 	context.insert(String::from("some_variable"), some_value.clone());
 
 	let new_value = Value::Boolean(false.into());
@@ -34,7 +34,7 @@ fn update_variable() {
 #[test]
 #[should_panic]
 fn get_nonexistent_variable() {
-	let context = Context::new_clean();
+	let context = Context::new();
 	let _ = context.get(&"some_variable").unwrap();
 }
 
@@ -42,7 +42,7 @@ fn get_nonexistent_variable() {
 fn get_variable_mutable() {
 	let some_value = Value::Boolean(true.into());
 
-	let mut context = Context::new_clean();
+	let mut context = Context::new();
 	context.insert(String::from("some_variable"), some_value.clone());
 
 	let value_ref = context.get_mut("some_variable").unwrap();
@@ -62,7 +62,7 @@ fn get_variable_mutable() {
 fn subcontexts() {
 	let some_value = Value::Boolean(true.into());
 
-	let mut context = Context::new_clean();
+	let mut context = Context::new();
 
 	context.deeper();
 	context.insert(String::from("some_variable"), some_value);

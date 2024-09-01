@@ -14,6 +14,8 @@ mod unsupported_unary;
 mod variable_doesnt_exist;
 mod non_exhaustive_class_construction;
 mod cannot_reassign_class_functions;
+mod invalid_extern_argument;
+mod non_existent_extern_item;
 
 pub use argument_count_mismatch::*;
 pub use argument_type_mismatch::*;
@@ -26,7 +28,9 @@ pub use expression_not_assignable::*;
 pub use expression_not_callable::*;
 pub use field_doesnt_exist::*;
 pub use function_panicked::*;
+pub use invalid_extern_argument::*;
 pub use non_exhaustive_class_construction::*;
+pub use non_existent_extern_item::*;
 use prog_macros::ImplAriadneCompatible;
 use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 pub use unsupported_binary::*;
@@ -54,7 +58,9 @@ pub enum InterpretErrorKind {
 	UnsupportedUnary(UnsupportedUnary),
 	VariableDoesntExist(VariableDoesntExist),
 	NonExhaustiveClassConstruction(NonExhaustiveClassConstruction),
-	CannotReassignClassFunctions(CannotReassignClassFunctions)
+	CannotReassignClassFunctions(CannotReassignClassFunctions),
+	InvalidExternArgument(InvalidExternArgument),
+	NonExistentExternItem(NonExistentExternItem)
 }
 
 impl PrettyErrorKind for InterpretErrorKind {}

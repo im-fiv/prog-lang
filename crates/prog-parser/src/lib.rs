@@ -232,6 +232,17 @@ impl<'inp> Parser<'inp> {
 		expressions::List(expressions, position)
 	}
 
+	fn parse_extern(&self, pair: Pair<'_, Rule>) -> expressions::Extern {
+		assert_rule!(pair == r#extern in pair);
+
+		let position = span_to_pos(pair.as_span());
+		let mut pairs = pair.clone().into_inner();
+
+		let value = self.parse_expression(get_pair_safe!(from pairs expect expression in pair));
+
+		expressions::Extern(Box::new(value), position)
+	}
+
 	fn parse_object(&self, pair: Pair<'_, Rule>) -> expressions::Object {
 		assert_rule!(pair == object in pair);
 
@@ -506,6 +517,7 @@ impl<'inp> Parser<'inp> {
 			.unwrap_or_else(|| panic!("inner pairs of term are empty"));
 
 		match inner_pair.as_rule() {
+			Rule::r#extern => self.parse_extern(inner_pair).into(),
 			Rule::object => self.parse_object(inner_pair).into(),
 			Rule::list => self.parse_list(inner_pair).into(),
 

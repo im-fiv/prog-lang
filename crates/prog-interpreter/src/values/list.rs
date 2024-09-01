@@ -33,7 +33,7 @@ impl RPrimitive for RList {
 
 		map.insert(
 			String::from("len"),
-			RIntrinsicFunction::new(Self::len, ArgList::new_empty())
+			RIntrinsicFunction::new(Self::len, ArgList::new_empty(), false)
 		);
 
 		map

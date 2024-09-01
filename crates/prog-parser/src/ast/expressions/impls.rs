@@ -25,6 +25,7 @@ impl Expression {
 impl Term {
 	pub fn position(&self) -> Position {
 		match self {
+			Self::Extern(value) => value.1.clone(),
 			Self::Object(value) => value.1.clone(),
 			Self::List(value) => value.1.clone(),
 			Self::Call(value) => value.position.clone(),
@@ -86,6 +87,7 @@ impl From<Term> for Expression {
 	}
 }
 
+impl_basic_conv!(from Extern => Term as Extern);
 impl_basic_conv!(from Object => Term as Object);
 impl_basic_conv!(from List => Term as List);
 impl_basic_conv!(from Call => Term as Call);
@@ -204,6 +206,7 @@ impl Display for Binary {
 impl Display for Term {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
+			Self::Extern(value) => write!(f, "{value}"),
 			Self::Object(value) => write!(f, "{value}"),
 			Self::List(value) => write!(f, "{value}"),
 			Self::Call(value) => write!(f, "{value}"),
@@ -213,6 +216,10 @@ impl Display for Term {
 			Self::Expression(value) => write!(f, "{value}")
 		}
 	}
+}
+
+impl Display for Extern {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "extern {}", self.0) }
 }
 
 impl Display for Object {
