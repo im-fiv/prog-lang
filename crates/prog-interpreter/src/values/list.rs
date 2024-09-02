@@ -3,8 +3,8 @@ use std::fmt::{self, Debug, Display};
 use std::ops::Index;
 
 use anyhow::Result;
-use prog_macros::get_this;
 use halloc::HeapMutator;
+use prog_macros::get_this;
 
 use super::{RIntrinsicFunction, RIntrinsicFunctionData, RNumber, RPrimitive, Value};
 use crate::arg_parser::ArgList;
@@ -20,7 +20,7 @@ impl RList {
 
 		Ok(RNumber::from(len).into())
 	}
-	
+
 	// TODO: `insert` and `push`
 }
 
@@ -44,17 +44,13 @@ impl RPrimitive for RList {
 }
 
 impl PartialEq for RList {
-	fn eq(&self, other: &Self) -> bool {
-		self.0.get() == other.0.get()
-	}
+	fn eq(&self, other: &Self) -> bool { self.0.get() == other.0.get() }
 }
 
 impl Index<usize> for RList {
 	type Output = Value;
 
-	fn index(&self, index: usize) -> &Self::Output {
-		(*self.0).get(index).unwrap_or(&Value::Empty)
-	}
+	fn index(&self, index: usize) -> &Self::Output { (*self.0).get(index).unwrap_or(&Value::Empty) }
 }
 
 impl Index<RNumber> for RList {

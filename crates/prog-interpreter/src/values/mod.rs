@@ -6,17 +6,17 @@ mod object;
 mod function;
 mod intrinsic_function;
 mod class;
-mod marker;
+mod control_flow;
 
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 
 pub use boolean::*;
 pub use class::*;
+pub use control_flow::*;
 pub use function::*;
 pub use intrinsic_function::*;
 pub use list::*;
-pub use marker::*;
 pub use number::*;
 pub use object::*;
 use prog_macros::{EnumKind, VariantUnwrap};
@@ -83,7 +83,7 @@ pub enum Value {
 	Identifier(String),
 
 	#[cfg_attr(feature = "serde", serde(skip))]
-	Marker(MarkerKind)
+	ControlFlow(ControlFlow)
 }
 
 #[cfg(feature = "serde")]
@@ -111,7 +111,7 @@ impl Value {
 			Self::Empty => false,
 
 			Self::Identifier(..) => panic!("Got `Value` of kind `Identifier`"),
-			Self::Marker(..) => panic!("Got `Value` of kind `Marker`")
+			Self::ControlFlow(..) => panic!("Got `Value` of kind `ControlFlow`")
 		}
 	}
 
@@ -141,7 +141,7 @@ impl_basic_conv!(from RFunction => Value as Function);
 impl_basic_conv!(from RIntrinsicFunction => Value as IntrinsicFunction);
 impl_basic_conv!(from RClass => Value as Class);
 impl_basic_conv!(from RClassInstance => Value as ClassInstance);
-impl_basic_conv!(from MarkerKind => Value as Marker);
+impl_basic_conv!(from ControlFlow => Value as ControlFlow);
 
 impl From<ast::expressions::Literal> for Value {
 	fn from(value: ast::expressions::Literal) -> Self {
@@ -173,7 +173,7 @@ impl Debug for Value {
 			Self::Empty => write!(f, "none"),
 
 			Self::Identifier(ident) => Debug::fmt(ident, f),
-			Self::Marker(marker) => Debug::fmt(marker, f)
+			Self::ControlFlow(marker) => Debug::fmt(marker, f)
 		}
 	}
 }
@@ -196,7 +196,7 @@ impl Display for Value {
 			Self::Empty => write!(f, "none"),
 
 			Self::Identifier(ident) => write!(f, "{ident}"),
-			Self::Marker(marker) => write!(f, "Marker({marker})")
+			Self::ControlFlow(ctrl) => write!(f, "ControlFlow({ctrl})")
 		}
 	}
 }

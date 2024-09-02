@@ -117,12 +117,12 @@ impl Interpreter {
 			let result = self.execute_statement(statement)?;
 
 			// In case of `return`, `break`, and `continue` statements
-			if let Value::Marker(ref marker) = result {
+			if let Value::ControlFlow(ref ctrl) = result {
 				if keep_marker {
 					return Ok(result);
 				}
 
-				if let values::MarkerKind::Return(value) = marker {
+				if let values::ControlFlow::Return(value) = ctrl {
 					return Ok(*value.to_owned());
 				}
 
@@ -195,7 +195,9 @@ impl Interpreter {
 			None => Value::Empty
 		};
 
-		Ok(Value::Marker(values::MarkerKind::Return(Box::new(value))))
+		Ok(Value::ControlFlow(values::ControlFlow::Return(Box::new(
+			value
+		))))
 	}
 
 	fn execute_while_loop(&mut self, statement: ast::WhileLoop) -> Result<Value> {
@@ -211,11 +213,11 @@ impl Interpreter {
 			)?;
 			self.context.shallower();
 
-			if let Value::Marker(ref marker) = result {
-				match marker {
-					values::MarkerKind::Return(_) => return Ok(result),
-					values::MarkerKind::Break => break,
-					values::MarkerKind::Continue => {
+			if let Value::ControlFlow(ref ctrl) = result {
+				match ctrl {
+					values::ControlFlow::Return(_) => return Ok(result),
+					values::ControlFlow::Break => break,
+					values::ControlFlow::Continue => {
 						evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
 						continue;
 					}
@@ -229,11 +231,11 @@ impl Interpreter {
 	}
 
 	fn execute_break(&mut self, _statement: ast::Break) -> Result<Value> {
-		Ok(Value::Marker(values::MarkerKind::Break))
+		Ok(Value::ControlFlow(values::ControlFlow::Break))
 	}
 
 	fn execute_continue(&mut self, _statement: ast::Continue) -> Result<Value> {
-		Ok(Value::Marker(values::MarkerKind::Continue))
+		Ok(Value::ControlFlow(values::ControlFlow::Continue))
 	}
 
 	fn execute_if(&mut self, statement: ast::If) -> Result<Value> {
@@ -249,7 +251,7 @@ impl Interpreter {
 			)?;
 			self.context.shallower();
 
-			if result.kind() == ValueKind::Marker {
+			if result.kind() == ValueKind::ControlFlow {
 				return Ok(result);
 			}
 
@@ -269,7 +271,7 @@ impl Interpreter {
 				)?;
 				self.context.shallower();
 
-				if result.kind() == ValueKind::Marker {
+				if result.kind() == ValueKind::ControlFlow {
 					return Ok(result);
 				}
 
@@ -287,7 +289,7 @@ impl Interpreter {
 			)?;
 			self.context.shallower();
 
-			if result.kind() == ValueKind::Marker {
+			if result.kind() == ValueKind::ControlFlow {
 				return Ok(result);
 			}
 
