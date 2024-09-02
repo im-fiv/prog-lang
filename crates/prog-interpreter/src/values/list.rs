@@ -4,13 +4,14 @@ use std::ops::Index;
 
 use anyhow::Result;
 use prog_macros::get_this;
+use halloc::HeapMutator;
 
 use super::{RIntrinsicFunction, RIntrinsicFunctionData, RNumber, RPrimitive, Value};
 use crate::arg_parser::ArgList;
 
-//* Note: `Debug` is implemented manually below
-#[derive(Clone, PartialEq)]
-pub struct RList(Vec<Value>);
+//* Note: `Debug` and `PartialEq` are implemented manually below
+#[derive(Clone)]
+pub struct RList(HeapMutator<'static, Vec<Value>>);
 
 impl RList {
 	fn len(RIntrinsicFunctionData { this, .. }: RIntrinsicFunctionData) -> Result<Value> {
@@ -19,10 +20,12 @@ impl RList {
 
 		Ok(RNumber::from(len).into())
 	}
+	
+	// TODO: `insert` and `push`
 }
 
 impl RPrimitive for RList {
-	type Inner = Vec<Value>;
+	type Inner = HeapMutator<'static, Vec<Value>>;
 
 	fn get(&self) -> &Self::Inner { &self.0 }
 
@@ -40,10 +43,18 @@ impl RPrimitive for RList {
 	}
 }
 
+impl PartialEq for RList {
+	fn eq(&self, other: &Self) -> bool {
+		self.0.get() == other.0.get()
+	}
+}
+
 impl Index<usize> for RList {
 	type Output = Value;
 
-	fn index(&self, index: usize) -> &Self::Output { self.0.get(index).unwrap_or(&Value::Empty) }
+	fn index(&self, index: usize) -> &Self::Output {
+		(*self.0).get(index).unwrap_or(&Value::Empty)
+	}
 }
 
 impl Index<RNumber> for RList {
@@ -55,8 +66,8 @@ impl Index<RNumber> for RList {
 	}
 }
 
-impl From<Vec<Value>> for RList {
-	fn from(value: Vec<Value>) -> Self { Self(value) }
+impl From<HeapMutator<'static, Vec<Value>>> for RList {
+	fn from(value: HeapMutator<'static, Vec<Value>>) -> Self { Self(value) }
 }
 
 impl Debug for RList {

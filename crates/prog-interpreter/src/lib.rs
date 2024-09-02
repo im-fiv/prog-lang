@@ -385,8 +385,8 @@ impl Interpreter {
 		}
 
 		let index: usize = index.try_into()?;
-		let inner_list = match self.context.get_mut(&list_name)? {
-			Value::List(inner_list) => inner_list,
+		let mut mutator = match self.context.get(&list_name)? {
+			Value::List(list) => list.get_owned(),
 			value => {
 				create_error!(
 					self,
@@ -398,15 +398,19 @@ impl Interpreter {
 			}
 		};
 
-		if index >= inner_list.get().len() {
-			inner_list.get_mut().resize(index + 1, Value::Empty);
-		}
+		let mut entries = mutator.take();
 
-		inner_list.get_mut()[index] = value;
+		if index >= entries.len() {
+			entries.resize(index + 1, Value::Empty);
+		}
+		entries[index] = value;
+
+		mutator.write(entries);
 
 		Ok(Value::Empty)
 	}
 
+	// TODO: split class logic into `execute_expression_assign_class`
 	fn execute_expression_assign_object(
 		&mut self,
 		expression: ast::expressions::Binary,
@@ -930,7 +934,8 @@ impl Interpreter {
 			values.push(value);
 		}
 
-		Ok(Value::List(values.into()))
+		let allocated = unsafe { self.memory.alloc(values).promote() };
+		Ok(Value::List(allocated.into()))
 	}
 
 	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<Value> {
