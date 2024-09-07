@@ -4,7 +4,13 @@
 	<meta charset="UTF-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 	<link rel="stylesheet" href="styles.css">
+
+	<script src="monaco-editor/min/vs/loader.js" defer></script>
+	<script src="js/init-monaco.js" type="module" defer></script>
+	<script src="js/main.js" defer></script>
+
 	<title>Главная страница</title>
 </head>
 <body>
@@ -18,7 +24,7 @@
 				<ul class="pass">
 					<li><a class="color-black" href="index.html">Главная</a>
 					<li><a class="color-black" href="https://t.me/deanon_team_bot">ТГ Бот</a>
-					<li><a class="color-black" href="https://github.com/im-fiv/prog-lang">Github</a>
+					<li><a class="color-black" href="https://github.com/im-fiv/prog-lang">GitHub</a>
 					<li><a class="color-black" href="https://deanon-team.github.io">О нас</a>
 				</ul>
 			</div>
@@ -29,10 +35,10 @@
 		<input type="checkbox" id="nav-toggle" hidden>
 	
 		<nav class="nav">
-			<label for="nav-toggle" class="nav-toggle" onclick />
+			<label for="nav-toggle" class="nav-toggle" onclick/>
 
 			<h2 class="logo-text"> 
-				<a href="index.html">Prog lang</a> 
+				<a href="index.html">Prog Lang</a> 
 			</h2>
 
 			<div class="center"></div>
@@ -40,26 +46,26 @@
 			<ul id="swim-window">
 				<li><a href="index.html">Главная</a></li>
 				<li><a class="color-black" href="https://t.me/deanon_team_bot">ТГ Бот</a>
-				<li><a class="color-black" href="https://github.com/im-fiv/prog-lang">Github</a>
+				<li><a class="color-black" href="https://github.com/im-fiv/prog-lang">GitHub</a>
 				<li><a class="color-black" href="https://deanon-team.github.io">О нас</a>
 			</ul>
 		</nav>
 
 		<mobile-header>
-			<h2 class="name-website">Prog lang</h2>
+			<h2 class="name-website">Prog Lang</h2>
 		</mobile-header>
 	</div>
 	
 	<main>
 		<br><br><br><br><br><br><br>
 
-		<h2 class="first-display">Deanon team представляет Prog lang!</h2>
+		<h2 class="first-display">Deanon team представляет Prog Lang!</h2>
 		<br>
 
 		<img src="images/code-int.png" alt="фото синтаксиса" style="width:35%; height:auto; text-align: center;">
 		<br><br>
 		
-		<button class="gradient-btn download-size" onclick="GoToDownload()">Скачать</button>
+		<button class="gradient-btn download-size" onclick="redirectDownload()">Скачать</button>
 
 		<br><br><br><br><br><br>
 
@@ -80,17 +86,13 @@
 			Убедитесь в этом, запустив Ваш код прямиком в браузере!
 		<h4>
 
-		<button class="gradient-btn download-size" onclick="Execute()">Execute</button>
+		<button class="gradient-btn download-size" onclick="executeCode()">Execute</button>
 		<br>
 		<div id="container" style="width:800px;height:350px;border:1px solid grey"></div>
 
 		<br><br><br>
 		
-		<button class="gradient-btn download-size" onclick="GoToGithub()">Github</button> 
+		<button class="gradient-btn download-size" onclick="redirectGitHub()">GitHub</button> 
 	</main>
-
-	<script src="monaco-editor/min/vs/loader.js"></script>
-	<script src="js/init-monaco.js" type="module"></script>
-	<script src="js/functional.js"></script>
 </body>
 </html>

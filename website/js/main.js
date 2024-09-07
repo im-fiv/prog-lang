@@ -1,16 +1,16 @@
-function GoToDownload() {
+function redirectDownload() {
 	window.location.href = 'https://github.com/im-fiv/prog-lang/archive/refs/heads/main.zip';
 }
 
-function GoToGithub() {
+function redirectGitHub() {
 	window.location.href = 'https://github.com/im-fiv/prog-lang';
 }
 
-async function Execute() {
+async function executeCode() {
 	let code = window.editor.getValue();
 	let endpoint = `${window.origin}/execute`;
 
-	let data
+	let data;
 
 	try {
 		data = await fetch(endpoint, {
