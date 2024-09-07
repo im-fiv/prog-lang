@@ -66,6 +66,19 @@ impl From<HeapMutator<'static, Vec<Value>>> for RList {
 	fn from(value: HeapMutator<'static, Vec<Value>>) -> Self { Self(value) }
 }
 
+// Same as with Object
+impl Drop for RList {
+	fn drop(&mut self) {
+		if !self.0.can_dealloc() {
+			return;
+		}
+
+		for value in self.0.drain(..) {
+			drop(value);
+		}
+	}
+}
+
 impl Debug for RList {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Display::fmt(self, f) }
 }
