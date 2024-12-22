@@ -32,6 +32,7 @@ fn print_function(
 	Ok(Value::Empty)
 }
 
+// TODO: shift the path during import
 fn import_function(
 	RIntrinsicFunctionData {
 		interpreter,
@@ -185,6 +186,11 @@ fn dump_ctx_function(
 	Ok(Value::Empty)
 }
 
+// TODO
+fn file_open_function(RIntrinsicFunctionData { .. }: RIntrinsicFunctionData) -> Result<Value> {
+	Ok(Value::Empty)
+}
+
 pub fn create_variable_table() -> HashMap<String, Value> {
 	let mut map = HashMap::new();
 
@@ -244,6 +250,19 @@ pub fn create_variable_table() -> HashMap<String, Value> {
 	map.insert(
 		String::from("dump_ctx"),
 		RIntrinsicFunction::new(dump_ctx_function, ArgList::new_empty(), false).into()
+	);
+
+	map.insert(
+		String::from("file_open"),
+		RIntrinsicFunction::new(
+			file_open_function,
+			ArgList::new(vec![
+				Arg::Required("path", ValueKind::String),
+				Arg::Required("mode", ValueKind::String)
+			]),
+			false
+		)
+		.into()
 	);
 
 	map
