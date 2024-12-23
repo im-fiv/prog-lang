@@ -16,6 +16,16 @@ pub struct RFunction {
 	pub context: HeapMutator<'static, Context>
 }
 
+impl PartialEq for RFunction {
+	fn eq(&self, other: &Self) -> bool {
+		let ast = self.ast == other.ast;
+		let source = self.source == other.source;
+		let file = self.file == other.file;
+
+		ast && source && file
+	}
+}
+
 impl Debug for RFunction {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let arguments = self
@@ -31,16 +41,6 @@ impl Debug for RFunction {
 			.field("statements", &self.ast.statements)
 			.field("file", &self.file)
 			.finish()
-	}
-}
-
-impl PartialEq for RFunction {
-	fn eq(&self, other: &Self) -> bool {
-		let ast = self.ast == other.ast;
-		let source = self.source == other.source;
-		let file = self.file == other.file;
-
-		ast && source && file
 	}
 }
 
