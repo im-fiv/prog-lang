@@ -1,7 +1,5 @@
 def std = {}
 
-std.fs = ("std/fs") -> import
-
 std.print = extern "print"
 std.import = extern "import"
 std.input = extern "input"
