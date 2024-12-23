@@ -66,14 +66,13 @@ pub struct Interpreter {
 impl Interpreter {
 	pub fn new() -> Self {
 		let mut this = Self::new_clean();
-		this.externs = intrinsics::create_variable_table();
 
-		for (name, item) in &this.externs {
-			if let Value::IntrinsicFunction(func) = item {
-				if func.bring_into_scope {
-					this.context.variables.insert(name.clone(), item.to_owned());
-				}
+		for (name, (item, bring_into_scope)) in intrinsics::create_variable_table() {
+			if bring_into_scope {
+				this.context.variables.insert(name.clone(), item.clone());
 			}
+
+			this.externs.insert(name, item);
 		}
 
 		this

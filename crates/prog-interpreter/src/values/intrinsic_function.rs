@@ -13,8 +13,7 @@ use crate::Interpreter;
 pub struct RIntrinsicFunction {
 	pub pointer: RIntrinsicFunctionPtr,
 	pub this: Option<Box<Value>>,
-	pub arguments: ArgList,
-	pub bring_into_scope: bool
+	pub arguments: ArgList
 }
 
 #[derive(Debug)]
@@ -38,12 +37,11 @@ pub struct CallSite {
 }
 
 impl RIntrinsicFunction {
-	pub fn new(pointer: RIntrinsicFunctionPtr, arguments: ArgList, bring_into_scope: bool) -> Self {
+	pub fn new(pointer: RIntrinsicFunctionPtr, arguments: ArgList) -> Self {
 		Self {
 			pointer,
 			this: None,
-			arguments,
-			bring_into_scope
+			arguments
 		}
 	}
 

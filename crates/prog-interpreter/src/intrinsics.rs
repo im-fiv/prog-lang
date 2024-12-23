@@ -7,6 +7,27 @@ use crate::arg_parser::{Arg, ArgList, ParsedArg};
 use crate::errors;
 use crate::values::*;
 
+//* Note: this is an extension for convenient value insertion
+trait QuickInsert {
+	fn quick_insert(
+		&mut self,
+		key: impl Into<String>,
+		value: impl Into<Value>,
+		bring_into_scope: bool
+	);
+}
+
+impl QuickInsert for HashMap<String, (Value, bool)> {
+	fn quick_insert(
+		&mut self,
+		key: impl Into<String>,
+		value: impl Into<Value>,
+		bring_into_scope: bool
+	) {
+		self.insert(key.into(), (value.into(), bring_into_scope));
+	}
+}
+
 fn print_function(
 	RIntrinsicFunctionData {
 		interpreter,
@@ -186,65 +207,58 @@ fn dump_ctx_function(
 	Ok(Value::Empty)
 }
 
-pub fn create_variable_table() -> HashMap<String, Value> {
+pub fn create_variable_table() -> HashMap<String, (Value, bool)> {
 	let mut map = HashMap::new();
 
-	map.insert(
-		String::from("print"),
-		RIntrinsicFunction::new(
-			print_function,
-			ArgList::new(vec![Arg::Variadic("varargs")]),
-			true
-		)
-		.into()
+	map.quick_insert(
+		"print",
+		RIntrinsicFunction::new(print_function, ArgList::new(vec![Arg::Variadic("varargs")])),
+		true
 	);
 
-	map.insert(
-		String::from("import"),
+	map.quick_insert(
+		"import",
 		RIntrinsicFunction::new(
 			import_function,
-			ArgList::new(vec![Arg::Required("path", ValueKind::String)]),
-			true
-		)
-		.into()
+			ArgList::new(vec![Arg::Required("path", ValueKind::String)])
+		),
+		true
 	);
 
-	map.insert(
-		String::from("input"),
+	map.quick_insert(
+		"input",
 		RIntrinsicFunction::new(
 			input_function,
-			ArgList::new(vec![Arg::Optional("message", ValueKind::String)]),
-			true
-		)
-		.into()
+			ArgList::new(vec![Arg::Optional("message", ValueKind::String)])
+		),
+		true
 	);
 
-	map.insert(
-		String::from("raw_print"),
+	map.quick_insert(
+		"raw_print",
 		RIntrinsicFunction::new(
 			raw_print_function,
-			ArgList::new(vec![Arg::Optional("string", ValueKind::String)]),
-			false
-		)
-		.into()
+			ArgList::new(vec![Arg::Optional("string", ValueKind::String)])
+		),
+		false
 	);
 
-	map.insert(
-		String::from("assert"),
+	map.quick_insert(
+		"assert",
 		RIntrinsicFunction::new(
 			assert_function,
 			ArgList::new(vec![
 				Arg::Required("value", ValueKind::Boolean),
 				Arg::Optional("message", ValueKind::String),
-			]),
-			true
-		)
-		.into()
+			])
+		),
+		true
 	);
 
-	map.insert(
-		String::from("dump_ctx"),
-		RIntrinsicFunction::new(dump_ctx_function, ArgList::new_empty(), false).into()
+	map.quick_insert(
+		"dump_ctx",
+		RIntrinsicFunction::new(dump_ctx_function, ArgList::new_empty()),
+		false
 	);
 
 	map

@@ -71,14 +71,13 @@ impl RPrimitive for RString {
 				ArgList::new(vec![
 					Arg::Required("start", ValueKind::Number),
 					Arg::Optional("end", ValueKind::Number),
-				]),
-				false
+				])
 			)
 		);
 
 		map.insert(
 			String::from("len"),
-			RIntrinsicFunction::new(Self::len, ArgList::new_empty(), false)
+			RIntrinsicFunction::new(Self::len, ArgList::new_empty())
 		);
 
 		map
