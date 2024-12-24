@@ -34,11 +34,11 @@ impl<Kind: PrettyErrorKind> PrettyError<Kind> {
 	}
 
 	fn create_report(&self) -> Report<Span> {
-		let mut report = Report::build(ReportKind::Error, &self.source[..], self.position.start)
-			.with_message(self.kind.message());
+		let mut report =
+			Report::build(ReportKind::Error, (&self.source[..], self.position.clone()))
+				.with_message(self.kind.message());
 
 		report.add_labels(self.kind.clone().labels(&self.file, self.position.clone()));
-
 		report.finish()
 	}
 
