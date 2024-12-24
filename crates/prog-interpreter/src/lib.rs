@@ -825,11 +825,16 @@ impl Interpreter {
 	}
 
 	fn evaluate_function(&mut self, function: ast::expressions::Function) -> Result<Value> {
-		use std::hash::{DefaultHasher, Hash, Hasher};
+		let hash = {
+			use std::hash::{DefaultHasher, Hash, Hasher};
+			let mut hasher = DefaultHasher::new();
 
-		let mut hasher = DefaultHasher::new();
-		function.hash(&mut hasher);
-		let hash = hasher.finish();
+			// ! NOTE: this should be reviewed for future use cases.
+			// Only the function's AST determines its uniqueness
+			function.hash(&mut hasher);
+
+			hasher.finish()
+		};
 
 		if let Some(func) = self.function_map.get(&hash) {
 			return Ok(Value::Function(func.to_owned()));
