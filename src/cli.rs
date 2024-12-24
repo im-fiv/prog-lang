@@ -28,10 +28,6 @@ pub enum CLISubcommand {
 	/// Interpret a file
 	Run(RunCommand),
 
-	#[cfg(feature = "vm")]
-	/// Compile a file to bytecode
-	Compile(CompileCommand),
-
 	#[cfg(feature = "api")]
 	/// Launch REST server
 	Serve(ServeCommand)
@@ -44,22 +40,6 @@ pub struct RunCommand {
 	pub file_path: String,
 
 	#[arg(long, short, default_value_t = false)]
-	/// Enable debug information
-	pub debug: bool
-}
-
-#[derive(Debug, Args)]
-pub struct CompileCommand {
-	#[arg(default_value = DEFAULT_INPUT_FP)]
-	/// Target file path
-	pub file_path: String,
-
-	// TODO: allow customization of output file paths
-	#[arg(long, short, default_value_t = false)]
-	/// Run the file after compilation
-	pub run: bool,
-
-	#[arg(long, short, default_value_t = false, requires = "run")]
 	/// Enable debug information
 	pub debug: bool
 }

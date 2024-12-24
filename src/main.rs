@@ -28,42 +28,8 @@ fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
 	Err(String::from("Failed to serialize anyhow error to JSON"))
 }
 
-#[cfg(feature = "vm")]
-fn execute_bytecode(bytes: &[u8], debug: bool) {
-	use prog_vm::{Bytecode, VM};
-
-	let bytecode = Bytecode::from_bytes(&bytes).unwrap();
-	let mut vm = VM::new(bytecode, debug).unwrap();
-
-	match vm.run() {
-		Ok(v) => {
-			if let Some(v) = v {
-				println!("{v}")
-			}
-		}
-
-		Err(e) => eprintln!("{e}")
-	}
-}
-
 fn execute_run_command(args: cli::RunCommand) {
 	use prog_interpreter::ValueKind;
-
-	let file_extension = std::path::Path::new(&args.file_path)
-		.extension()
-		.and_then(std::ffi::OsStr::to_str)
-		.unwrap();
-
-	if file_extension == "progc" {
-		#[cfg(not(feature = "vm"))]
-		panic!("Running bytecode files is not supported due to inactive `vm` feature");
-
-		#[cfg(feature = "vm")]
-		{
-			let bytecode = std::fs::read(&args.file_path).unwrap();
-			return execute_bytecode(&bytecode, args.debug);
-		}
-	}
 
 	let contents = read_file(&args.file_path);
 
@@ -79,36 +45,6 @@ fn execute_run_command(args: cli::RunCommand) {
 
 		_ => ()
 	};
-}
-
-#[cfg(feature = "vm")]
-fn execute_compile_command(args: cli::CompileCommand) {
-	use prog_compiler::Compiler;
-
-	let contents = read_file(&args.file_path);
-
-	let parser = ProgParser::new(&contents, &args.file_path);
-	let ast = parser.parse().unwrap();
-
-	let mut compiler = Compiler::new();
-	let bytecode = compiler.compile(ast);
-
-	if let Err(e) = bytecode {
-		eprintln!("{e}");
-		return;
-	}
-
-	// TODO: allow customization of output file paths
-	let bytecode = bytecode.unwrap();
-	let serialized = bytecode.as_bytes().unwrap();
-	let human_readable = format!("{bytecode}");
-
-	std::fs::write(cli::DEFAULT_OUTPUT_BC_FP, &serialized).unwrap();
-	std::fs::write(cli::DEFAULT_OUTPUT_BC_FMT_FP, human_readable).unwrap();
-
-	if args.run {
-		execute_bytecode(&serialized, args.debug);
-	}
 }
 
 #[cfg(feature = "repl")]
@@ -268,9 +204,6 @@ fn main() {
 
 	match subcommand {
 		cli::CLISubcommand::Run(command) => execute_run_command(command),
-
-		#[cfg(feature = "vm")]
-		cli::CLISubcommand::Compile(command) => execute_compile_command(command),
 
 		#[cfg(feature = "api")]
 		cli::CLISubcommand::Serve(command) => execute_serve_command(command)
