@@ -3,7 +3,7 @@
   "displayName": "Prog Lang Syntax Highlighting",
   "description": "Syntax highlighting for Prog Lang",
   "publisher": "im-fiv",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": {
     "url": "https://github.com/im-fiv/prog-lang"
   },
@@ -37,6 +37,6 @@
     ]
   },
   "dependencies": {
-    "@vscode/vsce": "3.0.0"
+    "@vscode/vsce": "3.2.1"
   }
 }
