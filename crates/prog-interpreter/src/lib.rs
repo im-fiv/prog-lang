@@ -99,7 +99,8 @@ impl Interpreter {
 	) -> Result<Value>
 	where
 		S: Into<String>,
-		F: Into<String> {
+		F: Into<String>
+	{
 		self.source = source.into();
 		self.file = file.into();
 

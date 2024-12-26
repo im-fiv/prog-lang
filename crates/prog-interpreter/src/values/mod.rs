@@ -38,7 +38,8 @@ pub trait RPrimitive {
 	/// Clones the inner value of the primitive
 	fn get_owned(&self) -> Self::Inner
 	where
-		Self::Inner: Clone {
+		Self::Inner: Clone
+	{
 		self.get().to_owned()
 	}
 
