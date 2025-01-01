@@ -1,11 +1,11 @@
 mod formatter_writer;
 mod span;
 
-use formatter_writer::FormatterWriter;
-pub use span::{Span, Position};
-
 use std::{fmt, io};
+
 use ariadne::{Label, Report, ReportKind, Source};
+use formatter_writer::FormatterWriter;
+pub use span::{Position, Span};
 
 #[cfg(feature = "serde")]
 pub trait PrettyErrorKind: Clone + AriadneCompatible + serde::Serialize {}
@@ -39,17 +39,13 @@ impl<Kind: PrettyErrorKind> PrettyError<Kind> {
 		let span = Span::new(&self.source[..], self.position);
 		let message = self.kind.message();
 
-		let mut report =
-			Report::build(ReportKind::Error, span)
-				.with_message(message);
+		let mut report = Report::build(ReportKind::Error, span).with_message(message);
 
 		report.add_labels(self.kind.clone().labels(&self.file, self.position));
 		report.finish()
 	}
 
-	fn get_cache(&self) -> (&str, Source<&str>) {
-		(&self.file[..], Source::from(&self.source[..]))
-	}
+	fn get_cache(&self) -> (&str, Source<&str>) { (&self.file[..], Source::from(&self.source[..])) }
 
 	pub fn eprint(&self) {
 		let report = self.create_report();

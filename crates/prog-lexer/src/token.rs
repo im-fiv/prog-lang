@@ -11,21 +11,13 @@ pub struct Token<'inp> {
 }
 
 impl<'inp> Token<'inp> {
-	pub fn new(kind: TokenKind, span: Span<'inp>) -> Self {
-		Self { kind, span }
-	}
+	pub fn new(kind: TokenKind, span: Span<'inp>) -> Self { Self { kind, span } }
 
-	pub fn start(&self) -> usize {
-		self.span.start()
-	}
+	pub fn start(&self) -> usize { self.span.start() }
 
-	pub fn end(&self) -> usize {
-		self.span.end()
-	}
+	pub fn end(&self) -> usize { self.span.end() }
 
-	pub fn value(&self) -> &'inp str {
-		self.span.value()
-	}
+	pub fn value(&self) -> &'inp str { self.span.value() }
 }
 
 impl Display for Token<'_> {

@@ -11,8 +11,7 @@ impl AriadneCompatible for AssertionFailed {
 	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>> {
 		let mut colors = ColorGenerator::new();
 
-		let mut label = Label::new(Span::new(file, position))
-			.with_color(colors.next());
+		let mut label = Label::new(Span::new(file, position)).with_color(colors.next());
 
 		if let Some(message) = self.0 {
 			label = label.with_message(format!("\"{message}\""));

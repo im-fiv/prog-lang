@@ -1,4 +1,5 @@
 use std::fmt::{self, Display};
+
 use crate::Token;
 
 #[derive(Debug)]
@@ -7,15 +8,9 @@ pub struct TokenStream<'inp> {
 }
 
 impl<'inp> TokenStream<'inp> {
-	pub fn new() -> Self {
-		Self {
-			buffer: vec![]
-		}
-	}
+	pub fn new() -> Self { Self { buffer: vec![] } }
 
-	pub fn push(&mut self, token: Token<'inp>) {
-		self.buffer.push(token);
-	}
+	pub fn push(&mut self, token: Token<'inp>) { self.buffer.push(token); }
 }
 
 impl Display for TokenStream<'_> {
@@ -29,7 +24,5 @@ impl Display for TokenStream<'_> {
 }
 
 impl Default for TokenStream<'_> {
-	fn default() -> Self {
-		Self::new()
-	}
+	fn default() -> Self { Self::new() }
 }

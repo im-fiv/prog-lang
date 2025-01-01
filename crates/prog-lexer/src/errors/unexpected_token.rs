@@ -10,11 +10,9 @@ impl AriadneCompatible for UnexpectedToken {
 
 	fn labels(self, file: &str, position: Position) -> Vec<ariadne::Label<Span>> {
 		let mut colors = ColorGenerator::new();
-		
-		vec![
-			Label::new(Span::new(file, position))
-				.with_message(&format!("unexpected `{}`", self.0))
-				.with_color(colors.next())
-		]
+
+		vec![Label::new(Span::new(file, position))
+			.with_message(&format!("unexpected `{}`", self.0))
+			.with_color(colors.next())]
 	}
 }

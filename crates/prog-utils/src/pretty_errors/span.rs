@@ -1,4 +1,5 @@
 use std::fmt::{self, Debug};
+
 use ariadne::Span as _;
 
 #[derive(Clone, Copy, PartialEq, Hash)]
@@ -53,7 +54,7 @@ impl ariadne::Span for Position {
 	fn source(&self) -> &Self::SourceId { &() }
 
 	fn start(&self) -> usize { self.start }
-	
+
 	fn end(&self) -> usize { self.end }
 }
 

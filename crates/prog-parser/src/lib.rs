@@ -15,12 +15,7 @@ use pest::{Parser as _, Span};
 use utils::*;
 
 #[inline]
-fn span_to_pos(span: Span) -> Position {
-	Position::new(
-		span.start(),
-		span.end()
-	)
-}
+fn span_to_pos(span: Span) -> Position { Position::new(span.start(), span.end()) }
 
 #[derive(pest_derive::Parser)]
 #[grammar = "grammar.pest"]

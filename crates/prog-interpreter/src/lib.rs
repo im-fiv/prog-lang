@@ -5,9 +5,9 @@ pub mod intrinsics;
 pub mod values;
 
 use std::collections::HashMap;
+
 use anyhow::Result;
 use ariadne::Span as _;
-
 use context::Context;
 pub use errors::{InterpretError, InterpretErrorKind};
 use halloc::Memory;
@@ -1046,7 +1046,8 @@ impl Interpreter {
 				let last_arg = function.ast.arguments.last().unwrap();
 
 				let fn_call_pos = function_pos;
-				let fn_def_args_pos = Some(ast::Position::new(first_arg.1.start(), last_arg.1.end()));
+				let fn_def_args_pos =
+					Some(ast::Position::new(first_arg.1.start(), last_arg.1.end()));
 
 				create_error!(
 					self,

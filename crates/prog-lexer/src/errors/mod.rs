@@ -1,8 +1,7 @@
 mod unexpected_token;
-pub use unexpected_token::*;
-
 use prog_macros::ImplAriadneCompatible;
 use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
+pub use unexpected_token::*;
 
 pub type LexError = PrettyError<LexErrorKind>;
 

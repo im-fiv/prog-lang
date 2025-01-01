@@ -2,12 +2,11 @@ mod errors;
 mod token;
 mod stream;
 
-use anyhow::{Result, bail};
-use prog_utils::pretty_errors::{Span, Position};
-
+use anyhow::{bail, Result};
 pub use errors::{LexError, LexErrorKind};
-pub use token::{Token, TokenKind, Keyword};
+use prog_utils::pretty_errors::{Position, Span};
 pub use stream::TokenStream;
+pub use token::{Keyword, Token, TokenKind};
 
 pub fn lex<'inp>(input: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>> {
 	let mut chars = input.char_indices().peekable();
@@ -82,14 +81,14 @@ pub fn lex<'inp>(input: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>>
 				TokenKind::Number
 			}
 
-			c => bail!(LexError::new(
-				input.to_owned(),
-				file.to_owned(),
-				Position::new(start_index, start_index + 1),
-				LexErrorKind::UnexpectedToken(
-					errors::UnexpectedToken(c)
-				)
-			))
+			c => {
+				bail!(LexError::new(
+					input.to_owned(),
+					file.to_owned(),
+					Position::new(start_index, start_index + 1),
+					LexErrorKind::UnexpectedToken(errors::UnexpectedToken(c))
+				))
+			}
 		};
 
 		let end_index = chars.peek().map_or(input.len(), |(idx, _)| *idx);
@@ -101,10 +100,7 @@ pub fn lex<'inp>(input: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>>
 
 	stream.push(Token::new(
 		TokenKind::Eof,
-		Span::new(
-			input,
-			Position::new(input.len(), input.len())
-		)
+		Span::new(input, Position::new(input.len(), input.len()))
 	));
 
 	Ok(stream)
