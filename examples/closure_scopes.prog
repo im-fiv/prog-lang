@@ -1,0 +1,23 @@
+def some_global = 0
+
+def factory = func() do
+	def some_local = 0
+
+	return func(some_global_expected) do
+		(some_global == some_global_expected) -> assert
+		some_local = some_local + 1
+
+		return some_local
+	end
+end
+
+def instance = () -> factory
+
+some_global = some_global + 1
+(((some_global) -> instance) == 1) -> assert
+
+some_global = some_global + 1
+(((some_global) -> instance) == 2) -> assert
+
+some_global = some_global + 1
+(((some_global) -> instance) == 3) -> assert
