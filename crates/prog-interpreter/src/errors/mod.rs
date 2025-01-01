@@ -30,16 +30,15 @@ pub use expression_not_callable::*;
 pub use field_doesnt_exist::*;
 pub use function_panicked::*;
 pub use invalid_extern_argument::*;
+pub use invalid_file::*;
 pub use non_exhaustive_class_construction::*;
 pub use non_existent_extern_item::*;
+use prog_macros::ImplAriadneCompatible;
+use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 pub use unsupported_binary::*;
 pub use unsupported_statement::*;
 pub use unsupported_unary::*;
 pub use variable_doesnt_exist::*;
-pub use invalid_file::*;
-
-use prog_macros::ImplAriadneCompatible;
-use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 
 pub type InterpretError = PrettyError<InterpretErrorKind>;
 
