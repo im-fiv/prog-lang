@@ -496,7 +496,7 @@ impl<'inp> Parser<'inp> {
 				lhs: left.clone(),
 				operator: (operator, operator_position),
 				rhs: right.into(),
-				position: position.clone()
+				position
 			})
 			.into()
 		}

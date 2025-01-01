@@ -602,7 +602,7 @@ impl Interpreter {
 		use ast::expressions::operators::UnaryOperator as Op;
 		use Value as V;
 
-		let operator_pos = operator.1.clone();
+		let operator_pos = operator.1;
 		let operand_pos = operand.position();
 		let whole_pos = ast::Position::new(operator_pos.start(), operand_pos.end());
 
@@ -829,7 +829,7 @@ impl Interpreter {
 		let context = {
 			let mut context = Context::new();
 
-			context.deref_mut().flags = self.context.deref().flags.clone();
+			context.deref_mut().flags = self.context.deref().flags;
 			context.deref_mut().parent = Some(self.context.clone()); //* NOTE: This only clones the reference
 
 			if self.no_self_override() {
@@ -952,7 +952,7 @@ impl Interpreter {
 			whole_pos: call.position
 		};
 
-		let call_args_pos = call_site.args_pos.clone();
+		let call_args_pos = call_site.args_pos;
 		let call_args = call
 			.arguments
 			.0
@@ -975,12 +975,12 @@ impl Interpreter {
 				} => {
 					create_error!(
 						self,
-						call_args_pos.clone(),
+						call_args_pos,
 						InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
 							expected,
 							end_boundary,
 							got,
-							fn_call_pos: function_pos.clone(),
+							fn_call_pos: function_pos,
 							fn_def_args_pos: None
 						});
 						no_bail
@@ -1002,7 +1002,7 @@ impl Interpreter {
 						InterpretErrorKind::ArgumentTypeMismatch(errors::ArgumentTypeMismatch {
 							expected,
 							got,
-							function_pos: function_pos.clone()
+							function_pos
 						});
 						no_bail
 					)

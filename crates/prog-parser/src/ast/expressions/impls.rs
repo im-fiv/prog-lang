@@ -10,8 +10,8 @@ use super::*;
 impl Expression {
 	pub fn position(&self) -> Position {
 		match self {
-			Self::Unary(expr) => expr.position.clone(),
-			Self::Binary(expr) => expr.position.clone(),
+			Self::Unary(expr) => expr.position,
+			Self::Binary(expr) => expr.position,
 			Self::Term(expr) => expr.position(),
 			Self::Empty(expr) => {
 				expr.to_owned()
@@ -24,13 +24,13 @@ impl Expression {
 impl Term {
 	pub fn position(&self) -> Position {
 		match self {
-			Self::Extern(ext) => ext.1.clone(),
-			Self::Object(obj) => obj.1.clone(),
-			Self::List(list) => list.1.clone(),
-			Self::Call(call) => call.position.clone(),
-			Self::Function(func) => func.position.clone(),
+			Self::Extern(ext) => ext.1,
+			Self::Object(obj) => obj.1,
+			Self::List(list) => list.1,
+			Self::Call(call) => call.position,
+			Self::Function(func) => func.position,
 			Self::Literal(lit) => lit.position(),
-			Self::Identifier(_, pos) => pos.to_owned(),
+			Self::Identifier(_, pos) => *pos,
 			Self::Expression(expr) => expr.position()
 		}
 	}

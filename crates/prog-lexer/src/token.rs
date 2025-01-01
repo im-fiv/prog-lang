@@ -119,7 +119,7 @@ pub enum Keyword {
 }
 
 impl Keyword {
-	pub fn from_str(input: &str) -> Option<Self> {
+	pub fn parse(input: &str) -> Option<Self> {
 		match input {
 			"true" => Some(Self::True),
 			"false" => Some(Self::False),

@@ -58,7 +58,7 @@ pub fn lex<'inp>(input: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>>
 					chars.next();
 				}
 
-				if let Some(kw) = Keyword::from_str(&ident) {
+				if let Some(kw) = Keyword::parse(&ident) {
 					TokenKind::Keyword(kw)
 				} else {
 					TokenKind::Identifier

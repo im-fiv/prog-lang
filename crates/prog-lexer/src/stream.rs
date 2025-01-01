@@ -27,3 +27,9 @@ impl Display for TokenStream<'_> {
 		Ok(())
 	}
 }
+
+impl Default for TokenStream<'_> {
+	fn default() -> Self {
+		Self::new()
+	}
+}
