@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - main
+      - experimental
 
 jobs:
   test-and-build:
