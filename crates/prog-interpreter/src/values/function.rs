@@ -1,6 +1,4 @@
 use std::fmt::{self, Debug, Display};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 use prog_parser::ast;
 
@@ -14,7 +12,7 @@ pub struct RFunction {
 	pub source: String,
 	pub file: String,
 
-	pub context: Rc<RefCell<Context>>
+	pub context: Context
 }
 
 impl PartialEq for RFunction {

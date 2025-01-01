@@ -1,6 +1,7 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
-use std::cell::RefCell;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 use anyhow::{bail, Result};
@@ -26,19 +27,76 @@ impl Default for ContextFlags {
 	}
 }
 
-//* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
 pub struct Context {
+	inner: Rc<RefCell<InnerContext>>
+}
+
+impl Context {
+	pub fn new() -> Self {
+		Self {
+			inner: Rc::new(RefCell::new(InnerContext::new()))
+		}
+	}
+
+	// Helper functions
+	pub fn wrap(inner: InnerContext) -> Self {
+		Self {
+			inner: Rc::new(RefCell::new(inner))
+		}
+	}
+
+	pub fn unwrap_or_clone(self) -> InnerContext {
+		let cell = Rc::unwrap_or_clone(self.inner);
+		cell.take()
+	}
+
+	pub fn deref(&self) -> impl Deref<Target = InnerContext> + '_ { self.inner.borrow() }
+
+	pub fn deref_mut(&mut self) -> impl DerefMut<Target = InnerContext> + '_ {
+		self.inner.borrow_mut()
+	}
+
+	// InnerContext's functions
+	pub fn deeper(&mut self) { self.deref_mut().deeper(); }
+
+	pub fn shallower(&mut self) { self.deref_mut().shallower(); }
+
+	pub fn is_subcontext(&self) -> bool { self.deref().is_subcontext() }
+
+	pub fn exists(&self, name: &str) -> bool { self.deref().exists(name) }
+
+	pub fn get(&self, name: &str) -> Result<Value> { self.deref().get(name) }
+
+	pub fn insert(&mut self, name: String, value: Value) -> Option<Value> {
+		self.deref_mut().insert(name, value)
+	}
+
+	pub fn update(&mut self, name: String, value: Value) -> Result<Value> {
+		self.deref_mut().update(name, value)
+	}
+}
+
+impl Debug for Context {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Debug::fmt(&self.inner, f) }
+}
+
+impl Default for Context {
+	fn default() -> Self { Self::new() }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct InnerContext {
 	pub stdin: String,
 	pub stdout: String,
 
 	pub flags: ContextFlags,
 
 	pub variables: HashMap<String, Value>,
-	pub parent: Option<Rc<RefCell<Self>>>
+	pub parent: Option<Context>
 }
 
-impl Context {
+impl InnerContext {
 	pub fn new() -> Self {
 		Self {
 			stdin: String::new(),
@@ -57,19 +115,13 @@ impl Context {
 
 		// `self` here is already the child context
 		self.flags = original_context.flags; // Infer the flags of the original context
-		self.parent = Some(Rc::new(RefCell::new(original_context)));
+		self.parent = Some(Context::wrap(original_context));
 	}
 
 	pub fn shallower(&mut self) {
 		match self.parent.take() {
-			Some(parent) => {
-				let cell = Rc::unwrap_or_clone(parent);
-				let parent = cell.into_inner();
-
-				*self = parent;
-			}
-
-			None => eprintln!("Warning `Context::shallower()` was called while not having a parent")
+			Some(parent) => *self = parent.unwrap_or_clone(),
+			None => eprintln!("INTERPRETER WARNING: `InnerContext::shallower()` was called while not having a parent")
 		}
 	}
 
@@ -81,7 +133,7 @@ impl Context {
 		}
 
 		match self.parent {
-			Some(ref p) => p.borrow().exists(name),
+			Some(ref p) => p.deref().exists(name),
 			None => false
 		}
 	}
@@ -92,7 +144,7 @@ impl Context {
 		}
 
 		match self.parent {
-			Some(ref p) => p.borrow().get(name),
+			Some(ref p) => p.deref().get(name),
 			None => bail!("Variable with name `{name}` does not exist")
 		}
 	}
@@ -112,10 +164,10 @@ impl Context {
 			Entry::Occupied(mut e) => Ok(e.insert(value)),
 			Entry::Vacant(_) => {
 				match self.parent {
-					Some(ref mut p) => p.borrow_mut().update(name, value),
+					Some(ref mut p) => p.deref_mut().update(name, value),
 					None => {
 						unreachable!(
-							"Match arm reached despite expecting `Context::exists(\"{name}\")` to return `false`"
+							"Match arm reached despite expecting `InnerContext::exists(\"{name}\")` to return `false`"
 						)
 					}
 				}
@@ -124,9 +176,9 @@ impl Context {
 	}
 }
 
-impl Debug for Context {
+impl Debug for InnerContext {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let mut debug_struct = f.debug_struct("Context");
+		let mut debug_struct = f.debug_struct("InnerContext");
 
 		debug_struct.field("flags", &self.flags);
 		debug_struct.field("variables", &self.variables);
@@ -139,8 +191,6 @@ impl Debug for Context {
 	}
 }
 
-impl Default for Context {
+impl Default for InnerContext {
 	fn default() -> Self { Self::new() }
 }
-
-impl halloc::Allocatable for Context {}

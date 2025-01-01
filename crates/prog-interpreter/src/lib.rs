@@ -5,8 +5,6 @@ pub mod intrinsics;
 pub mod values;
 
 use std::collections::HashMap;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 use anyhow::Result;
 use context::Context;
@@ -59,7 +57,7 @@ fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
 pub struct Interpreter {
 	pub memory: Memory,
 	pub externs: HashMap<String, Value>,
-	pub context: Rc<RefCell<Context>>,
+	pub context: Context,
 
 	source: String,
 	file: String
@@ -71,7 +69,7 @@ impl Interpreter {
 
 		for (name, (item, bring_into_scope)) in intrinsics::create_variable_table() {
 			if bring_into_scope {
-				this.context.borrow_mut().variables.insert(name.clone(), item.clone());
+				this.context.insert(name.clone(), item.clone());
 			}
 
 			this.externs.insert(name, item);
@@ -84,7 +82,7 @@ impl Interpreter {
 		Self {
 			memory: Memory::new(),
 			externs: HashMap::new(),
-			context: Rc::new(RefCell::new(Context::new())),
+			context: Context::new(),
 
 			source: String::new(),
 			file: String::new()
@@ -156,7 +154,7 @@ impl Interpreter {
 			Some(expression) => self.evaluate_expression(expression, false)?
 		};
 
-		self.context.borrow_mut().insert(statement.name.0, evaluated_value);
+		self.context.insert(statement.name.0, evaluated_value);
 		Ok(Value::Empty)
 	}
 
@@ -164,7 +162,7 @@ impl Interpreter {
 		let variable_name = statement.name.0;
 
 		let evaluated_value = self.evaluate_expression(statement.value, false)?;
-		let update_result = self.context.borrow_mut().update(variable_name.clone(), evaluated_value);
+		let update_result = self.context.update(variable_name.clone(), evaluated_value);
 
 		if update_result.is_err() {
 			create_error!(
@@ -178,14 +176,14 @@ impl Interpreter {
 	}
 
 	fn execute_do_block(&mut self, statement: ast::DoBlock) -> Result<Value> {
-		self.context.borrow_mut().deeper();
+		self.context.deeper();
 		let result = self.execute(
 			ast::Program {
 				statements: statement.statements
 			},
 			false
 		);
-		self.context.borrow_mut().shallower();
+		self.context.shallower();
 
 		result
 	}
@@ -205,14 +203,14 @@ impl Interpreter {
 		let mut evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
 
 		while evaluated.is_truthy() {
-			self.context.borrow_mut().deeper();
+			self.context.deeper();
 			let result = self.execute(
 				ast::Program {
 					statements: statement.statements.clone()
 				},
 				true
 			)?;
-			self.context.borrow_mut().shallower();
+			self.context.shallower();
 
 			if let Value::ControlFlow(ref ctrl) = result {
 				match ctrl {
@@ -243,14 +241,14 @@ impl Interpreter {
 		let evaluated = self.evaluate_expression(statement.condition, false)?;
 
 		if evaluated.is_truthy() {
-			self.context.borrow_mut().deeper();
+			self.context.deeper();
 			let result = self.execute(
 				ast::Program {
 					statements: statement.statements
 				},
 				true
 			)?;
-			self.context.borrow_mut().shallower();
+			self.context.shallower();
 
 			if result.kind() == ValueKind::ControlFlow {
 				return Ok(result);
@@ -263,14 +261,14 @@ impl Interpreter {
 			let evaluated = self.evaluate_expression(branch.condition, false)?;
 
 			if evaluated.is_truthy() {
-				self.context.borrow_mut().deeper();
+				self.context.deeper();
 				let result = self.execute(
 					ast::Program {
 						statements: branch.statements
 					},
 					true
 				)?;
-				self.context.borrow_mut().shallower();
+				self.context.shallower();
 
 				if result.kind() == ValueKind::ControlFlow {
 					return Ok(result);
@@ -281,14 +279,14 @@ impl Interpreter {
 		}
 
 		if let Some(branch) = statement.else_branch {
-			self.context.borrow_mut().deeper();
+			self.context.deeper();
 			let result = self.execute(
 				ast::Program {
 					statements: branch.statements
 				},
 				true
 			)?;
-			self.context.borrow_mut().shallower();
+			self.context.shallower();
 
 			if result.kind() == ValueKind::ControlFlow {
 				return Ok(result);
@@ -388,7 +386,7 @@ impl Interpreter {
 		}
 
 		let index: usize = index.try_into()?;
-		let mut mutator = match self.context.borrow().get(&list_name)? {
+		let mut mutator = match self.context.get(&list_name)? {
 			Value::List(list) => list.get_owned(),
 			value => {
 				create_error!(
@@ -459,7 +457,7 @@ impl Interpreter {
 
 		// Here we're handling objects and classes at the same time
 		// because the difference between them is minimal
-		let (object_kind, mut fields, parent_fields) = match self.context.borrow().get(&object_name)? {
+		let (object_kind, mut fields, parent_fields) = match self.context.get(&object_name)? {
 			Value::Object(ref mut obj) => (ValueKind::Object, obj.get_owned(), None),
 			Value::ClassInstance(inst) => {
 				(
@@ -531,20 +529,19 @@ impl Interpreter {
 		// This is a hack to keep fields of `self` and the actual class in sync
 		let mut fields = unsafe { self.memory.alloc(HashMap::new()).promote() };
 
-		{
-			let mut context = self.context.borrow_mut();
-
-			context.deeper();
-			context.insert(String::from(META_NO_SELF_OVERRIDE), Value::Boolean(true.into()));
-			context.insert(
-				String::from("self"),
-				values::RClass {
-					name: statement.name.clone(),
-					fields: fields.clone()
-				}
-				.into()
-			);
-		}
+		self.context.deeper();
+		self.context.insert(
+			String::from(META_NO_SELF_OVERRIDE),
+			Value::Boolean(true.into())
+		);
+		self.context.insert(
+			String::from("self"),
+			values::RClass {
+				name: statement.name.clone(),
+				fields: fields.clone()
+			}
+			.into()
+		);
 
 		let mut temp_fields = HashMap::new();
 		for field in statement.fields {
@@ -561,12 +558,8 @@ impl Interpreter {
 			fields
 		};
 
-		{
-			let mut context = self.context.borrow_mut();
-
-			context.shallower();
-			context.insert(statement.name, class.clone().into());
-		}
+		self.context.shallower();
+		self.context.insert(statement.name, class.clone().into());
 
 		Ok(class.into())
 	}
@@ -770,10 +763,9 @@ impl Interpreter {
 					if has_arguments {
 						let first_argument_name = &func.ast.arguments.first().unwrap().0;
 
-						if first_argument_name == "self" {
+						if first_argument_name == META_SELF {
 							// Insert `self` into scope
-							let mut context = func.context.borrow_mut();
-							context.insert(String::from("self"), lhs.into());
+							func.context.insert(String::from("self"), lhs.into());
 
 							// Remove `self` argument from the function
 							func.ast.arguments.remove(0);
@@ -824,7 +816,7 @@ impl Interpreter {
 							errors::VariableDoesntExist(ident.clone())
 						); no_bail);
 
-						self.context.borrow().get(&ident).map_err(|_| error)
+						self.context.get(&ident).map_err(|_| error)
 					}
 				}
 			}
@@ -834,25 +826,20 @@ impl Interpreter {
 
 	fn evaluate_function(&mut self, function: ast::expressions::Function) -> Result<Value> {
 		let context = {
-			let context = Rc::new(RefCell::new(Context::new()));
-			let mut borrow = context.borrow_mut();
+			let mut context = Context::new();
 
-			borrow.flags = self.context.borrow().flags.clone();
-			borrow.parent = Some(Rc::clone(&self.context));
+			context.deref_mut().flags = self.context.deref().flags.clone();
+			context.deref_mut().parent = Some(self.context.clone()); //* NOTE: This only clones the reference
 
 			if self.no_self_override() {
-				borrow.insert(
+				context.insert(
 					String::from(META_NO_SELF_OVERRIDE),
 					Value::Boolean(true.into())
 				);
 
-				borrow.insert(
-					String::from(META_SELF),
-					self.context.borrow().get(META_SELF)?
-				);
+				context.insert(String::from(META_SELF), self.context.get(META_SELF)?);
 			}
 
-			drop(borrow);
 			context
 		};
 
@@ -869,7 +856,7 @@ impl Interpreter {
 	}
 
 	fn evaluate_extern(&mut self, ext: ast::expressions::Extern) -> Result<Value> {
-		if !self.context.borrow().flags.externs_allowed {
+		if !self.context.deref().flags.externs_allowed {
 			create_error!(
 				self,
 				ext.1,
@@ -1028,9 +1015,9 @@ impl Interpreter {
 				.verify(&call_args)
 				.map_err(convert_error)?;
 
-			self.context.borrow_mut().deeper();
+			self.context.deeper();
 			let result = function.call(self, call_args, call_site);
-			self.context.borrow_mut().shallower();
+			self.context.shallower();
 
 			return result;
 		}
@@ -1080,7 +1067,7 @@ impl Interpreter {
 			{
 				use std::mem;
 
-				self.context.borrow_mut().deeper();
+				self.context.deeper();
 				self.source = function.source.clone();
 				self.file = function.file.clone();
 
@@ -1092,7 +1079,6 @@ impl Interpreter {
 					// and does not need reassignment
 					let no_override = self
 						.context
-						.borrow()
 						.get(META_NO_SELF_OVERRIDE)
 						.unwrap_or(Value::Boolean(false.into()));
 
@@ -1100,9 +1086,7 @@ impl Interpreter {
 						Value::Boolean(bool) if bool.get_owned() => {}
 
 						_ => {
-							self
-								.context
-								.borrow_mut()
+							self.context
 								.insert(String::from("self"), Value::Function(function.clone()));
 						}
 					}
@@ -1110,7 +1094,7 @@ impl Interpreter {
 
 				let argument_iter = function.ast.arguments.into_iter().zip(call_args);
 				for ((arg_name, _), arg_value) in argument_iter {
-					self.context.borrow_mut().insert(arg_name, arg_value);
+					self.context.insert(arg_name, arg_value);
 				}
 
 				let exec_result = self.execute(
@@ -1142,7 +1126,7 @@ impl Interpreter {
 
 				mem::swap(&mut self.context, &mut function.context);
 
-				self.context.borrow_mut().shallower();
+				self.context.shallower();
 				self.source = source;
 				self.file = file;
 
@@ -1235,15 +1219,14 @@ impl Interpreter {
 	/// Indicates whether the `self` variable should be overriden
 	/// with the lowermost function in the context hierarchy
 	fn no_self_override(&self) -> bool {
-		let borrow = self.context.borrow();
-		let value = borrow.get(META_NO_SELF_OVERRIDE);
+		let value = self.context.get(META_NO_SELF_OVERRIDE);
 
 		if value.is_err() {
 			return false;
 		}
 
 		let value = value.unwrap();
-		
+
 		match value {
 			Value::Boolean(value) => value.get_owned(),
 
