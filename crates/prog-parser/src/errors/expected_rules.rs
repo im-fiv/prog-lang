@@ -19,7 +19,7 @@ impl AriadneCompatible for ExpectedRules {
 			.collect::<Vec<_>>()
 			.join(", ");
 
-		vec![Label::new((file, position))
+		vec![Label::new(Span::new(file, position))
 			.with_message(format!("expected {}", rules))
 			.with_color(color)]
 	}

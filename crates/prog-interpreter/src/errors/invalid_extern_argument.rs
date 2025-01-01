@@ -16,7 +16,7 @@ impl AriadneCompatible for InvalidExternArgument {
 		let color_expected = colors.next();
 		let color_got = colors.next();
 
-		vec![Label::new((file, position))
+		vec![Label::new(Span::new(file, position))
 			.with_message(format!(
 				"Expected value of type `{}`, got `{}`",
 				ValueKind::String.fg(color_expected),

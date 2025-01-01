@@ -12,7 +12,7 @@ impl AriadneCompatible for FunctionPanicked {
 		let mut colors = ColorGenerator::new();
 		let color = colors.next();
 
-		vec![Label::new((file, position))
+		vec![Label::new(Span::new(file, position))
 			.with_message("during this function call")
 			.with_color(color)]
 	}

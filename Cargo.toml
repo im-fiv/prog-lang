@@ -9,6 +9,7 @@ repl = ["dep:rustyline"]
 serde = [
 	"dep:serde",
 	"dep:serde_json",
+	"prog-lexer/serde",
 	"prog-parser/serde",
 	"prog-interpreter/serde",
 	"prog-utils/serde"
@@ -30,6 +31,7 @@ ariadne = "0.5.0"
 serde_json = "1.0.134"
 pest = "2.7.15"
 pest_derive = "2.7.15"
+prog-lexer = { path = "./crates/prog-lexer" }
 prog-parser = { path = "./crates/prog-parser" }
 prog-interpreter = { path = "./crates/prog-interpreter" }
 prog-utils = { path = "./crates/prog-utils" }
@@ -41,6 +43,7 @@ cfg-if = "1.0.0"
 clap = { version = "4.5.23", features = ["derive"] }
 pest = { workspace = true }
 anyhow = { workspace = true }
+prog-lexer = { workspace = true }
 prog-parser = { workspace = true }
 prog-interpreter = { workspace = true }
 prog-utils = { workspace = true }

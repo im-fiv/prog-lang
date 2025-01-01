@@ -12,7 +12,7 @@ impl AriadneCompatible for CannotReassignClassFunctions {
 		let mut colors = ColorGenerator::new();
 		let color = colors.next();
 
-		vec![Label::new((file, position))
+		vec![Label::new(Span::new(file, position))
 			.with_message("class function cannot be reassigned")
 			.with_color(color)]
 	}

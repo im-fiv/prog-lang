@@ -51,14 +51,14 @@ impl AriadneCompatible for ArgumentCountMismatch {
 		};
 
 		let mut labels = vec![
-			Label::new((file, position))
+			Label::new(Span::new(file, position))
 				.with_message(message)
 				.with_color(color_got),
-			Label::new((file, self.fn_call_pos)).with_color(color_expected),
+			Label::new(Span::new(file, self.fn_call_pos)).with_color(color_expected),
 		];
 
 		if let Some(fn_def_args_pos) = self.fn_def_args_pos {
-			let definition_label = Label::new((file, fn_def_args_pos))
+			let definition_label = Label::new(Span::new(file, fn_def_args_pos))
 				.with_message(format!("as defined {}", "here".fg(color_expected)))
 				.with_color(color_expected);
 

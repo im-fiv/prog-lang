@@ -2,6 +2,7 @@ use ariadne::{ColorGenerator, Fmt, Label};
 use prog_parser::ast::expressions::operators::BinaryOperator;
 use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 
+use ariadne::Span as _;
 use crate::ValueKind;
 
 #[derive(Debug, Clone)]
@@ -22,11 +23,11 @@ impl AriadneCompatible for UnsupportedBinary {
 		let color_operands = colors.next();
 
 		vec![
-			Label::new((file, self.operator.1))
+			Label::new(Span::new(file, self.operator.1))
 				.with_message("this operation")
 				.with_color(color_operator)
 				.with_order(0),
-			Label::new((file, self.lhs.1.start..self.rhs.1.end))
+			Label::new(Span::new(file, Position::new(self.lhs.1.start(), self.rhs.1.end())))
 				.with_message(format!(
 					"cannot be performed on types {} and {}",
 					self.lhs.0.to_string().fg(color_operands),

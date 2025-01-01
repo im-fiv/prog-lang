@@ -1,9 +1,11 @@
+mod formatter_writer;
+mod span;
+
+use formatter_writer::FormatterWriter;
+pub use span::{Span, Position};
+
 use std::{fmt, io};
-
 use ariadne::{Label, Report, ReportKind, Source};
-
-pub type Position = std::ops::Range<usize>;
-pub type Span<'a> = (&'a str, Position);
 
 #[cfg(feature = "serde")]
 pub trait PrettyErrorKind: Clone + AriadneCompatible + serde::Serialize {}
@@ -34,15 +36,20 @@ impl<Kind: PrettyErrorKind> PrettyError<Kind> {
 	}
 
 	fn create_report(&self) -> Report<Span> {
-		let mut report =
-			Report::build(ReportKind::Error, (&self.source[..], self.position.clone()))
-				.with_message(self.kind.message());
+		let span = Span::new(&self.source[..], self.position);
+		let message = self.kind.message();
 
-		report.add_labels(self.kind.clone().labels(&self.file, self.position.clone()));
+		let mut report =
+			Report::build(ReportKind::Error, span)
+				.with_message(message);
+
+		report.add_labels(self.kind.clone().labels(&self.file, self.position));
 		report.finish()
 	}
 
-	fn get_cache(&self) -> (&str, Source<&str>) { (&self.file[..], Source::from(&self.source[..])) }
+	fn get_cache(&self) -> (&str, Source<&str>) {
+		(&self.file[..], Source::from(&self.source[..]))
+	}
 
 	pub fn eprint(&self) {
 		let report = self.create_report();
@@ -74,7 +81,6 @@ impl<Kind: PrettyErrorKind> serde::Serialize for PrettyError<Kind> {
 		use serde::ser::SerializeStruct;
 
 		let mut s = serializer.serialize_struct("PrettyError", 5)?;
-
 		s.serialize_field("message", &self.kind.message())?;
 		s.serialize_field("file", &self.file)?;
 		s.serialize_field("source", &self.source)?;
@@ -82,50 +88,5 @@ impl<Kind: PrettyErrorKind> serde::Serialize for PrettyError<Kind> {
 		s.serialize_field("kind", &self.kind)?;
 
 		s.end()
-	}
-}
-
-struct FormatterWriter<'fmtref, 'fmt> {
-	buffer: Vec<u8>,
-	formatter: &'fmtref mut fmt::Formatter<'fmt>
-}
-
-impl<'fmtref, 'fmt> FormatterWriter<'fmtref, 'fmt> {
-	pub fn new(formatter: &'fmtref mut fmt::Formatter<'fmt>) -> Self {
-		Self {
-			buffer: vec![],
-			formatter
-		}
-	}
-}
-
-impl<'fmtref, 'fmt> io::Write for FormatterWriter<'fmtref, 'fmt> {
-	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-		self.buffer.extend_from_slice(buf);
-		Ok(buf.len())
-	}
-
-	fn flush(&mut self) -> io::Result<()> {
-		use std::str::from_utf8;
-
-		use io::{Error, ErrorKind};
-
-		match from_utf8(&self.buffer) {
-			Ok(s) => {
-				self.formatter
-					.write_str(s)
-					.map_err(|e| Error::new(ErrorKind::Other, e))
-			}
-
-			Err(_) => {
-				Err(Error::new(
-					ErrorKind::Other,
-					"Failed to convert buffer to string"
-				))
-			}
-		}?;
-
-		self.buffer.clear();
-		Ok(())
 	}
 }

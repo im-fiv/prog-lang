@@ -1140,11 +1140,23 @@ dependencies = [
  "env_logger",
  "pest",
  "prog-interpreter",
+ "prog-lexer",
  "prog-parser",
  "prog-utils",
  "rustyline",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "prog-lexer"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "ariadne",
+ "prog-macros",
+ "prog-utils",
+ "serde",
 ]
 
 [[package]]

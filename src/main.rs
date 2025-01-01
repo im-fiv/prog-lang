@@ -33,6 +33,9 @@ fn execute_run_command(args: cli::RunCommand) {
 
 	let contents = read_file(&args.file_path);
 
+	// TODO
+	let token_stream = prog_lexer::lex(&contents, &args.file_path).unwrap();
+
 	let parser = ProgParser::new(&contents, &args.file_path);
 	let ast = parser.parse().unwrap();
 
@@ -137,9 +140,9 @@ fn execute_serve_command(args: cli::ServeCommand) {
 		};
 
 		let mut interpreter = Interpreter::new();
-		interpreter.context.flags.con_stdout_allowed = false;
-		interpreter.context.flags.imports_allowed = false;
-		interpreter.context.flags.inputs_allowed = false;
+		interpreter.context.deref_mut().flags.con_stdout_allowed = false;
+		interpreter.context.deref_mut().flags.imports_allowed = false;
+		interpreter.context.deref_mut().flags.inputs_allowed = false;
 
 		let result = match interpreter.interpret(req_body, NAME_STDIN, ast, false) {
 			Ok(result) => result,
@@ -153,10 +156,11 @@ fn execute_serve_command(args: cli::ServeCommand) {
 			stdout: String
 		}
 
+		let unwrapped_context = interpreter.context.unwrap_or_clone();
 		let result_struct = Result {
 			value: result,
-			stdin: interpreter.context.stdin,
-			stdout: interpreter.context.stdout
+			stdin: unwrapped_context.stdin,
+			stdout: unwrapped_context.stdout
 		};
 
 		let json = match serde_json::to_string_pretty(&result_struct) {

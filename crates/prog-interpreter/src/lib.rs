@@ -5,8 +5,9 @@ pub mod intrinsics;
 pub mod values;
 
 use std::collections::HashMap;
-
 use anyhow::Result;
+use ariadne::Span as _;
+
 use context::Context;
 pub use errors::{InterpretError, InterpretErrorKind};
 use halloc::Memory;
@@ -603,7 +604,7 @@ impl Interpreter {
 
 		let operator_pos = operator.1.clone();
 		let operand_pos = operand.position();
-		let whole_pos = operator_pos.start..operand_pos.end;
+		let whole_pos = ast::Position::new(operator_pos.start(), operand_pos.end());
 
 		let evaluated_operand = self.evaluate_term(operand.clone(), stop_on_ident)?;
 
@@ -644,7 +645,7 @@ impl Interpreter {
 		let lhs_position = lhs.position();
 		let rhs_position = rhs.position();
 
-		let whole_position = lhs_position.start..rhs_position.end;
+		let whole_position = ast::Position::new(lhs_position.start(), rhs_position.end());
 
 		let evaluated_lhs = self.evaluate_term(lhs.clone(), stop_on_ident)?;
 		// if performing an object access and rhs is a valid identifier,
@@ -895,7 +896,7 @@ impl Interpreter {
 		use std::collections::HashMap;
 
 		let mut value_map = HashMap::new();
-		let mut position_map: HashMap<String, std::ops::Range<usize>> = HashMap::new();
+		let mut position_map: HashMap<String, ast::Position> = HashMap::new();
 
 		for entry in object.0 {
 			let name = entry.name;
@@ -1045,7 +1046,7 @@ impl Interpreter {
 				let last_arg = function.ast.arguments.last().unwrap();
 
 				let fn_call_pos = function_pos;
-				let fn_def_args_pos = Some((first_arg.1.start)..(last_arg.1.end));
+				let fn_def_args_pos = Some(ast::Position::new(first_arg.1.start(), last_arg.1.end()));
 
 				create_error!(
 					self,

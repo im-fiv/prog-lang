@@ -19,14 +19,14 @@ impl AriadneCompatible for ArgumentTypeMismatch {
 		let color_got = colors.next();
 
 		vec![
-			Label::new((file, position))
+			Label::new(Span::new(file, position))
 				.with_message(format!(
 					"expected argument of type {}, got {}",
 					self.expected.fg(color_expected),
 					self.got.fg(color_got)
 				))
 				.with_color(color_got),
-			Label::new((file, self.function_pos))
+			Label::new(Span::new(file, self.function_pos))
 				.with_message("function in question")
 				.with_color(color_expected),
 		]

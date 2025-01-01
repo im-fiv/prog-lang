@@ -12,7 +12,7 @@ impl AriadneCompatible for NonExistentExternItem {
 		let mut colors = ColorGenerator::new();
 		let color = colors.next();
 
-		vec![Label::new((file, position))
+		vec![Label::new(Span::new(file, position))
 			.with_message(format!(
 				"Extern item with name `{}` was not found",
 				self.0.fg(color)

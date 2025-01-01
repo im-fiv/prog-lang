@@ -6,6 +6,7 @@ mod utils;
 use std::iter::Peekable;
 
 use anyhow::{bail, Result};
+use ariadne::Span as _;
 use ast::*;
 pub use errors::{ParseError, ParseErrorKind};
 use errors_legacy::error;
@@ -14,7 +15,12 @@ use pest::{Parser as _, Span};
 use utils::*;
 
 #[inline]
-fn span_to_pos(span: Span) -> Position { span.start()..span.end() }
+fn span_to_pos(span: Span) -> Position {
+	Position::new(
+		span.start(),
+		span.end()
+	)
+}
 
 #[derive(pest_derive::Parser)]
 #[grammar = "grammar.pest"]
@@ -57,7 +63,7 @@ impl<'inp> Parser<'inp> {
 		ParseError::new(
 			self.source.to_owned(),
 			self.file.to_owned(),
-			position.clone(),
+			Position::new(position.start, position.end),
 			ParseErrorKind::ExpectedRules(errors::ExpectedRules(positives))
 		)
 	}
@@ -484,7 +490,7 @@ impl<'inp> Parser<'inp> {
 			pairs.next();
 
 			let right = self.parse_expression_with_precedence(pairs, operator_precedence + 1);
-			position = position.start..right.position().end;
+			position = Position::new(position.start(), right.position().end());
 
 			left = Expression::Binary(expressions::Binary {
 				lhs: left.clone(),
@@ -499,7 +505,7 @@ impl<'inp> Parser<'inp> {
 	}
 
 	fn parse_term(&self, pair: Pair<'_, Rule>) -> expressions::Term {
-		// In accordance with `src/crates/prog-parser/src/grammar.pest:44`
+		// In accordance with `src/crates/prog-parser/src/grammar.pest:46`
 		assert_rule!(pair == unary_expression | binary_expression | term in pair);
 
 		match pair.as_rule() {
