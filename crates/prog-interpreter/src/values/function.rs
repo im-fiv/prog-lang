@@ -1,6 +1,7 @@
 use std::fmt::{self, Debug, Display};
+use std::cell::RefCell;
+use std::rc::Rc;
 
-use halloc::HeapMutator;
 use prog_parser::ast;
 
 use crate::context::Context;
@@ -13,7 +14,7 @@ pub struct RFunction {
 	pub source: String,
 	pub file: String,
 
-	pub context: HeapMutator<'static, Context>
+	pub context: Rc<RefCell<Context>>
 }
 
 impl PartialEq for RFunction {

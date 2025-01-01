@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use anyhow::{bail, Result};
 
@@ -33,7 +35,7 @@ pub struct Context {
 	pub flags: ContextFlags,
 
 	pub variables: HashMap<String, Value>,
-	pub parent: Option<Box<Self>>
+	pub parent: Option<Rc<RefCell<Self>>>
 }
 
 impl Context {
@@ -49,30 +51,24 @@ impl Context {
 		}
 	}
 
-	pub fn level(&self) -> usize {
-		let mut level = 0;
-		let mut current = &self.parent;
-
-		while let Some(ref ctx) = current {
-			level += 1;
-			current = &ctx.parent;
-		}
-
-		level
-	}
-
 	pub fn deeper(&mut self) {
 		let child_context = Self::new();
 		let original_context = std::mem::replace(self, child_context);
 
 		// `self` here is already the child context
 		self.flags = original_context.flags; // Infer the flags of the original context
-		self.parent = Some(Box::new(original_context));
+		self.parent = Some(Rc::new(RefCell::new(original_context)));
 	}
 
 	pub fn shallower(&mut self) {
 		match self.parent.take() {
-			Some(parent) => *self = *parent,
+			Some(parent) => {
+				let cell = Rc::unwrap_or_clone(parent);
+				let parent = cell.into_inner();
+
+				*self = parent;
+			}
+
 			None => eprintln!("Warning `Context::shallower()` was called while not having a parent")
 		}
 	}
@@ -85,7 +81,7 @@ impl Context {
 		}
 
 		match self.parent {
-			Some(ref p) => p.exists(name),
+			Some(ref p) => p.borrow().exists(name),
 			None => false
 		}
 	}
@@ -96,18 +92,7 @@ impl Context {
 		}
 
 		match self.parent {
-			Some(ref p) => p.get(name),
-			None => bail!("Variable with name `{name}` does not exist")
-		}
-	}
-
-	pub fn get_mut(&mut self, name: &str) -> Result<&mut Value> {
-		if let Some(var) = self.variables.get_mut(name) {
-			return Ok(var);
-		}
-
-		match self.parent {
-			Some(ref mut p) => p.get_mut(name),
+			Some(ref p) => p.borrow().get(name),
 			None => bail!("Variable with name `{name}` does not exist")
 		}
 	}
@@ -127,7 +112,7 @@ impl Context {
 			Entry::Occupied(mut e) => Ok(e.insert(value)),
 			Entry::Vacant(_) => {
 				match self.parent {
-					Some(ref mut p) => p.update(name, value),
+					Some(ref mut p) => p.borrow_mut().update(name, value),
 					None => {
 						unreachable!(
 							"Match arm reached despite expecting `Context::exists(\"{name}\")` to return `false`"

@@ -43,10 +43,11 @@ fn print_function(
 
 	interpreter
 		.context
+		.borrow_mut()
 		.stdout
 		.push_str(&format!("{}\n", to_print)[..]);
 
-	if interpreter.context.flags.con_stdout_allowed {
+	if interpreter.context.borrow().flags.con_stdout_allowed {
 		println!("{to_print}");
 	}
 
@@ -64,7 +65,7 @@ fn import_function(
 ) -> Result<Value> {
 	use std::mem::swap;
 
-	if !interpreter.context.flags.imports_allowed {
+	if !interpreter.context.borrow().flags.imports_allowed {
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
@@ -124,7 +125,7 @@ fn input_function(
 ) -> Result<Value> {
 	use text_io::read;
 
-	if !interpreter.context.flags.inputs_allowed {
+	if !interpreter.context.borrow().flags.inputs_allowed {
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
@@ -150,6 +151,7 @@ fn input_function(
 
 	interpreter
 		.context
+		.borrow_mut()
 		.stdin
 		.push_str(&format!("{result}\n")[..]);
 
@@ -167,9 +169,9 @@ fn raw_print_function(
 	use std::io::Write;
 
 	let text = get_argument!(arguments => string: RString).get_owned();
-	interpreter.context.stdout.push_str(&text);
+	interpreter.context.borrow_mut().stdout.push_str(&text);
 
-	if interpreter.context.flags.con_stdout_allowed {
+	if interpreter.context.borrow().flags.con_stdout_allowed {
 		print!("{text}");
 		io::stdout().flush().unwrap();
 	}

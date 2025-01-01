@@ -9,7 +9,7 @@ fn execute_string(source: String, file: &str) -> Result<()> {
 	let ast = parser.parse()?;
 
 	let mut interpreter = prog_interpreter::Interpreter::new();
-	interpreter.context.flags.con_stdout_allowed = false;
+	interpreter.context.borrow_mut().flags.con_stdout_allowed = false;
 
 	interpreter
 		.interpret(source, file.to_owned(), ast, false)
