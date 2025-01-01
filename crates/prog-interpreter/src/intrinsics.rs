@@ -91,11 +91,21 @@ fn import_function(
 	}
 
 	if !path.is_file() {
-		bail!("'{path_str}' is not a valid file");
+		bail!(errors::InterpretError::new(
+			call_site.source,
+			call_site.file,
+			call_site.args_pos,
+			errors::InterpretErrorKind::InvalidFile(errors::InvalidFile(path_str))
+		));
 	}
 
 	if !path.exists() {
-		bail!("Cannot find the specified file at path '{path_str}'");
+		bail!(errors::InterpretError::new(
+			call_site.source,
+			call_site.file,
+			call_site.args_pos,
+			errors::InterpretErrorKind::InvalidFile(errors::InvalidFile(path_str))
+		));
 	}
 
 	let path_str = path.to_str().unwrap();

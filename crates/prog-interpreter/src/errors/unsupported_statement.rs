@@ -12,7 +12,7 @@ impl AriadneCompatible for UnsupportedStatement {
 		let mut colors = ColorGenerator::new();
 		let color = colors.next();
 
-		vec![Label::new(Span::new(file, position))
+		vec![Label::new(Span::new_unchecked(file, position))
 			.with_message(format!("`{}` is unsupported", self.0.fg(color)))
 			.with_color(color)]
 	}

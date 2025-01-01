@@ -18,7 +18,7 @@ impl AriadneCompatible for NonExhaustiveClassConstruction {
 			.map(|f| format!("`{f}`"))
 			.collect::<Vec<_>>();
 
-		vec![Label::new(Span::new(file, position))
+		vec![Label::new(Span::new_unchecked(file, position))
 			.with_message(format!("missing fields: {}", fields.join(", ").fg(color)))
 			.with_color(color)]
 	}

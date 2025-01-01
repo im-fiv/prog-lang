@@ -18,14 +18,14 @@ impl AriadneCompatible for DuplicateObjectEntry {
 		let color_definiton = colors.next();
 
 		vec![
-			Label::new(Span::new(file, position))
+			Label::new(Span::new_unchecked(file, position))
 				.with_message(format!(
 					"object entry `{}`",
 					self.entry_name.fg(color_entry)
 				))
 				.with_color(color_entry)
 				.with_order(0),
-			Label::new(Span::new(file, self.definition_pos))
+			Label::new(Span::new_unchecked(file, self.definition_pos))
 				.with_message(format!(
 					"has already been defined {}",
 					"here".fg(color_definiton)

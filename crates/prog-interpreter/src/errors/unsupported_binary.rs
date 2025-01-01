@@ -23,7 +23,7 @@ impl AriadneCompatible for UnsupportedBinary {
 		let color_operands = colors.next();
 
 		labels.push(
-			Label::new(Span::new(file, self.operator.1))
+			Label::new(Span::new_unchecked(file, self.operator.1))
 				.with_message("this operation")
 				.with_color(color_operator)
 				.with_order(0)
@@ -31,7 +31,7 @@ impl AriadneCompatible for UnsupportedBinary {
 
 		let position = Position::new(self.lhs.1.start(), self.rhs.1.end());
 		labels.push(
-			Label::new(Span::new(file, position))
+			Label::new(Span::new_unchecked(file, position))
 				.with_message(format!(
 					"cannot be performed on types {} and {}",
 					self.lhs.0.to_string().fg(color_operands),

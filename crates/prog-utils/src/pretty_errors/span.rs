@@ -11,6 +11,10 @@ pub struct Span<'inp> {
 impl<'inp> Span<'inp> {
 	pub fn new(source: &'inp str, position: Position) -> Self {
 		assert!(position.end() <= source.len(), "Span exceeds source length");
+		Self::new_unchecked(source, position)
+	}
+
+	pub fn new_unchecked(source: &'inp str, position: Position) -> Self {
 		Self { source, position }
 	}
 

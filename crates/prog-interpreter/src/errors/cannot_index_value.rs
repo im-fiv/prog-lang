@@ -53,11 +53,11 @@ impl AriadneCompatible for CannotIndexValue {
 			};
 
 		vec![
-			Label::new(Span::new(file, self.kind.1))
+			Label::new(Span::new_unchecked(file, self.kind.1))
 				.with_message(message_expected)
 				.with_color(color_list)
 				.with_order(0),
-			Label::new(Span::new(file, self.index_kind.1))
+			Label::new(Span::new_unchecked(file, self.index_kind.1))
 				.with_message(message_got)
 				.with_color(color_got)
 				.with_order(1),

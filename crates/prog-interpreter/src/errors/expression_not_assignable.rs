@@ -33,7 +33,7 @@ impl AriadneCompatible for ExpressionNotAssignable {
 			)
 		};
 
-		vec![Label::new(Span::new(file, position))
+		vec![Label::new(Span::new_unchecked(file, position))
 			.with_message(message)
 			.with_color(color_got)]
 	}

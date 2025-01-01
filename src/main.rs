@@ -34,7 +34,7 @@ fn execute_run_command(args: cli::RunCommand) {
 	let contents = read_file(&args.file_path);
 
 	// TODO
-	let token_stream = prog_lexer::lex(&contents, &args.file_path).unwrap();
+	// let token_stream = prog_lexer::lex(&contents, &args.file_path).unwrap();
 
 	let parser = ProgParser::new(&contents, &args.file_path);
 	let ast = parser.parse().unwrap();

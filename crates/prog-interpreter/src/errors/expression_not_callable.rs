@@ -16,7 +16,7 @@ impl AriadneCompatible for ExpressionNotCallable {
 		let color_expected = colors.next();
 		let color_got = colors.next();
 
-		vec![Label::new(Span::new(file, position))
+		vec![Label::new(Span::new_unchecked(file, position))
 			.with_message(format!(
 				"expected expression of type {}, got {}",
 				"Function".fg(color_expected),

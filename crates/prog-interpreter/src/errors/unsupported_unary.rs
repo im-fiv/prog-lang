@@ -21,11 +21,11 @@ impl AriadneCompatible for UnsupportedUnary {
 		let color_operand = colors.next();
 
 		vec![
-			Label::new(Span::new(file, self.operator.1))
+			Label::new(Span::new_unchecked(file, self.operator.1))
 				.with_message("this operation")
 				.with_color(color_operator)
 				.with_order(0),
-			Label::new(Span::new(file, self.operand.1))
+			Label::new(Span::new_unchecked(file, self.operand.1))
 				.with_message(format!(
 					"cannot be performed on type {}",
 					self.operand.0.to_string().fg(color_operand)

@@ -6,7 +6,7 @@ def some_calculation = func(a, b, c) do
 end
 
 def do_nothing = func() do
-	return void
+	return none
 end
 
 def main = func() do
@@ -22,4 +22,5 @@ def main = func() do
 	(calculated_stuff, " + ", counter, " = ", calculated_stuff + counter) -> print
 end
 
+() -> do_nothing
 () -> main

@@ -12,7 +12,7 @@ impl AriadneCompatible for VariableDoesntExist {
 		let mut colors = ColorGenerator::new();
 		let color = colors.next();
 
-		vec![Label::new(Span::new(file, position))
+		vec![Label::new(Span::new_unchecked(file, position))
 			.with_message(format!("`{}` hasn't yet been defined", self.0.fg(color)))
 			.with_color(color)]
 	}

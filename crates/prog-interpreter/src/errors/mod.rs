@@ -16,6 +16,7 @@ mod non_exhaustive_class_construction;
 mod cannot_reassign_class_functions;
 mod invalid_extern_argument;
 mod non_existent_extern_item;
+mod invalid_file;
 
 pub use argument_count_mismatch::*;
 pub use argument_type_mismatch::*;
@@ -31,12 +32,14 @@ pub use function_panicked::*;
 pub use invalid_extern_argument::*;
 pub use non_exhaustive_class_construction::*;
 pub use non_existent_extern_item::*;
-use prog_macros::ImplAriadneCompatible;
-use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 pub use unsupported_binary::*;
 pub use unsupported_statement::*;
 pub use unsupported_unary::*;
 pub use variable_doesnt_exist::*;
+pub use invalid_file::*;
+
+use prog_macros::ImplAriadneCompatible;
+use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 
 pub type InterpretError = PrettyError<InterpretErrorKind>;
 
@@ -60,7 +63,8 @@ pub enum InterpretErrorKind {
 	NonExhaustiveClassConstruction(NonExhaustiveClassConstruction),
 	CannotReassignClassFunctions(CannotReassignClassFunctions),
 	InvalidExternArgument(InvalidExternArgument),
-	NonExistentExternItem(NonExistentExternItem)
+	NonExistentExternItem(NonExistentExternItem),
+	InvalidFile(InvalidFile)
 }
 
 impl PrettyErrorKind for InterpretErrorKind {}

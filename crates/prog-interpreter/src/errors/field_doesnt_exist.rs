@@ -15,14 +15,14 @@ impl AriadneCompatible for FieldDoesntExist {
 		let color_object = colors.next();
 
 		vec![
-			Label::new(Span::new(file, self.1))
+			Label::new(Span::new_unchecked(file, self.1))
 				.with_message(format!(
 					"field `{}` does not exist on",
 					self.0.fg(color_field)
 				))
 				.with_color(color_field)
 				.with_order(0),
-			Label::new(Span::new(file, position))
+			Label::new(Span::new_unchecked(file, position))
 				.with_message(String::from("this object"))
 				.with_color(color_object)
 				.with_order(1),
