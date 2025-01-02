@@ -61,12 +61,51 @@ impl Display for Token<'_> {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenKind {
+	// Keywords
+	/// `true`
+	True,
+	/// `false`
+	False,
+	/// `def`
+	Def,
+	/// `func`
+	Func,
+	/// `do`
+	Do,
+	/// `end`
+	End,
+	/// `return`
+	Return,
+	/// `while`
+	While,
+	/// `break`
+	Break,
+	/// `continue`
+	Continue,
+	/// `if`
+	If,
+	/// `then`
+	Then,
+	/// `none`
+	None,
+	/// `and`
+	And,
+	/// `or`
+	Or,
+	/// `not`
+	Not,
+	/// `class`
+	Class,
+	/// `extern`
+	Extern,
+
+	// Special tokens
 	Identifier,
-	Keyword(Keyword),
 	Comment,
 	Number,
 	String,
 
+	// Operator tokens
 	/// `+`
 	Plus,
 	/// `-`
@@ -114,48 +153,8 @@ pub enum TokenKind {
 	Eof
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Keyword {
-	/// `true`
-	True,
-	/// `false`
-	False,
-	/// `def`
-	Def,
-	/// `func`
-	Func,
-	/// `do`
-	Do,
-	/// `end`
-	End,
-	/// `return`
-	Return,
-	/// `while`
-	While,
-	/// `break`
-	Break,
-	/// `continue`
-	Continue,
-	/// `if`
-	If,
-	/// `then`
-	Then,
-	/// `none`
-	None,
-	/// `and`
-	And,
-	/// `or`
-	Or,
-	/// `not`
-	Not,
-	/// `class`
-	Class,
-	/// `extern`
-	Extern
-}
-
-impl Keyword {
-	pub fn parse(input: &str) -> Option<Self> {
+impl TokenKind {
+	pub fn as_keyword(input: &str) -> Option<Self> {
 		match input {
 			"true" => Some(Self::True),
 			"false" => Some(Self::False),

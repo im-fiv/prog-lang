@@ -10,6 +10,7 @@ serde = [
 	"dep:serde",
 	"dep:serde_json",
 	"prog-lexer/serde",
+	"prog-new-parser/serde",
 	"prog-parser/serde",
 	"prog-interpreter/serde",
 	"prog-utils/serde"
@@ -33,6 +34,7 @@ pest = "2.7.15"
 pest_derive = "2.7.15"
 prog-lexer = { path = "./crates/prog-lexer" }
 prog-parser = { path = "./crates/prog-parser" }
+prog-new-parser = { path = "./crates/prog-new-parser" }
 prog-interpreter = { path = "./crates/prog-interpreter" }
 prog-utils = { path = "./crates/prog-utils" }
 prog-macros = { path = "./crates/prog-macros" }
@@ -45,6 +47,7 @@ pest = { workspace = true }
 anyhow = { workspace = true }
 prog-lexer = { workspace = true }
 prog-parser = { workspace = true }
+prog-new-parser = { workspace = true }
 prog-interpreter = { workspace = true }
 prog-utils = { workspace = true }
 

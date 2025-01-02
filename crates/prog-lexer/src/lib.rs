@@ -5,8 +5,9 @@ mod stream;
 use anyhow::{bail, Result};
 pub use errors::{LexError, LexErrorKind};
 use prog_utils::pretty_errors::{Position, Span};
-pub use stream::{IteratorConvertion, LexStream, PeekableWrapper};
-pub use token::{Keyword, Token, TokenKind, TokenStream};
+use prog_utils::stream::Stream;
+pub use stream::LexStream;
+pub use token::{Token, TokenKind, TokenStream};
 
 pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>> {
 	let mut ls = LexStream::new(source, file);
@@ -175,8 +176,8 @@ fn ident_or_keyword(ls: &mut LexStream<'_>, c: char) -> TokenKind {
 		ls.next();
 	}
 
-	if let Some(kw) = Keyword::parse(&ident) {
-		TokenKind::Keyword(kw)
+	if let Some(kw) = TokenKind::as_keyword(&ident) {
+		kw
 	} else {
 		TokenKind::Identifier
 	}

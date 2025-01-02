@@ -1141,6 +1141,7 @@ dependencies = [
  "pest",
  "prog-interpreter",
  "prog-lexer",
+ "prog-new-parser",
  "prog-parser",
  "prog-utils",
  "rustyline",
@@ -1167,6 +1168,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.91",
+]
+
+[[package]]
+name = "prog-new-parser"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "prog-lexer",
+ "prog-utils",
+ "serde",
 ]
 
 [[package]]

@@ -1,0 +1,15 @@
+[package]
+name = "prog-new-parser"
+version = "0.0.0"
+edition = "2021"
+
+[features]
+default = []
+serde = ["dep:serde"]
+
+[dependencies]
+anyhow = { workspace = true }
+prog-lexer = { workspace = true }
+prog-utils = { workspace = true }
+
+serde = { workspace = true, optional = true }

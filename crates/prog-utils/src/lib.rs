@@ -1,4 +1,5 @@
 pub mod pretty_errors;
+pub mod stream;
 
 use std::fs::File;
 use std::io::prelude::*;

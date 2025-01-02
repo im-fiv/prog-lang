@@ -1,13 +1,11 @@
-mod wrapper;
-
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-pub use wrapper::{IteratorConvertion, PeekableWrapper};
+use prog_utils::stream::{IteratorConvertion, Stream};
 
 #[derive(Debug)]
 pub struct LexStream<'inp> {
-	iter: <Self as PeekableWrapper>::Iterator,
+	iter: <Self as Stream>::Iterator,
 	source: &'inp str,
 	file: &'inp str
 }
@@ -29,16 +27,17 @@ impl<'inp> LexStream<'inp> {
 	}
 }
 
-impl IteratorConvertion<(usize, char)> for LexStream<'_> {
+impl IteratorConvertion<<Self as Stream>::Item> for LexStream<'_> {
 	type Output = char;
 
-	fn convert_item(input: &(usize, char)) -> Self::Output { input.1 }
+	fn convert_item(input: &<Self as Stream>::Item) -> &Self::Output { &input.1 }
 }
 
-impl<'inp> PeekableWrapper for LexStream<'inp> {
+impl<'inp> Stream for LexStream<'inp> {
+	type Item = <CharIndices<'inp> as Iterator>::Item;
 	type Iterator = Peekable<CharIndices<'inp>>;
 
-	fn next(&mut self) -> Option<<Self::Iterator as Iterator>::Item> { self.iter.next() }
+	fn next(&mut self) -> Option<Self::Item> { self.iter.next() }
 
-	fn peek(&mut self) -> Option<&<Self::Iterator as Iterator>::Item> { self.iter.peek() }
+	fn peek(&mut self) -> Option<&Self::Item> { self.iter.peek() }
 }
