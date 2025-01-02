@@ -6,13 +6,17 @@ use crate::Span;
 
 #[derive(Debug)]
 pub struct TokenStream<'inp> {
-	pub(crate) buffer: Vec<Token<'inp>>
+	buffer: Vec<Token<'inp>>
 }
 
 impl<'inp> TokenStream<'inp> {
 	pub fn new() -> Self { Self { buffer: vec![] } }
 
-	pub fn push(&mut self, token: Token<'inp>) { self.buffer.push(token); }
+	pub fn buffer(&'inp self) -> &'inp [Token<'inp>] { &self.buffer }
+
+	pub fn unwrap(self) -> Vec<Token<'inp>> { self.buffer }
+
+	pub(crate) fn push(&mut self, token: Token<'inp>) { self.buffer.push(token); }
 }
 
 impl Display for TokenStream<'_> {
