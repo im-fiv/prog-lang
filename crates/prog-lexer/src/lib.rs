@@ -5,27 +5,27 @@ mod stream;
 use anyhow::{bail, Result};
 pub use errors::{LexError, LexErrorKind};
 use prog_utils::pretty_errors::{Position, Span};
-pub use stream::{IteratorConvertion, ParseStream, PeekableWrapper};
+pub use stream::{IteratorConvertion, LexStream, PeekableWrapper};
 pub use token::{Keyword, Token, TokenKind, TokenStream};
 
 pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>> {
-	let mut ps = ParseStream::new(source, file);
+	let mut ls = LexStream::new(source, file);
 	let mut ts = TokenStream::new();
 
-	while let Some((start_index, char)) = ps.next() {
+	while let Some((start_index, char)) = ls.next() {
 		let kind = match char {
 			' ' | '\t' | '\n' | '\r' => continue,
 
 			'+' => TokenKind::Plus,
-			'-' => minus_or_arrow(&mut ps),
+			'-' => minus_or_arrow(&mut ls),
 			'*' => TokenKind::Asterisk,
-			'/' => slash_or_comment(&mut ps)?,
-			'=' => eq_or_fat_arrow_or_eqeq(&mut ps),
+			'/' => slash_or_comment(&mut ls)?,
+			'=' => eq_or_fat_arrow_or_eqeq(&mut ls),
 			'.' => TokenKind::Dot,
 			',' => TokenKind::Comma,
 
-			'>' => gt_or_gte(&mut ps),
-			'<' => lt_or_lte(&mut ps),
+			'>' => gt_or_gte(&mut ls),
+			'<' => lt_or_lte(&mut ls),
 
 			'(' => TokenKind::LeftParen,
 			')' => TokenKind::RightParen,
@@ -34,10 +34,10 @@ pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>
 			'[' => TokenKind::LeftBracket,
 			']' => TokenKind::RightBracket,
 
-			'"' => string(&mut ps)?,
+			'"' => string(&mut ls)?,
 
-			c if c.is_ascii_alphabetic() || c == '_' => ident_or_keyword(&mut ps, c),
-			c if c.is_ascii_digit() => number(&mut ps, c)?,
+			c if c.is_ascii_alphabetic() || c == '_' => ident_or_keyword(&mut ls, c),
+			c if c.is_ascii_digit() => number(&mut ls, c)?,
 
 			c => {
 				bail!(LexError::new(
@@ -52,7 +52,7 @@ pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>
 			}
 		};
 
-		let end_index = ps.peek().map_or(source.len(), |(idx, _)| *idx);
+		let end_index = ls.peek().map_or(source.len(), |(idx, _)| *idx);
 		let position = Position::new(start_index, end_index);
 		let span = Span::new(source, position);
 
@@ -67,28 +67,28 @@ pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>
 	Ok(ts)
 }
 
-fn minus_or_arrow(ps: &mut ParseStream<'_>) -> TokenKind {
-	if ps.peek_matches_exact('>', true) {
+fn minus_or_arrow(ls: &mut LexStream<'_>) -> TokenKind {
+	if ls.peek_matches_exact('>', true) {
 		TokenKind::Arrow
 	} else {
 		TokenKind::Minus
 	}
 }
 
-fn slash_or_comment(ps: &mut ParseStream<'_>) -> Result<TokenKind> {
-	let start_index = ps.position() - 1;
+fn slash_or_comment(ls: &mut LexStream<'_>) -> Result<TokenKind> {
+	let start_index = ls.position() - 1;
 
-	if ps.peek_matches_exact('/', true) {
+	if ls.peek_matches_exact('/', true) {
 		// Single line comment
-		ps.next_while_exact('\n', true);
+		ls.next_while_exact('\n', true);
 		Ok(TokenKind::Comment)
-	} else if ps.peek_matches_exact('*', true) {
+	} else if ls.peek_matches_exact('*', true) {
 		// Multiline comment
-		if !ps.next_while_exact('*', true) {
+		if !ls.next_while_exact('*', true) {
 			bail!(LexError::new(
-				ps.source().to_owned(),
-				ps.file().to_owned(),
-				Position::new(start_index, ps.position()),
+				ls.source().to_owned(),
+				ls.file().to_owned(),
+				Position::new(start_index, ls.position()),
 				LexErrorKind::UnexpectedToken(errors::UnexpectedToken {
 					got: ' ',
 					expected: Some('*')
@@ -96,11 +96,11 @@ fn slash_or_comment(ps: &mut ParseStream<'_>) -> Result<TokenKind> {
 			));
 		}
 
-		if !ps.peek_matches_exact('/', true) {
+		if !ls.peek_matches_exact('/', true) {
 			bail!(LexError::new(
-				ps.source().to_owned(),
-				ps.file().to_owned(),
-				Position::new(start_index, ps.position()),
+				ls.source().to_owned(),
+				ls.file().to_owned(),
+				Position::new(start_index, ls.position()),
 				LexErrorKind::UnexpectedToken(errors::UnexpectedToken {
 					got: ' ',
 					expected: Some('/')
@@ -114,23 +114,23 @@ fn slash_or_comment(ps: &mut ParseStream<'_>) -> Result<TokenKind> {
 	}
 }
 
-fn eq_or_fat_arrow_or_eqeq(ps: &mut ParseStream<'_>) -> TokenKind {
-	if ps.peek_matches_exact('=', true) {
+fn eq_or_fat_arrow_or_eqeq(ls: &mut LexStream<'_>) -> TokenKind {
+	if ls.peek_matches_exact('=', true) {
 		TokenKind::EqEq
-	} else if ps.peek_matches_exact('>', true) {
+	} else if ls.peek_matches_exact('>', true) {
 		TokenKind::FatArrow
 	} else {
 		TokenKind::Eq
 	}
 }
 
-fn string(ps: &mut ParseStream<'_>) -> Result<TokenKind> {
-	let start_index = ps.position() - 1;
+fn string(ls: &mut LexStream<'_>) -> Result<TokenKind> {
+	let start_index = ls.position() - 1;
 
 	let mut closed = false;
 	let mut last_char = (start_index, '"');
 
-	while let Some((index, next_char)) = ps.peek() {
+	while let Some((index, next_char)) = ls.peek() {
 		last_char = (*index, *next_char);
 
 		if *next_char == '\n' {
@@ -139,18 +139,18 @@ fn string(ps: &mut ParseStream<'_>) -> Result<TokenKind> {
 
 		if *next_char == '"' {
 			closed = true;
-			ps.next();
+			ls.next();
 
 			break;
 		}
 
-		ps.next();
+		ls.next();
 	}
 
 	if !closed {
 		bail!(LexError::new(
-			ps.source().to_owned(),
-			ps.file().to_owned(),
+			ls.source().to_owned(),
+			ls.file().to_owned(),
 			Position::new(last_char.0, last_char.0 + 1),
 			LexErrorKind::UnexpectedToken(errors::UnexpectedToken {
 				got: last_char.1,
@@ -162,17 +162,17 @@ fn string(ps: &mut ParseStream<'_>) -> Result<TokenKind> {
 	Ok(TokenKind::String)
 }
 
-fn ident_or_keyword(ps: &mut ParseStream<'_>, c: char) -> TokenKind {
+fn ident_or_keyword(ls: &mut LexStream<'_>, c: char) -> TokenKind {
 	let mut ident = String::new();
 	ident.push(c);
 
-	while let Some((_, next_char)) = ps.peek() {
+	while let Some((_, next_char)) = ls.peek() {
 		if !next_char.is_ascii_alphanumeric() && *next_char != '_' {
 			break;
 		}
 
 		ident.push(*next_char);
-		ps.next();
+		ls.next();
 	}
 
 	if let Some(kw) = Keyword::parse(&ident) {
@@ -182,26 +182,26 @@ fn ident_or_keyword(ps: &mut ParseStream<'_>, c: char) -> TokenKind {
 	}
 }
 
-fn number(ps: &mut ParseStream<'_>, c: char) -> Result<TokenKind> {
-	let start_index = ps.position() - 1;
+fn number(ls: &mut LexStream<'_>, c: char) -> Result<TokenKind> {
+	let start_index = ls.position() - 1;
 
 	let mut number = String::new();
 	number.push(c);
 
-	while let Some((_, next_char)) = ps.peek() {
+	while let Some((_, next_char)) = ls.peek() {
 		if !next_char.is_ascii_digit() {
 			break;
 		}
 
 		number.push(*next_char);
-		ps.next();
+		ls.next();
 	}
 
 	if number.parse::<f64>().is_err() {
 		bail!(LexError::new(
-			ps.source().to_owned(),
-			ps.file().to_owned(),
-			Position::new(start_index, ps.position()),
+			ls.source().to_owned(),
+			ls.file().to_owned(),
+			Position::new(start_index, ls.position()),
 			LexErrorKind::MalformedNumber(errors::MalformedNumber)
 		));
 	}
@@ -209,16 +209,16 @@ fn number(ps: &mut ParseStream<'_>, c: char) -> Result<TokenKind> {
 	Ok(TokenKind::Number)
 }
 
-fn gt_or_gte(ps: &mut ParseStream<'_>) -> TokenKind {
-	if ps.peek_matches_exact('=', true) {
+fn gt_or_gte(ls: &mut LexStream<'_>) -> TokenKind {
+	if ls.peek_matches_exact('=', true) {
 		TokenKind::Gte
 	} else {
 		TokenKind::Gt
 	}
 }
 
-fn lt_or_lte(ps: &mut ParseStream<'_>) -> TokenKind {
-	if ps.peek_matches_exact('=', true) {
+fn lt_or_lte(ls: &mut LexStream<'_>) -> TokenKind {
+	if ls.peek_matches_exact('=', true) {
 		TokenKind::Lte
 	} else {
 		TokenKind::Lt
