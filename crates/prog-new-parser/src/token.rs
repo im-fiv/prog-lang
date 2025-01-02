@@ -1,17 +1,46 @@
-use anyhow::Result;
-
 macro_rules! def_token {
 	($vis:vis $name:ident) => {
 		#[derive(Debug, Clone, Copy, PartialEq, Hash)]
-		$vis struct $name;
+		$vis struct $name<'inp> {
+			span: prog_utils::pretty_errors::Span<'inp>
+		}
 
-		impl crate::Parse for $name {
-			fn parse(input: &mut crate::ParseStream) -> Result<Self> {
-				let _ = input.expect(prog_lexer::TokenKind::$name)?;
-				Ok(Self)
+		impl<'inp> From<prog_lexer::Token<'inp>> for $name<'inp> {
+			fn from(value: prog_lexer::Token<'inp>) -> Self {
+				Self {
+					span: value.span()
+				}
+			}
+		}
+
+		impl<'inp> Token<'inp> for $name<'inp> {
+			fn kind(&self) -> prog_lexer::TokenKind {
+				prog_lexer::TokenKind::$name
+			}
+
+			fn span(&self) -> prog_utils::pretty_errors::Span {
+				self.span
+			}
+		}
+
+		impl<'inp> crate::Parse<'inp> for $name<'inp> {
+			fn parse(input: &'inp crate::ParseStream) -> anyhow::Result<Self> {
+				let token = input.expect(prog_lexer::TokenKind::$name)?;
+
+				Ok(Self {
+					span: token.span()
+				})
 			}
 		}
 	};
+}
+
+pub trait Token<'inp>: From<prog_lexer::Token<'inp>> {
+	fn kind(&self) -> prog_lexer::TokenKind;
+
+	fn span(&self) -> prog_utils::pretty_errors::Span;
+
+	fn value(&'inp self) -> &'inp str { self.span().value() }
 }
 
 def_token!(pub True);

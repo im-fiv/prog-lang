@@ -42,6 +42,10 @@ pub struct Token<'inp> {
 impl<'inp> Token<'inp> {
 	pub fn new(kind: TokenKind, span: Span<'inp>) -> Self { Self { kind, span } }
 
+	pub fn kind(&self) -> TokenKind { self.kind }
+
+	pub fn span(&self) -> Span<'inp> { self.span }
+
 	pub fn start(&self) -> usize { self.span.start() }
 
 	pub fn end(&self) -> usize { self.span.end() }
