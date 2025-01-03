@@ -6,7 +6,6 @@ mod utils;
 use std::iter::Peekable;
 
 use anyhow::{bail, Result};
-use ariadne::Span as _;
 use ast::*;
 pub use errors::{ParseError, ParseErrorKind};
 use errors_legacy::error;

@@ -2,40 +2,69 @@ macro_rules! def_token {
 	($vis:vis $name:ident) => {
 		#[derive(Debug, Clone, Copy, PartialEq, Hash)]
 		$vis struct $name<'inp> {
-			span: prog_utils::pretty_errors::Span<'inp>
+			pub(crate) span: ::prog_utils::pretty_errors::Span<'inp>
 		}
 
-		impl<'inp> From<prog_lexer::Token<'inp>> for $name<'inp> {
-			fn from(value: prog_lexer::Token<'inp>) -> Self {
-				Self {
-					span: value.span()
-				}
-			}
-		}
-
-		impl<'inp> Token<'inp> for $name<'inp> {
-			fn kind(&self) -> prog_lexer::TokenKind {
-				prog_lexer::TokenKind::$name
+		impl<'inp> $crate::Token<'inp> for $name<'inp> {
+			fn kind(&self) -> ::prog_lexer::TokenKind {
+				::prog_lexer::TokenKind::$name
 			}
 
-			fn span(&self) -> prog_utils::pretty_errors::Span {
+			fn span(&self) -> ::prog_utils::pretty_errors::Span {
 				self.span
 			}
 		}
 
-		impl<'inp> crate::Parse<'inp> for $name<'inp> {
-			fn parse(input: &'inp crate::ParseStream) -> anyhow::Result<Self> {
-				let token = input.expect(prog_lexer::TokenKind::$name)?;
+		impl<'inp> $crate::ASTNode<'inp> for $name<'inp> {
+			fn span(&'inp self) -> ::prog_utils::pretty_errors::Span<'inp> {
+				self.span
+			}
+		}
+
+		impl<'inp> $crate::Parse<'inp> for $name<'inp> {
+			fn parse(input: &'inp $crate::ParseStream) -> ::anyhow::Result<Self> {
+				let token = input.expect(::prog_lexer::TokenKind::$name)?;
 
 				Ok(Self {
 					span: token.span()
 				})
 			}
 		}
+
+		impl<'inp> TryFrom<::prog_lexer::Token<'inp>> for $name<'inp> {
+			type Error = ::anyhow::Error;
+
+			fn try_from(value: ::prog_lexer::Token<'inp>) -> Result<Self, Self::Error> {
+				let value_kind = value.kind();
+				let self_kind = ::prog_lexer::TokenKind::$name;
+
+				if value.kind() != ::prog_lexer::TokenKind::$name {
+					Err(::anyhow::anyhow!(
+						"Token of type `{value_kind:?}` cannot be converted to that of `{self_kind:?}`"
+					))
+				} else {
+					Ok(Self {
+						span: value.span()
+					})
+				}
+			}
+		}
+
+		impl<'inp> From<$name<'inp>> for ::prog_lexer::Token<'inp> {
+			fn from(value: $name<'inp>) -> Self {
+				Self::new(
+					::prog_lexer::TokenKind::$name,
+					value.span
+				)
+			}
+		}
 	};
 }
 
-pub trait Token<'inp>: From<prog_lexer::Token<'inp>> {
+pub trait Token<'inp>
+where
+	Self: TryFrom<prog_lexer::Token<'inp>> + Into<prog_lexer::Token<'inp>>
+{
 	fn kind(&self) -> prog_lexer::TokenKind;
 
 	fn span(&self) -> prog_utils::pretty_errors::Span;
@@ -62,7 +91,7 @@ def_token!(pub Not);
 def_token!(pub Class);
 def_token!(pub Extern);
 
-def_token!(pub Identifier);
+def_token!(pub Ident);
 // Comments are ignored
 // def_token!(pub Comment);
 def_token!(pub Number);
@@ -72,8 +101,10 @@ def_token!(pub Plus);
 def_token!(pub Minus);
 def_token!(pub Asterisk);
 def_token!(pub Slash);
+def_token!(pub Sign);
 def_token!(pub Eq);
 def_token!(pub EqEq);
+def_token!(pub Neq);
 def_token!(pub Arrow);
 def_token!(pub FatArrow);
 def_token!(pub Dot);

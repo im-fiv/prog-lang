@@ -7,7 +7,6 @@ pub mod values;
 use std::collections::HashMap;
 
 use anyhow::Result;
-use ariadne::Span as _;
 use context::Context;
 pub use errors::{InterpretError, InterpretErrorKind};
 use halloc::Memory;

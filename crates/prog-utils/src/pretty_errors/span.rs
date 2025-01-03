@@ -1,7 +1,5 @@
 use std::fmt::{self, Debug};
 
-use ariadne::Span as _;
-
 #[derive(Clone, Copy, PartialEq, Hash)]
 pub struct Span<'inp> {
 	source: &'inp str,
@@ -18,7 +16,15 @@ impl<'inp> Span<'inp> {
 		Self { source, position }
 	}
 
+	pub fn source(&self) -> &'inp str { self.source }
+
 	pub fn value(&self) -> &'inp str { &self.source[self.start()..self.end()] }
+
+	pub fn start(&self) -> usize { self.position.start() }
+
+	pub fn end(&self) -> usize { self.position.end() }
+
+	pub fn position(&self) -> Position { self.position }
 }
 
 impl<'inp> ariadne::Span for Span<'inp> {
@@ -35,6 +41,7 @@ impl Debug for Span<'_> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let mut s = f.debug_struct("Span");
 		s.field("position", &self.position);
+		s.field("value", &self.value());
 		s.finish_non_exhaustive()
 	}
 }
@@ -50,6 +57,10 @@ impl Position {
 		assert!(start <= end, "Position was provided backwards");
 		Self { start, end }
 	}
+
+	pub fn start(&self) -> usize { self.start }
+
+	pub fn end(&self) -> usize { self.end }
 }
 
 impl ariadne::Span for Position {

@@ -1,4 +1,4 @@
-use ariadne::{ColorGenerator, Fmt, Label, Span as _};
+use ariadne::{ColorGenerator, Fmt, Label};
 use prog_parser::ast::expressions::operators::BinaryOperator;
 use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
 

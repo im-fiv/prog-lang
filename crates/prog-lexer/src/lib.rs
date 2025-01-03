@@ -9,6 +9,22 @@ use prog_utils::stream::Stream;
 pub use stream::LexStream;
 pub use token::{Token, TokenKind, TokenStream};
 
+fn unexpected_token(
+	ls: &mut LexStream<'_>,
+	got: char,
+	expected: Option<char>,
+	start: Option<usize>
+) -> LexError {
+	let position = Position::new(start.unwrap_or(ls.position()), ls.position() + 1);
+
+	LexError::new(
+		ls.source().to_owned(),
+		ls.file().to_owned(),
+		position,
+		LexErrorKind::UnexpectedToken(errors::UnexpectedToken { got, expected })
+	)
+}
+
 pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>> {
 	let mut ls = LexStream::new(source, file);
 	let mut ts = TokenStream::new();
@@ -21,7 +37,9 @@ pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>
 			'-' => minus_or_arrow(&mut ls),
 			'*' => TokenKind::Asterisk,
 			'/' => slash_or_comment(&mut ls)?,
+			'%' => TokenKind::Sign,
 			'=' => eq_or_fat_arrow_or_eqeq(&mut ls),
+			'!' => neq(&mut ls)?,
 			'.' => TokenKind::Dot,
 			',' => TokenKind::Comma,
 
@@ -125,6 +143,23 @@ fn eq_or_fat_arrow_or_eqeq(ls: &mut LexStream<'_>) -> TokenKind {
 	}
 }
 
+fn neq(ls: &mut LexStream<'_>) -> Result<TokenKind> {
+	let start_index = ls.position() - 1;
+	let next = ls.next();
+
+	if next.is_none() {
+		bail!(unexpected_token(ls, ' ', Some('='), Some(start_index)));
+	}
+
+	let next = next.unwrap();
+
+	if next.1 != '=' {
+		bail!(unexpected_token(ls, next.1, Some('='), Some(start_index)));
+	}
+
+	Ok(TokenKind::Neq)
+}
+
 fn string(ls: &mut LexStream<'_>) -> Result<TokenKind> {
 	let start_index = ls.position() - 1;
 
@@ -179,7 +214,7 @@ fn ident_or_keyword(ls: &mut LexStream<'_>, c: char) -> TokenKind {
 	if let Some(kw) = TokenKind::as_keyword(&ident) {
 		kw
 	} else {
-		TokenKind::Identifier
+		TokenKind::Ident
 	}
 }
 

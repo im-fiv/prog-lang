@@ -8,7 +8,7 @@ use prog_utils::stream::{IteratorConvertion, Stream};
 
 pub struct ParseStream<'inp> {
 	iter: RefCell<<Self as Stream>::Iterator>,
-	_lifetime: PhantomData<&'inp <Self as Stream>::Item>
+	_lifetime: PhantomData<&'inp ()>
 }
 
 impl<'inp> ParseStream<'inp> {
@@ -23,19 +23,53 @@ impl<'inp> ParseStream<'inp> {
 
 	pub fn parse<T: crate::Parse<'inp>>(&'inp self) -> Result<T> { T::parse(self) }
 
-	pub fn expect(&self, kind: prog_lexer::TokenKind) -> Result<<Self as Stream>::Item> {
+	pub fn next(&self) -> Option<<Self as Stream>::Item> { self.iter.borrow_mut().next() }
+
+	pub fn peek(&self) -> Option<<Self as Stream>::Item>
+	where
+		<Self as Stream>::Item: Copy
+	{
 		let mut iter = self.iter.borrow_mut();
-		let token = iter.next();
+		let item = iter.peek();
+
+		item.copied()
+	}
+
+	pub fn peek_expect(&self, kind: prog_lexer::TokenKind) -> Result<<Self as Stream>::Item>
+	where
+		<Self as Stream>::Item: Copy
+	{
+		let mut iter = self.iter.borrow_mut();
+		let token = iter.peek().copied();
 
 		if token.is_none() {
-			// TODO
+			// TODO: error handling
 			todo!("error handling");
 		}
 
 		let token = token.unwrap();
 
 		if token.kind() != kind {
-			// TODO
+			// TODO: error handling
+			todo!("error handling")
+		}
+
+		Ok(token)
+	}
+
+	pub fn expect(&self, kind: prog_lexer::TokenKind) -> Result<<Self as Stream>::Item> {
+		let mut iter = self.iter.borrow_mut();
+		let token = iter.next();
+
+		if token.is_none() {
+			// TODO: error handling
+			todo!("error handling");
+		}
+
+		let token = token.unwrap();
+
+		if token.kind() != kind {
+			// TODO: error handling
 			todo!("error handling")
 		}
 

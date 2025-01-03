@@ -1,7 +1,5 @@
 use std::fmt::{self, Display};
 
-use ariadne::Span as _;
-
 use crate::Span;
 
 #[derive(Debug)]
@@ -104,7 +102,7 @@ pub enum TokenKind {
 	Extern,
 
 	// Special tokens
-	Identifier,
+	Ident,
 	Comment,
 	Number,
 	String,
@@ -118,10 +116,14 @@ pub enum TokenKind {
 	Asterisk,
 	/// `/`
 	Slash,
+	/// `%`
+	Sign,
 	/// `=`
 	Eq,
 	/// `==`
 	EqEq,
+	/// `!=`
+	Neq,
 	/// `->`
 	Arrow,
 	/// `=>`
@@ -131,14 +133,14 @@ pub enum TokenKind {
 	/// `,`
 	Comma,
 
-	/// `<`
-	Lt,
 	/// `>`
 	Gt,
-	/// `<=`
-	Lte,
+	/// `<`
+	Lt,
 	/// `>=`
 	Gte,
+	/// `<=`
+	Lte,
 
 	/// `(`
 	LeftParen,
