@@ -260,3 +260,58 @@ fn lt_or_lte(ls: &mut LexStream<'_>) -> TokenKind {
 		TokenKind::Lt
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use TokenKind::*;
+
+	fn quick_lex(input: &str) -> Box<[TokenKind]> {
+		let ts = lex(input, "<stdin").unwrap();
+		let tokens = ts.unwrap();
+		let kinds = tokens
+			.into_iter()
+			.map(|t| t.kind())
+			.collect::<Box<[_]>>();
+
+		kinds
+	}
+
+	#[test]
+	fn test_no_input() {
+		assert_eq!(
+			*quick_lex(""),
+			[Eof]
+		);
+	}
+
+	#[test]
+	#[should_panic]
+	fn test_invalid_token() {
+		quick_lex("???");
+	}
+
+	#[test]
+	fn test_ident_vs_keyword() {
+		assert_eq!(
+			*quick_lex("hello world def true false not"),
+			[Ident, Ident, Def, True, False, Not, Eof]
+		);
+	}
+
+	#[test]
+	fn test_numbers() {
+		assert_eq!(
+			*quick_lex("0 5 42 24"),
+			[Number, Number, Number, Number, Eof]
+		);
+	}
+
+	#[test]
+	fn test_strings() {
+		assert_eq!(
+			*quick_lex("\"this is a string\" but this isnt"),
+			[String, Ident, Ident, Ident, Eof]
+		);
+	}
+}
