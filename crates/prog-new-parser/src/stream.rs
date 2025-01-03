@@ -8,7 +8,7 @@ use prog_utils::stream::{IteratorConvertion, Stream};
 
 pub struct ParseStream<'inp> {
 	iter: RefCell<<Self as Stream>::Iterator>,
-	_lifetime: PhantomData<&'inp ()>
+	_marker: PhantomData<&'inp <Self as Stream>::Item>
 }
 
 impl<'inp> ParseStream<'inp> {
@@ -17,7 +17,7 @@ impl<'inp> ParseStream<'inp> {
 
 		Self {
 			iter: RefCell::new(iter),
-			_lifetime: PhantomData
+			_marker: PhantomData
 		}
 	}
 

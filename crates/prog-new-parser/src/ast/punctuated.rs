@@ -8,7 +8,7 @@ use crate::{ASTNode, Parse, ParseStream, Position, Span, Token};
 pub struct Punctuated<'inp, T, P> {
 	pub items: Vec<(T, P)>,
 	pub tail: Option<T>,
-	pub _lifetime: PhantomData<&'inp ()>
+	pub _marker: PhantomData<&'inp (T, P)>
 }
 
 impl<'inp, T, P> Punctuated<'inp, T, P> {
@@ -16,7 +16,7 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 		Self {
 			items: vec![],
 			tail: None,
-			_lifetime: PhantomData
+			_marker: PhantomData
 		}
 	}
 
