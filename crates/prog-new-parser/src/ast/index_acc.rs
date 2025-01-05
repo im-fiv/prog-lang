@@ -12,7 +12,7 @@ pub struct IndexAcc<'inp> {
 }
 
 impl<'inp> IndexAcc<'inp> {
-	pub fn parse_with_list(input: &'_ ParseStream<'inp>, list: Box<Term<'inp>>) -> Result<Self> {
+	pub fn parse_with_list(input: &ParseStream<'inp>, list: Box<Term<'inp>>) -> Result<Self> {
 		let _lb = input.parse::<token::LeftBracket>()?;
 		let index = Box::new(input.parse::<Expr>()?);
 		let _rb = input.parse::<token::RightBracket>()?;
@@ -39,7 +39,7 @@ impl ASTNode for IndexAcc<'_> {
 }
 
 impl<'inp> Parse<'inp> for IndexAcc<'inp> {
-	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let list = Box::new(input.parse::<Term>()?);
 		Self::parse_with_list(input, list)
 	}

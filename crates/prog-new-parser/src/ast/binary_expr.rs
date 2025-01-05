@@ -54,7 +54,7 @@ impl ASTNode for BinaryOp<'_> {
 }
 
 impl<'inp> Parse<'inp> for BinaryOp<'inp> {
-	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let token = input.expect_next()?;
 
 		let span = token.span();

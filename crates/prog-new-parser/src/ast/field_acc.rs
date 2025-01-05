@@ -11,10 +11,7 @@ pub struct FieldAcc<'inp> {
 }
 
 impl<'inp> FieldAcc<'inp> {
-	pub fn parse_with_object(
-		input: &'_ ParseStream<'inp>,
-		object: Box<Term<'inp>>
-	) -> Result<Self> {
+	pub fn parse_with_object(input: &ParseStream<'inp>, object: Box<Term<'inp>>) -> Result<Self> {
 		let _dot = input.parse::<token::Dot>()?;
 		let field = input.parse::<token::Ident>()?;
 
@@ -39,7 +36,7 @@ impl ASTNode for FieldAcc<'_> {
 }
 
 impl<'inp> Parse<'inp> for FieldAcc<'inp> {
-	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let object = Box::new(input.parse::<Term>()?);
 		Self::parse_with_object(input, object)
 	}
