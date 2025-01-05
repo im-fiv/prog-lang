@@ -27,7 +27,7 @@ impl<'inp> Parse<'inp> for Term<'inp> {
 	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
 		let token = input.expect_peek()?;
 
-		let term = match token.kind() {
+		let mut term = match token.kind() {
 			TokenKind::Number | TokenKind::True | TokenKind::False | TokenKind::String => {
 				Term::Lit(input.parse::<Lit>()?)
 			}
@@ -43,12 +43,21 @@ impl<'inp> Parse<'inp> for Term<'inp> {
 			t => todo!("term `{t:?}` is not yet supported")
 		};
 
-		if input.peek_matches(TokenKind::LeftParen).is_some() {
-			let func = Box::new(term.clone());
-			let call_result = input.try_parse_with(|i| Call::parse_without_func(i, func));
+		while let Some(token) = input.peek() {
+			match token.kind() {
+				TokenKind::LeftParen => {
+					term = Self::Call(Call::parse_with_func(input, Box::new(term))?);
+				}
 
-			if let Ok(c) = call_result.map(Self::Call) {
-				return Ok(c);
+				TokenKind::LeftBracket => {
+					term = Self::IndexAcc(IndexAcc::parse_with_list(input, Box::new(term))?);
+				}
+
+				TokenKind::Dot => {
+					term = Self::FieldAcc(FieldAcc::parse_with_object(input, Box::new(term))?);
+				}
+
+				_ => break
 			}
 		}
 

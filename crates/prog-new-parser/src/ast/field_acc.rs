@@ -10,6 +10,19 @@ pub struct FieldAcc<'inp> {
 	pub field: token::Ident<'inp>
 }
 
+impl<'inp> FieldAcc<'inp> {
+	pub fn parse_with_object(input: &'_ ParseStream<'inp>, object: Box<Term<'inp>>) -> Result<Self> {
+		let _dot = input.parse::<token::Dot>()?;
+		let field = input.parse::<token::Ident>()?;
+
+		Ok(Self {
+			object,
+			_dot,
+			field
+		})
+	}
+}
+
 impl<'inp> ASTNode<'inp> for FieldAcc<'inp> {
 	fn span(&'inp self) -> prog_utils::pretty_errors::Span<'inp> {
 		let start = self.object.span().start();
@@ -25,13 +38,6 @@ impl<'inp> ASTNode<'inp> for FieldAcc<'inp> {
 impl<'inp> Parse<'inp> for FieldAcc<'inp> {
 	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
 		let object = Box::new(input.parse::<Term>()?);
-		let _dot = input.parse::<token::Dot>()?;
-		let field = input.parse::<token::Ident>()?;
-
-		Ok(Self {
-			object,
-			_dot,
-			field
-		})
+		Self::parse_with_object(input, object)
 	}
 }

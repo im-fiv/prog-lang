@@ -55,61 +55,21 @@ impl<'inp> ParsePrecedence<'inp> for Expr<'inp> {
 
 			let op_token = input.parse::<BinaryOp>()?;
 
-			left = match op_token.kind {
-				BinaryOpKind::LeftBracket => {
-					let list = Box::new(match left {
-						Expr::Term(t) => t,
-						_ => todo!("error handling")
-					});
-
-					let _lb = op_token.try_into().unwrap();
-					let expr = Self::parse_precedence(input, 0)?;
-					let _rb = input.parse::<token::RightBracket>()?;
-
-					Expr::Term(Term::IndexAcc(IndexAcc {
-						list,
-						_lb,
-						index: Box::new(expr),
-						_rb
-					}))
-				}
-
-				BinaryOpKind::Dot => {
-					let object = Box::new(match left {
-						Expr::Term(t) => t,
-						_ => todo!("error handling")
-					});
-
-					let _dot = op_token.try_into().unwrap();
-					let field = input.parse::<token::Ident>()?;
-
-					Expr::Term(Term::FieldAcc(FieldAcc {
-						object,
-						_dot,
-						field
-					}))
-				}
-
-				_ => {
-					let right = Self::parse_precedence(input, right_binding_power)?;
-
-					let lhs = match left {
-						Expr::Term(t) => t,
-						e => Term::Expr(Box::new(e))
-					};
-
-					let rhs = match right {
-						Expr::Term(t) => t,
-						e => Term::Expr(Box::new(e))
-					};
-
-					Expr::Binary(BinaryExpr {
-						lhs,
-						op: op_token,
-						rhs
-					})
-				}
+			let lhs = match left {
+				Self::Term(t) => t,
+				e => Term::Expr(Box::new(e))
 			};
+
+			let rhs = match Self::parse_precedence(input, right_binding_power)? {
+				Self::Term(t) => t,
+				e => Term::Expr(Box::new(e))
+			};
+
+			left = Self::Binary(BinaryExpr {
+				lhs,
+				op: op_token,
+				rhs
+			});
 		}
 
 		Ok(left)
