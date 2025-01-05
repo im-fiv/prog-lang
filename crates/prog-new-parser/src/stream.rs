@@ -33,14 +33,22 @@ where
 	/// Parses a value of type `T` from the current position in the stream.
 	///
 	/// This function directly delegates the parsing to `T`'s `Parse` implementation.
-	pub fn parse<T: crate::Parse<'inp>>(&'_ self) -> Result<T> { T::parse(self) }
+	pub fn parse<T>(&'_ self) -> Result<T>
+	where
+		T: crate::Parse<'inp>
+	{
+		T::parse(self)
+	}
 
 	/// Attempts to parse a value of type `T` from the current position in the stream,
 	/// but only *consumes* the tokens if the parse is successful.
 	///
 	/// This is useful for lookahead parsing where you might try different options
 	/// without making *irreversible* progress in the stream.
-	pub fn try_parse<T: crate::Parse<'inp>>(&'_ self) -> Result<T> {
+	pub fn try_parse<T>(&'_ self) -> Result<T>
+	where
+		T: crate::Parse<'inp>
+	{
 		self.try_parse_with(Self::parse::<T>)
 	}
 
