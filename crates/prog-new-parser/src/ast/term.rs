@@ -24,7 +24,7 @@ impl ASTNode<'_> for Term<'_> {
 }
 
 impl<'inp> Parse<'inp> for Term<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
 		let token = input.expect_peek()?;
 
 		let term = match token.kind() {

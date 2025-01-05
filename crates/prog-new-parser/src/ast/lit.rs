@@ -19,9 +19,7 @@ pub enum LitKind {
 }
 
 impl Lit<'_> {
-	pub fn strip_quotes(str: &str) -> &str {
-		str.trim_start_matches('\"').trim_end_matches('\"')
-	}
+	pub fn strip_quotes(str: &str) -> &str { str.trim_start_matches('\"').trim_end_matches('\"') }
 }
 
 impl ASTNode<'_> for Lit<'_> {
@@ -29,7 +27,7 @@ impl ASTNode<'_> for Lit<'_> {
 }
 
 impl<'inp> Parse<'inp> for Lit<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
 		let token = input.expect_next()?;
 		let span = token.span();
 

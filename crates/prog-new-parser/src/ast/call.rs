@@ -12,7 +12,7 @@ pub struct Call<'inp> {
 }
 
 impl<'inp> Call<'inp> {
-	pub fn parse_without_func(input: &ParseStream<'inp>, func: Box<Term<'inp>>) -> Result<Self> {
+	pub fn parse_without_func(input: &'_ ParseStream<'inp>, func: Box<Term<'inp>>) -> Result<Self> {
 		let _lp = input.parse::<token::LeftParen>()?;
 		let args = Box::new(input.parse::<Punctuated<'inp, Expr, token::Comma>>()?);
 		let _rp = input.parse::<token::RightParen>()?;
@@ -39,7 +39,7 @@ impl ASTNode<'_> for Call<'_> {
 }
 
 impl<'inp> Parse<'inp> for Call<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
 		let func = Box::new(input.parse::<Term>()?);
 		Self::parse_without_func(input, func)
 	}

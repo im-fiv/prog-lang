@@ -66,7 +66,7 @@ where
 	T: Parse<'inp>,
 	P: Parse<'inp> + Token<'inp>
 {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
 		let mut list = Self::new();
 
 		loop {

@@ -13,8 +13,12 @@ pub enum Expr<'inp> {
 
 impl ASTNode<'_> for Expr<'_> {
 	fn span(&self) -> Span {
-		// TODO
-		todo!()
+		match self {
+			Self::Binary(e) => e as &dyn ASTNode,
+			Self::Unary(e) => e as &dyn ASTNode,
+			Self::Term(e) => e as &dyn ASTNode
+		}
+		.span()
 	}
 }
 
@@ -132,7 +136,7 @@ impl<'inp> ASTNode<'inp> for ParenExpr<'inp> {
 }
 
 impl<'inp> Parse<'inp> for ParenExpr<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
 		let _lp = input.parse::<token::LeftParen>()?;
 		let expr = Box::new(Expr::parse_precedence(input, 0)?);
 		let _rp = input.parse::<token::RightParen>()?;

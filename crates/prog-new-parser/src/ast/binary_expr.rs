@@ -3,13 +3,25 @@ use prog_lexer::TokenKind;
 
 use super::op_to_token;
 use crate::ast::*;
-use crate::{ASTNode, Parse, ParseStream, Span};
+use crate::{ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinaryExpr<'inp> {
 	pub lhs: Term<'inp>,
 	pub op: BinaryOp<'inp>,
 	pub rhs: Term<'inp>
+}
+
+impl<'inp> ASTNode<'inp> for BinaryExpr<'inp> {
+	fn span(&'inp self) -> Span<'inp> {
+		let start = self.lhs.span().start();
+		let end = self.rhs.span().end();
+
+		let source = self.lhs.span().source();
+		let position = Position::new(start, end);
+
+		Span::new(source, position)
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -42,7 +54,7 @@ impl ASTNode<'_> for BinaryOp<'_> {
 }
 
 impl<'inp> Parse<'inp> for BinaryOp<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
 		let token = input.expect_next()?;
 		let span = token.span();
 
