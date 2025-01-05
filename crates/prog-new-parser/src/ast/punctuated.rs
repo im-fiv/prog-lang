@@ -4,14 +4,22 @@ use anyhow::Result;
 
 use crate::{ASTNode, Parse, ParseStream, Position, Span, Token};
 
-#[derive(Debug)]
-pub struct Punctuated<'inp, T, P> {
+#[derive(Debug, Clone, PartialEq)]
+pub struct Punctuated<'inp, T, P>
+where
+	T: Clone,
+	P: Clone
+{
 	pub items: Vec<(T, P)>,
 	pub tail: Option<T>,
 	pub _marker: PhantomData<&'inp (T, P)>
 }
 
-impl<'inp, T, P> Punctuated<'inp, T, P> {
+impl<'inp, T, P> Punctuated<'inp, T, P>
+where
+	T: Clone,
+	P: Clone
+{
 	pub fn new() -> Self {
 		Self {
 			items: vec![],
@@ -29,8 +37,8 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 
 impl<'inp, T, P> ASTNode<'inp> for Punctuated<'inp, T, P>
 where
-	T: Parse<'inp>,
-	P: Parse<'inp> + Token<'inp>
+	T: Clone + Parse<'inp>,
+	P: Clone + Parse<'inp> + Token<'inp>
 {
 	fn span(&'inp self) -> Span {
 		assert!(
@@ -62,19 +70,19 @@ where
 
 impl<'inp, T, P> Parse<'inp> for Punctuated<'inp, T, P>
 where
-	T: Parse<'inp>,
-	P: Parse<'inp> + Token<'inp>
+	T: Clone + Parse<'inp>,
+	P: Clone + Parse<'inp> + Token<'inp>
 {
-	fn parse(input: &'inp ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let mut list = Self::new();
 
 		loop {
-			let item = input.parse::<T>();
+			let item = input.try_parse::<T>();
 			if item.is_err() {
 				break;
 			}
 
-			let punct = input.parse::<P>();
+			let punct = input.try_parse::<P>();
 			if punct.is_err() {
 				list.tail = Some(item?);
 				break;
@@ -87,6 +95,10 @@ where
 	}
 }
 
-impl<T, P> Default for Punctuated<'_, T, P> {
+impl<T, P> Default for Punctuated<'_, T, P>
+where
+	T: Clone,
+	P: Clone
+{
 	fn default() -> Self { Self::new() }
 }

@@ -3,12 +3,27 @@ use anyhow::Result;
 use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseStream, Position, Span, Token};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Call<'inp> {
-	pub func: Box<Expr<'inp>>,
+	pub func: Box<Term<'inp>>,
 	pub _lp: token::LeftParen<'inp>,
 	pub args: Box<Punctuated<'inp, Expr<'inp>, token::Comma<'inp>>>,
 	pub _rp: token::RightParen<'inp>
+}
+
+impl<'inp> Call<'inp> {
+	pub fn parse_without_func(input: &ParseStream<'inp>, func: Box<Term<'inp>>) -> Result<Self> {
+		let _lp = input.parse::<token::LeftParen>()?;
+		let args = Box::new(input.parse::<Punctuated<'inp, Expr, token::Comma>>()?);
+		let _rp = input.parse::<token::RightParen>()?;
+
+		Ok(Self {
+			func,
+			_lp,
+			args,
+			_rp
+		})
+	}
 }
 
 impl ASTNode<'_> for Call<'_> {
@@ -24,17 +39,8 @@ impl ASTNode<'_> for Call<'_> {
 }
 
 impl<'inp> Parse<'inp> for Call<'inp> {
-	fn parse(input: &'inp ParseStream<'inp>) -> Result<Self> {
-		let func = Box::new(input.parse::<Expr>()?);
-		let _lp = input.parse::<token::LeftParen>()?;
-		let args = Box::new(input.parse::<Punctuated<'inp, Expr, token::Comma>>()?);
-		let _rp = input.parse::<token::RightParen>()?;
-
-		Ok(Self {
-			func,
-			_lp,
-			args,
-			_rp
-		})
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+		let func = Box::new(input.parse::<Term>()?);
+		Self::parse_without_func(input, func)
 	}
 }

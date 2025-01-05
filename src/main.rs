@@ -36,7 +36,7 @@ fn execute_run_command(args: cli::RunCommand) {
 	{
 		let ts = prog_lexer::lex(&contents, &args.file_path).unwrap();
 		let tokens = ts.unwrap();
-		let ps = prog_new_parser::ParseStream::new(tokens);
+		let ps = prog_new_parser::ParseStream::new(&tokens);
 		let ast = ps
 			.parse::<prog_new_parser::ast::VariableDefinition>()
 			.unwrap();

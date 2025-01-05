@@ -24,7 +24,7 @@ impl ASTNode<'_> for VariableDefinition<'_> {
 }
 
 impl<'inp> Parse<'inp> for VariableDefinition<'inp> {
-	fn parse(input: &'inp ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let _def = input.parse::<token::Def>()?;
 		let name = input.parse::<token::Ident>()?;
 		let _eq = input.parse::<token::Eq>()?;

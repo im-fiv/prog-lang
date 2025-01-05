@@ -2,13 +2,13 @@ use anyhow::{bail, Result};
 
 use crate::{ASTNode, Parse, ParseStream, Span};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Lit<'inp> {
 	pub kind: LitKind,
 	pub span: Span<'inp>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LitKind {
 	Number(f64),
 	Boolean(bool),
@@ -20,7 +20,7 @@ impl ASTNode<'_> for Lit<'_> {
 }
 
 impl<'inp> Parse<'inp> for Lit<'inp> {
-	fn parse(input: &'inp ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		use prog_lexer::TokenKind;
 
 		// TODO: error handling

@@ -22,7 +22,7 @@ macro_rules! def_token {
 		}
 
 		impl<'inp> $crate::Parse<'inp> for $name<'inp> {
-			fn parse(input: &'inp $crate::ParseStream) -> ::anyhow::Result<Self> {
+			fn parse(input: &$crate::ParseStream<'inp>) -> ::anyhow::Result<Self> {
 				let token = input.expect(::prog_lexer::TokenKind::$name)?;
 
 				Ok(Self {

@@ -4,14 +4,14 @@ use super::op_to_token;
 use crate::ast::*;
 use crate::{ASTNode, Parse, ParseStream, Span};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BinaryExpr<'inp> {
 	pub lhs: Term<'inp>,
 	pub op: BinaryOp<'inp>,
 	pub rhs: Term<'inp>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BinaryOp<'inp> {
 	pub kind: BinaryOpKind,
 	pub span: Span<'inp>
@@ -41,7 +41,7 @@ impl ASTNode<'_> for BinaryOp<'_> {
 }
 
 impl<'inp> Parse<'inp> for BinaryOp<'inp> {
-	fn parse(input: &'inp ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		use prog_lexer::TokenKind;
 
 		// TODO: error handling

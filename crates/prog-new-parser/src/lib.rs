@@ -1,6 +1,7 @@
 mod stream;
 pub mod token;
 pub mod ast;
+pub mod errors;
 
 use anyhow::Result;
 pub use prog_utils::pretty_errors::{Position, Span};
@@ -12,9 +13,9 @@ pub trait ASTNode<'inp> {
 }
 
 pub trait Parse<'inp>: Sized + ASTNode<'inp> {
-	fn parse(input: &'inp ParseStream<'inp>) -> Result<Self>;
+	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self>;
 }
 
 pub trait ParsePrecedence<'inp>: Parse<'inp> {
-	fn parse_precedence(input: &'inp ParseStream<'inp>, precedence: u8) -> Result<Self>;
+	fn parse_precedence(input: &'_ ParseStream<'inp>, precedence: u8) -> Result<Self>;
 }
