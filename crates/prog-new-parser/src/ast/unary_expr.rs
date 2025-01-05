@@ -42,26 +42,28 @@ impl<'inp> ASTNode<'inp> for UnaryOp<'inp> {
 impl<'inp> Parse<'inp> for UnaryOp<'inp> {
 	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
 		let token = input.expect_next()?;
+
+		let kind = UnaryOpKind::try_from(token.kind())?;
 		let span = token.span();
 
-		match token.kind() {
-			TokenKind::Minus => {
-				Ok(Self {
-					kind: UnaryOpKind::Minus,
-					span
-				})
-			}
+		Ok(Self { kind, span })
+	}
+}
 
-			TokenKind::Not => {
-				Ok(Self {
-					kind: UnaryOpKind::Not,
-					span
-				})
-			}
+impl TryFrom<TokenKind> for UnaryOpKind {
+	type Error = anyhow::Error;
+
+	fn try_from(kind: TokenKind) -> std::result::Result<Self, Self::Error> {
+		use TokenKind as T;
+		use UnaryOpKind as U;
+
+		Ok(match kind {
+			T::Minus => U::Minus,
+			T::Not => U::Not,
 
 			// TODO: proper error reporting
-			kind => bail!("Unknown unary operator `{token}` of type `{kind:?}`")
-		}
+			kind => bail!("Unknown unary operator of type `{kind:?}`")
+		})
 	}
 }
 

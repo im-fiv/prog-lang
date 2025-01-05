@@ -56,117 +56,41 @@ impl ASTNode<'_> for BinaryOp<'_> {
 impl<'inp> Parse<'inp> for BinaryOp<'inp> {
 	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self> {
 		let token = input.expect_next()?;
+
 		let span = token.span();
+		let kind = BinaryOpKind::try_from(token.kind())?;
 
-		match token.kind() {
-			TokenKind::Plus => {
-				Ok(Self {
-					kind: BinaryOpKind::Plus,
-					span
-				})
-			}
+		Ok(Self { kind, span })
+	}
+}
 
-			TokenKind::Minus => {
-				Ok(Self {
-					kind: BinaryOpKind::Minus,
-					span
-				})
-			}
+impl TryFrom<TokenKind> for BinaryOpKind {
+	type Error = anyhow::Error;
 
-			TokenKind::Slash => {
-				Ok(Self {
-					kind: BinaryOpKind::Slash,
-					span
-				})
-			}
+	fn try_from(kind: TokenKind) -> std::result::Result<Self, Self::Error> {
+		use TokenKind as T;
+		use BinaryOpKind as B;
 
-			TokenKind::Asterisk => {
-				Ok(Self {
-					kind: BinaryOpKind::Asterisk,
-					span
-				})
-			}
-
-			TokenKind::Sign => {
-				Ok(Self {
-					kind: BinaryOpKind::Sign,
-					span
-				})
-			}
-
-			TokenKind::EqEq => {
-				Ok(Self {
-					kind: BinaryOpKind::EqEq,
-					span
-				})
-			}
-
-			TokenKind::Neq => {
-				Ok(Self {
-					kind: BinaryOpKind::Neq,
-					span
-				})
-			}
-
-			TokenKind::And => {
-				Ok(Self {
-					kind: BinaryOpKind::And,
-					span
-				})
-			}
-
-			TokenKind::Or => {
-				Ok(Self {
-					kind: BinaryOpKind::Or,
-					span
-				})
-			}
-
-			TokenKind::Gt => {
-				Ok(Self {
-					kind: BinaryOpKind::Gt,
-					span
-				})
-			}
-
-			TokenKind::Lt => {
-				Ok(Self {
-					kind: BinaryOpKind::Lt,
-					span
-				})
-			}
-
-			TokenKind::Gte => {
-				Ok(Self {
-					kind: BinaryOpKind::Gte,
-					span
-				})
-			}
-
-			TokenKind::Lte => {
-				Ok(Self {
-					kind: BinaryOpKind::Lte,
-					span
-				})
-			}
-
-			TokenKind::LeftBracket => {
-				Ok(Self {
-					kind: BinaryOpKind::LeftBracket,
-					span
-				})
-			}
-
-			TokenKind::Dot => {
-				Ok(Self {
-					kind: BinaryOpKind::Dot,
-					span
-				})
-			}
+		Ok(match kind {
+			T::Plus => B::Plus,
+			T::Minus => B::Minus,
+			T::Slash => B::Slash,
+			T::Asterisk => B::Asterisk,
+			T::Sign => B::Sign,
+			T::EqEq => B::EqEq,
+			T::Neq => B::Neq,
+			T::And => B::And,
+			T::Or => B::Or,
+			T::Gt => B::Gt,
+			T::Lt => B::Lt,
+			T::Gte => B::Gte,
+			T::Lte => B::Lte,
+			T::LeftBracket => B::LeftBracket,
+			T::Dot => B::Dot,
 
 			// TODO: proper error reporting
-			kind => bail!("Unknown binary operator `{token}` of type `{kind:?}`")
-		}
+			kind => bail!("Unknown binary operator of type `{kind:?}`")
+		})
 	}
 }
 
