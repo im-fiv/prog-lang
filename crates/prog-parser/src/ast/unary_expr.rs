@@ -1,9 +1,10 @@
 use anyhow::{bail, Result};
 use prog_lexer::TokenKind;
 
-use super::op_to_token;
 use crate::ast::*;
 use crate::{ASTNode, Parse, ParseStream, Position, Span};
+
+use super::op_to_token;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnaryExpr<'inp> {
@@ -25,10 +26,10 @@ pub enum UnaryOpKind {
 
 impl ASTNode for UnaryExpr<'_> {
 	fn span(&self) -> Span {
-		let start = self.op.span().start();
-		let end = self.operand.span().end();
+		let start = self.op.start();
+		let end = self.operand.end();
 
-		let source = self.op.span().source();
+		let source = self.op.source();
 		let position = Position::new(start, end);
 
 		Span::new(source, position)

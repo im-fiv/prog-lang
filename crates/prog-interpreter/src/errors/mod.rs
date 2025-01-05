@@ -33,12 +33,13 @@ pub use invalid_extern_argument::*;
 pub use invalid_file::*;
 pub use non_exhaustive_class_construction::*;
 pub use non_existent_extern_item::*;
-use prog_macros::ImplAriadneCompatible;
-use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 pub use unsupported_binary::*;
 pub use unsupported_statement::*;
 pub use unsupported_unary::*;
 pub use variable_doesnt_exist::*;
+
+use prog_macros::ImplAriadneCompatible;
+use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 
 pub type InterpretError = PrettyError<InterpretErrorKind>;
 
@@ -49,21 +50,21 @@ pub enum InterpretErrorKind {
 	ArgumentTypeMismatch(ArgumentTypeMismatch),
 	AssertionFailed(AssertionFailed),
 	CannotIndexValue(CannotIndexValue),
+	CannotReassignClassFunctions(CannotReassignClassFunctions),
 	ContextDisallowed(ContextDisallowed),
 	DuplicateObjectEntry(DuplicateObjectEntry),
 	ExpressionNotAssignable(ExpressionNotAssignable),
 	ExpressionNotCallable(ExpressionNotCallable),
 	FieldDoesntExist(FieldDoesntExist),
 	FunctionPanicked(FunctionPanicked),
+	InvalidExternArgument(InvalidExternArgument),
+	InvalidFile(InvalidFile),
+	NonExhaustiveClassConstruction(NonExhaustiveClassConstruction),
+	NonExistentExternItem(NonExistentExternItem),
 	UnsupportedBinary(UnsupportedBinary),
 	UnsupportedStatement(UnsupportedStatement),
 	UnsupportedUnary(UnsupportedUnary),
-	VariableDoesntExist(VariableDoesntExist),
-	NonExhaustiveClassConstruction(NonExhaustiveClassConstruction),
-	CannotReassignClassFunctions(CannotReassignClassFunctions),
-	InvalidExternArgument(InvalidExternArgument),
-	NonExistentExternItem(NonExistentExternItem),
-	InvalidFile(InvalidFile)
+	VariableDoesntExist(VariableDoesntExist)
 }
 
 impl PrettyErrorKind for InterpretErrorKind {}

@@ -32,17 +32,10 @@ fn execute_run_command(args: cli::RunCommand) {
 	use prog_interpreter::ValueKind;
 
 	let contents = read_file(&args.file_path);
-
-	{
-		let ts = prog_lexer::lex(&contents, &args.file_path).unwrap();
-		let ps = prog_new_parser::ParseStream::new(ts.buffer());
-		let ast = ps.parse::<prog_new_parser::ast::Program>().unwrap();
-
-		println!("{ast:#?}");
-	}
-
-	let parser = ProgParser::new(&contents, &args.file_path);
-	let ast = parser.parse().unwrap();
+	let ts = prog_lexer::lex(&contents, &args.file_path).unwrap();
+	
+	let ps = prog_parser::ParseStream::new(ts.buffer());
+	let ast = ps.parse::<prog_new_parser::ast::Program>().unwrap();
 
 	let mut interpreter = Interpreter::new();
 	let result = interpreter.interpret(contents, args.file_path, ast, false);

@@ -18,11 +18,7 @@ impl<'inp> Span<'inp> {
 
 	pub fn source(&self) -> &'inp str { self.source }
 
-	pub fn value(&self) -> &'inp str { &self.source[self.start()..self.end()] }
-
-	pub fn start(&self) -> usize { self.position.start() }
-
-	pub fn end(&self) -> usize { self.position.end() }
+	pub fn value(&self) -> &'inp str { &self.source[self.position().start()..self.position().end()] }
 
 	pub fn position(&self) -> Position { self.position }
 }

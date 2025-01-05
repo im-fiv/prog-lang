@@ -2,16 +2,16 @@ macro_rules! def_token {
 	($vis:vis $name:ident) => {
 		#[derive(Debug, Clone, Copy, PartialEq, Hash)]
 		$vis struct $name<'inp> {
-			pub(crate) span: ::prog_utils::pretty_errors::Span<'inp>
+			span: ::prog_utils::pretty_errors::Span<'inp>
 		}
 
-		impl<'inp> $crate::Token<'inp> for $name<'inp> {
-			fn kind(&self) -> ::prog_lexer::TokenKind {
-				::prog_lexer::TokenKind::$name
+		impl<'inp> $name<'inp> {
+			pub fn new(span: ::prog_utils::pretty_errors::Span<'inp>) -> Self {
+				Self { span }
 			}
 
-			fn span(&self) -> ::prog_utils::pretty_errors::Span {
-				self.span
+			fn kind(&self) -> ::prog_lexer::TokenKind {
+				::prog_lexer::TokenKind::$name
 			}
 		}
 
@@ -61,17 +61,6 @@ macro_rules! def_token {
 	};
 }
 
-pub trait Token<'inp>
-where
-	Self: TryFrom<prog_lexer::Token<'inp>> + Into<prog_lexer::Token<'inp>>
-{
-	fn kind(&self) -> prog_lexer::TokenKind;
-
-	fn span(&self) -> prog_utils::pretty_errors::Span;
-
-	fn value(&'inp self) -> &'inp str { self.span().value() }
-}
-
 def_token!(pub True);
 def_token!(pub False);
 def_token!(pub Def);
@@ -84,6 +73,8 @@ def_token!(pub Break);
 def_token!(pub Continue);
 def_token!(pub If);
 def_token!(pub Then);
+def_token!(pub ElseIf);
+def_token!(pub Else);
 def_token!(pub None);
 def_token!(pub And);
 def_token!(pub Or);

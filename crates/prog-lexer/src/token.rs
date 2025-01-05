@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use crate::Span;
+use crate::{Span, Position};
 
 #[derive(Debug)]
 pub struct TokenStream<'inp> {
@@ -44,11 +44,9 @@ impl<'inp> Token<'inp> {
 
 	pub fn span(&self) -> Span<'inp> { self.span }
 
-	pub fn start(&self) -> usize { self.span.start() }
+	pub fn position(&self) -> Position { self.span().position() }
 
-	pub fn end(&self) -> usize { self.span.end() }
-
-	pub fn value(&self) -> &'inp str { self.span.value() }
+	pub fn value(&self) -> &'inp str { self.span().value() }
 }
 
 impl Display for Token<'_> {
@@ -88,6 +86,10 @@ pub enum TokenKind {
 	If,
 	/// `then`
 	Then,
+	/// `elseif`
+	ElseIf,
+	/// `else`
+	Else,
 	/// `none`
 	None,
 	/// `and`
@@ -174,6 +176,8 @@ impl TokenKind {
 			"continue" => Some(Self::Continue),
 			"if" => Some(Self::If),
 			"then" => Some(Self::Then),
+			"elseif" => Some(Self::ElseIf),
+			"else" => Some(Self::Else),
 			"none" => Some(Self::None),
 			"and" => Some(Self::And),
 			"or" => Some(Self::Or),

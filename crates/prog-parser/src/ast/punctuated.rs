@@ -3,13 +3,13 @@ use std::marker::PhantomData;
 
 use anyhow::Result;
 
-use crate::{ASTNode, Parse, ParseStream, Position, Span, Token};
+use crate::{ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Clone, PartialEq)]
 pub struct Punctuated<'inp, T, P> {
 	pub items: Vec<(T, P)>,
 	pub tail: Option<T>,
-	pub _marker: PhantomData<&'inp (T, P)>
+	pub _marker: PhantomData<(&'inp T, &'inp P)>
 }
 
 impl<'inp, T, P> Punctuated<'inp, T, P> {
@@ -26,12 +26,60 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 	pub fn len(&self) -> usize { self.items.len() + if self.tail.is_some() { 1 } else { 0 } }
 
 	pub fn push_pair(&mut self, pair: (T, P)) { self.items.push(pair); }
+
+	pub fn map<F, G, H, I>(self, f: F, g: G) -> Punctuated<'inp, H, I>
+	where
+		F: Fn(T) -> H,
+		G: Fn(P) -> I
+	{
+		let items = self
+			.items
+			.into_iter()
+			.map(|(t, p)| (f(t), g(p)))
+			.collect::<Vec<_>>();
+
+		let tail = self.tail.map(f);
+
+		Punctuated {
+			items,
+			tail,
+			_marker: PhantomData
+		}
+	}
+}
+
+impl<'inp> Punctuated<'inp, Position, Position> {
+	pub fn position(&self) -> Position {
+		assert!(
+			!self.is_empty(),
+			"Could not get punctuated list's position as it is empty"
+		);
+
+		let start = self
+			.items
+			.first()
+			.map(|(item, _)| item.start())
+			.unwrap();
+
+		let end = match self.tail {
+			Some(tail) => tail.end(),
+
+			None => {
+				self.items
+					.last()
+					.map(|(_, punct)| punct.end())
+					.unwrap()
+			}
+		};
+
+		Position::new(start, end)
+	}
 }
 
 impl<'inp, T, P> ASTNode for Punctuated<'inp, T, P>
 where
 	T: Parse<'inp>,
-	P: Parse<'inp> + Token<'inp>
+	P: Parse<'inp>
 {
 	fn span(&self) -> Span {
 		assert!(
@@ -42,16 +90,16 @@ where
 		let (source, start) = self
 			.items
 			.first()
-			.map(|(item, _)| (item.span().source(), item.span().start()))
+			.map(|(item, _)| (item.source(), item.start()))
 			.unwrap();
 
 		let end = match self.tail {
-			Some(ref tail) => tail.span().end(),
+			Some(ref tail) => tail.end(),
 
 			None => {
 				self.items
 					.last()
-					.map(|(_, punct)| Token::span(punct).end())
+					.map(|(_, punct)| punct.end())
 					.unwrap()
 			}
 		};
@@ -64,7 +112,7 @@ where
 impl<'inp, T, P> Parse<'inp> for Punctuated<'inp, T, P>
 where
 	T: Parse<'inp>,
-	P: Parse<'inp> + Token<'inp>
+	P: Parse<'inp>
 {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let mut list = Self::new();

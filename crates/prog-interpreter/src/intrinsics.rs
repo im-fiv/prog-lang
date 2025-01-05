@@ -69,7 +69,7 @@ fn import_function(
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
-			call_site.func_pos,
+			call_site.func,
 			errors::InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
 				thing: String::from("imports"),
 				plural: true
@@ -94,7 +94,7 @@ fn import_function(
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
-			call_site.args_pos,
+			call_site.args.unwrap().position(),
 			errors::InterpretErrorKind::InvalidFile(errors::InvalidFile(path_str))
 		));
 	}
@@ -103,23 +103,24 @@ fn import_function(
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
-			call_site.args_pos,
+			call_site.args.unwrap().position(),
 			errors::InterpretErrorKind::InvalidFile(errors::InvalidFile(path_str))
 		));
 	}
 
 	let path_str = path.to_str().unwrap();
 	let contents = prog_utils::read_file(path_str);
+	let ts = prog_lexer::lex(&contents, &path_str)?;
 
-	let parser = prog_parser::Parser::new(&contents, path_str);
-	let ast = parser.parse()?;
+	let ps = prog_parser::ParseStream::new(ts.buffer());
+	let ast = ps.parse::<prog_parser::ast::Program>()?;
 
 	// Swapping the active memory to a new interpreter for the time of execution,
 	// such that only 1 memory is getting allocations
 	let mut new_interpreter = crate::Interpreter::new();
 	swap(&mut new_interpreter.memory, &mut interpreter.memory);
 
-	let result = interpreter.interpret(contents, path_str.to_owned(), ast, false)?;
+	let result = interpreter.interpret(&contents, path_str, ast, false)?;
 	swap(&mut new_interpreter.memory, &mut interpreter.memory);
 
 	Ok(result)
@@ -139,7 +140,7 @@ fn input_function(
 		bail!(errors::InterpretError::new(
 			call_site.source,
 			call_site.file,
-			call_site.func_pos,
+			call_site.func,
 			errors::InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
 				thing: String::from("user input"),
 				plural: false
@@ -204,7 +205,7 @@ fn assert_function(
 		bail!(crate::InterpretError::new(
 			call_site.source,
 			call_site.file,
-			call_site.args_pos,
+			call_site.args.unwrap().position(),
 			errors::InterpretErrorKind::AssertionFailed(errors::AssertionFailed(message))
 		));
 	}

@@ -25,10 +25,10 @@ impl<'inp> FieldAcc<'inp> {
 
 impl ASTNode for FieldAcc<'_> {
 	fn span(&self) -> Span {
-		let start = self.object.span().start();
-		let end = self.field.span().end();
+		let start = self.object.start();
+		let end = self.field.end();
 
-		let source = self.object.span().source();
+		let source = self.object.source();
 		let position = Position::new(start, end);
 
 		Span::new(source, position)

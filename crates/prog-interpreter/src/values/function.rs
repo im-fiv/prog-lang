@@ -7,7 +7,7 @@ use crate::context::Context;
 //* Note: `Debug` and `PartialEq` are implemented manually below
 #[derive(Clone)]
 pub struct RFunction {
-	pub ast: Box<ast::expressions::Function>,
+	pub ast: Box<ast::Func>,
 
 	pub source: String,
 	pub file: String,

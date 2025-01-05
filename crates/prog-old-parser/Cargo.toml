@@ -1,5 +1,5 @@
 [package]
-name = "prog-new-parser"
+name = "prog-old-parser"
 version = "0.0.0"
 edition = "2021"
 
@@ -9,7 +9,10 @@ serde = ["dep:serde"]
 
 [dependencies]
 anyhow = { workspace = true }
-prog-lexer = { workspace = true }
+ariadne = { workspace = true }
+pest = { workspace = true }
+pest_derive = { workspace = true }
 prog-utils = { workspace = true }
+prog-macros = { workspace = true }
 
 serde = { workspace = true, optional = true }

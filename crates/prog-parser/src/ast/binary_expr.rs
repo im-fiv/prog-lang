@@ -14,10 +14,10 @@ pub struct BinaryExpr<'inp> {
 
 impl ASTNode for BinaryExpr<'_> {
 	fn span(&self) -> Span {
-		let start = self.lhs.span().start();
-		let end = self.rhs.span().end();
+		let start = self.lhs.start();
+		let end = self.rhs.end();
 
-		let source = self.lhs.span().source();
+		let source = self.lhs.source();
 		let position = Position::new(start, end);
 
 		Span::new(source, position)

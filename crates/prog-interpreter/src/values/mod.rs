@@ -144,14 +144,14 @@ impl_basic_conv!(from RClass => Value as Class);
 impl_basic_conv!(from RClassInstance => Value as ClassInstance);
 impl_basic_conv!(from ControlFlow => Value as ControlFlow);
 
-impl From<ast::expressions::Literal> for Value {
-	fn from(value: ast::expressions::Literal) -> Self {
-		use ast::expressions::Literal;
+impl From<ast::Lit<'_>> for Value {
+	fn from(value: ast::Lit) -> Self {
+		use ast::LitKind;
 
-		match value {
-			Literal::Boolean(v, _) => Self::Boolean(v.into()),
-			Literal::String(v, _) => Self::String(v.into()),
-			Literal::Number(v, _) => Self::Number(v.into())
+		match value.kind {
+			LitKind::Boolean(v) => Self::Boolean(v.into()),
+			LitKind::String(v) => Self::String(v.into()),
+			LitKind::Number(v) => Self::Number(v.into())
 		}
 	}
 }

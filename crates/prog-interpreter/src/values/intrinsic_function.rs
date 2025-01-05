@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{self, Debug, Display};
 
 use anyhow::Result;
-use prog_parser::ast;
+use prog_parser::{ast, Position};
 
 use super::Value;
 use crate::arg_parser::{ArgList, ParsedArg};
@@ -17,23 +17,33 @@ pub struct RIntrinsicFunction {
 }
 
 #[derive(Debug)]
-pub struct RIntrinsicFunctionData<'i> {
+pub struct RIntrinsicFunctionData<'i, 'p> {
 	pub this: Option<Value>,
 	pub interpreter: &'i mut Interpreter,
 	pub arguments: HashMap<String, ParsedArg>,
-	pub call_site: CallSite
+	pub call_site: CallSite<'p>
 }
 
 pub type RIntrinsicFunctionPtr = fn(RIntrinsicFunctionData) -> Result<Value>;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct CallSite {
+pub struct CallSite<'p> {
 	pub source: String,
 	pub file: String,
 
-	pub args_pos: ast::Position,
-	pub func_pos: ast::Position,
-	pub whole_pos: ast::Position
+	pub func: Position,
+	pub _lp: Position,
+	pub args: Option<ast::Punctuated<'p, Position, Position>>,
+	pub _rp: Position
+}
+
+impl CallSite<'_> {
+	pub fn whole(&self) -> Position {
+		let start = self.func.start();
+		let end = self._rp.end();
+
+		Position::new(start, end)
+	}
 }
 
 impl RIntrinsicFunction {

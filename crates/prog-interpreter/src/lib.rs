@@ -1,18 +1,18 @@
+pub mod errors;
+pub mod values;
 pub mod arg_parser;
 pub mod context;
-pub mod errors;
 pub mod intrinsics;
-pub mod values;
 
 use std::collections::HashMap;
 
 use anyhow::Result;
-use context::Context;
-pub use errors::{InterpretError, InterpretErrorKind};
 use halloc::Memory;
-use prog_parser::ast;
-use values::{CallSite, RFunction};
-pub use values::{RPrimitive, Value, ValueKind};
+use prog_parser::{ast, ASTNode as _};
+
+pub use errors::{InterpretError, InterpretErrorKind};
+pub use values::{RPrimitive, Value, ValueKind, CallSite, RFunction};
+use context::Context;
 
 const META_NO_SELF_OVERRIDE: &str = "$NO_SELF_OVERRIDE";
 const META_SELF: &str = "self";
@@ -38,11 +38,11 @@ macro_rules! create_error {
 	};
 }
 
-fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
+fn identifier_from_term(term: &ast::Term) -> Option<String> {
 	match term {
-		ast::expressions::Term::Identifier(value, _) => Some(value.to_owned()),
-		ast::expressions::Term::Expression(value) => {
-			if let ast::expressions::Expression::Term(ref value) = value.as_ref() {
+		ast::Term::Ident(ident) => Some(ident.value().to_owned()),
+		ast::Term::Expr(value) => {
+			if let ast::Expr::Term(value) = value.as_ref() {
 				identifier_from_term(value)
 			} else {
 				None
@@ -112,7 +112,7 @@ impl Interpreter {
 	}
 
 	pub fn execute(&mut self, ast: ast::Program, keep_marker: bool) -> Result<Value> {
-		for statement in ast.statements {
+		for statement in ast.stmts {
 			let result = self.execute_statement(statement)?;
 
 			// In case of `return`, `break`, and `continue` statements
@@ -134,8 +134,8 @@ impl Interpreter {
 
 	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<Value> {
 		match statement {
-			ast::Statement::VariableDefine(stmt) => self.execute_variable_define(stmt),
-			ast::Statement::VariableAssign(stmt) => self.execute_variable_assign(stmt),
+			ast::Statement::VarDefine(stmt) => self.execute_var_def(stmt),
+			ast::Statement::VarAssign(stmt) => self.execute_var_assign(stmt),
 			ast::Statement::DoBlock(stmt) => self.execute_do_block(stmt),
 			ast::Statement::Return(stmt) => self.execute_return(stmt),
 			ast::Statement::Call(stmt) => self.evaluate_call(stmt),
@@ -143,73 +143,59 @@ impl Interpreter {
 			ast::Statement::Break(stmt) => self.execute_break(stmt),
 			ast::Statement::Continue(stmt) => self.execute_continue(stmt),
 			ast::Statement::If(stmt) => self.execute_if(stmt),
-			ast::Statement::ExpressionAssign(stmt) => self.execute_expression_assign(stmt),
-			ast::Statement::ClassDefine(stmt) => self.execute_class_define(stmt)
+			ast::Statement::ExprAssign(stmt) => self.execute_expr_assign(stmt),
+			ast::Statement::ClassDef(stmt) => self.execute_class_def(stmt)
 		}
 	}
 
-	fn execute_variable_define(&mut self, statement: ast::VariableDefine) -> Result<Value> {
-		let evaluated_value = match statement.value {
-			None => Value::Empty,
-			Some(expression) => self.evaluate_expression(expression, false)?
-		};
+	fn execute_var_def(&mut self, stmt: ast::VarDefine) -> Result<Value> {
+		let value = self.evaluate_expr(stmt.value, false)?;
+		self.context.insert(stmt.name.value_owned(), value);
 
-		self.context.insert(statement.name.0, evaluated_value);
 		Ok(Value::Empty)
 	}
 
-	fn execute_variable_assign(&mut self, statement: ast::VariableAssign) -> Result<Value> {
-		let variable_name = statement.name.0;
-
-		let evaluated_value = self.evaluate_expression(statement.value, false)?;
-		let update_result = self.context.update(variable_name.clone(), evaluated_value);
+	fn execute_var_assign(&mut self, stmt: ast::VarAssign) -> Result<Value> {
+		let value = self.evaluate_expr(stmt.value, false)?;
+		let update_result = self.context.update(stmt.name.value_owned(), value);
 
 		if update_result.is_err() {
 			create_error!(
 				self,
-				statement.name.1,
-				InterpretErrorKind::VariableDoesntExist(errors::VariableDoesntExist(variable_name))
+				stmt.name.position(),
+				InterpretErrorKind::VariableDoesntExist(errors::VariableDoesntExist(stmt.name.value_owned()))
 			);
 		}
 
 		Ok(Value::Empty)
 	}
 
-	fn execute_do_block(&mut self, statement: ast::DoBlock) -> Result<Value> {
+	fn execute_do_block(&mut self, stmt: ast::DoBlock) -> Result<Value> {
+		let stmts = stmt.stmts;
+
 		self.context.deeper();
-		let result = self.execute(
-			ast::Program {
-				statements: statement.statements
-			},
-			false
-		);
+		let result = self.execute(ast::Program { stmts }, false);
 		self.context.shallower();
 
 		result
 	}
 
-	fn execute_return(&mut self, statement: ast::Return) -> Result<Value> {
-		let value = match statement.expression {
-			Some(expression) => self.evaluate_expression(expression, false)?,
-			None => Value::Empty
-		};
+	fn execute_return(&mut self, stmt: ast::Return) -> Result<Value> {
+		let value = self.evaluate_expr(stmt.value, false)?;
 
 		Ok(Value::ControlFlow(values::ControlFlow::Return(Box::new(
 			value
 		))))
 	}
 
-	fn execute_while_loop(&mut self, statement: ast::WhileLoop) -> Result<Value> {
-		let mut evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
+	fn execute_while_loop(&mut self, stmt: ast::WhileLoop) -> Result<Value> {
+		let mut evaluated = self.evaluate_expr(stmt.cond.clone(), false)?;
 
 		while evaluated.is_truthy() {
+			let stmts = stmt.block.stmts.clone();
+
 			self.context.deeper();
-			let result = self.execute(
-				ast::Program {
-					statements: statement.statements.clone()
-				},
-				true
-			)?;
+			let result = self.execute(ast::Program { stmts }, true)?;
 			self.context.shallower();
 
 			if let Value::ControlFlow(ref ctrl) = result {
@@ -217,37 +203,34 @@ impl Interpreter {
 					values::ControlFlow::Return(_) => return Ok(result),
 					values::ControlFlow::Break => break,
 					values::ControlFlow::Continue => {
-						evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
+						evaluated = self.evaluate_expr(stmt.cond.clone(), false)?;
 						continue;
 					}
 				};
 			}
 
-			evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
+			evaluated = self.evaluate_expr(stmt.cond.clone(), false)?;
 		}
 
 		Ok(Value::Empty)
 	}
 
-	fn execute_break(&mut self, _statement: ast::Break) -> Result<Value> {
+	fn execute_break(&mut self, _stmt: ast::Break) -> Result<Value> {
 		Ok(Value::ControlFlow(values::ControlFlow::Break))
 	}
 
-	fn execute_continue(&mut self, _statement: ast::Continue) -> Result<Value> {
+	fn execute_continue(&mut self, _stmt: ast::Continue) -> Result<Value> {
 		Ok(Value::ControlFlow(values::ControlFlow::Continue))
 	}
 
-	fn execute_if(&mut self, statement: ast::If) -> Result<Value> {
-		let evaluated = self.evaluate_expression(statement.condition, false)?;
+	fn execute_if(&mut self, stmt: ast::If) -> Result<Value> {
+		let evaluated = self.evaluate_expr(stmt.cond, false)?;
 
 		if evaluated.is_truthy() {
+			let stmts = stmt.stmts;
+
 			self.context.deeper();
-			let result = self.execute(
-				ast::Program {
-					statements: statement.statements
-				},
-				true
-			)?;
+			let result = self.execute(ast::Program { stmts }, true)?;
 			self.context.shallower();
 
 			if result.kind() == ValueKind::ControlFlow {
@@ -257,17 +240,14 @@ impl Interpreter {
 			return Ok(Value::Empty);
 		}
 
-		for branch in statement.elseif_branches {
-			let evaluated = self.evaluate_expression(branch.condition, false)?;
+		for branch in stmt.b_elifs.unwrap_or(vec![]) {
+			let evaluated = self.evaluate_expr(branch.cond, false)?;
 
 			if evaluated.is_truthy() {
+				let stmts = branch.stmts;
+
 				self.context.deeper();
-				let result = self.execute(
-					ast::Program {
-						statements: branch.statements
-					},
-					true
-				)?;
+				let result = self.execute(ast::Program { stmts }, true)?;
 				self.context.shallower();
 
 				if result.kind() == ValueKind::ControlFlow {
@@ -278,14 +258,11 @@ impl Interpreter {
 			}
 		}
 
-		if let Some(branch) = statement.else_branch {
+		if let Some(branch) = stmt.b_else {
+			let stmts = branch.stmts;
+
 			self.context.deeper();
-			let result = self.execute(
-				ast::Program {
-					statements: branch.statements
-				},
-				true
-			)?;
+			let result = self.execute(ast::Program { stmts }, true)?;
 			self.context.shallower();
 
 			if result.kind() == ValueKind::ControlFlow {
@@ -298,15 +275,15 @@ impl Interpreter {
 		Ok(Value::Empty)
 	}
 
-	fn execute_expression_assign(&mut self, statement: ast::ExpressionAssign) -> Result<Value> {
-		use ast::expressions::operators::BinaryOperator as Op;
+	fn execute_expr_assign(&mut self, stmt: ast::ExprAssign) -> Result<Value> {
+		use ast::BinaryOpKind as Op;
 
-		let expression = match statement.expression {
-			ast::Expression::Binary(expression) => expression,
-			_ => {
+		let expr = match stmt.expr {
+			ast::Expr::Binary(e) => e,
+			e => {
 				create_error!(
 					self,
-					statement.expression.position(),
+					e.position(),
 					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
 						None
 					))
@@ -314,41 +291,31 @@ impl Interpreter {
 			}
 		};
 
-		if !matches!(expression.operator.0, Op::ListAccess | Op::ObjectAccess) {
+		if !matches!(expr.op.kind, Op::LeftBracket | Op::Dot) {
 			create_error!(
 				self,
-				expression.position,
+				expr.position(),
 				InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(None))
 			);
 		}
 
-		let value = self.evaluate_expression(statement.value, false)?;
+		let value = self.evaluate_expr(stmt.value, false)?;
 
-		if expression.operator.0 == Op::ListAccess {
-			self.execute_expression_assign_list(expression, value)
+		if expr.op.kind == Op::LeftBracket {
+			self.execute_expr_assign_list(expr, value)
 		} else {
-			self.execute_expression_assign_object(expression, value)
+			self.execute_expr_assign_obj(expr, value)
 		}
 	}
 
-	fn execute_expression_assign_list(
-		&mut self,
-		expression: ast::expressions::Binary,
-		value: Value
-	) -> Result<Value> {
-		let ast::expressions::Binary {
-			lhs,
-			rhs,
-			operator: _,
-			position
-		} = expression;
-
-		let list_name = match self.evaluate_term(rhs.clone(), true)? {
+	fn execute_expr_assign_list(&mut self, expr: ast::BinaryExpr, value: Value) -> Result<Value> {
+		let list_name = match self.evaluate_term(expr.rhs.clone(), true)? {
 			Value::Identifier(identifier) => identifier,
+
 			_ => {
 				create_error!(
 					self,
-					position,
+					expr.rhs.position(),
 					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
 						None
 					))
@@ -356,16 +323,16 @@ impl Interpreter {
 			}
 		};
 
-		let index = match self.evaluate_term(lhs.clone(), false)? {
+		let index = match self.evaluate_term(expr.lhs.clone(), false)? {
 			Value::Number(index) => index.get_owned() as i64,
 			value => {
 				create_error!(
 					self,
-					position,
+					expr.position(),
 					InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
-						kind: (ValueKind::List, rhs.position()),
+						kind: (ValueKind::List, expr.rhs.position()),
 						expected_index_kind: ValueKind::Number,
-						index_kind: (value.kind(), lhs.position()),
+						index_kind: (value.kind(), expr.lhs.position()),
 						because_negative: false
 					})
 				)
@@ -375,11 +342,11 @@ impl Interpreter {
 		if index.is_negative() {
 			create_error!(
 				self,
-				position,
+				expr.position(),
 				InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
-					kind: (ValueKind::List, rhs.position()),
+					kind: (ValueKind::List, expr.rhs.position()),
 					expected_index_kind: ValueKind::Number,
-					index_kind: (value.kind(), lhs.position()),
+					index_kind: (value.kind(), expr.lhs.position()),
 					because_negative: true
 				})
 			);
@@ -388,10 +355,11 @@ impl Interpreter {
 		let index: usize = index.try_into()?;
 		let mut mutator = match self.context.get(&list_name)? {
 			Value::List(list) => list.get_owned(),
+
 			value => {
 				create_error!(
 					self,
-					position,
+					expr.position(),
 					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
 						Some(value.kind())
 					))
@@ -412,24 +380,14 @@ impl Interpreter {
 	}
 
 	// TODO: split class logic into `execute_expression_assign_class`
-	fn execute_expression_assign_object(
-		&mut self,
-		expression: ast::expressions::Binary,
-		value: Value
-	) -> Result<Value> {
-		let ast::expressions::Binary {
-			lhs,
-			rhs,
-			operator: _,
-			position
-		} = expression.clone();
-
-		let object_name = match self.evaluate_term(lhs.clone(), true)? {
+	fn execute_expr_assign_obj(&mut self, expr: ast::BinaryExpr, value: Value) -> Result<Value> {
+		let object_name = match self.evaluate_term(expr.lhs.clone(), true)? {
 			Value::Identifier(identifier) => identifier,
+
 			_ => {
 				create_error!(
 					self,
-					position,
+					expr.position(),
 					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
 						None
 					))
@@ -437,18 +395,18 @@ impl Interpreter {
 			}
 		};
 
-		let entry_name = match self.evaluate_term(rhs.clone(), true)? {
+		let entry_name = match self.evaluate_term(expr.rhs.clone(), true)? {
 			Value::Identifier(value) => value,
 			Value::String(value) => value.get_owned(),
 
 			value => {
 				create_error!(
 					self,
-					position,
+					expr.position(),
 					InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
-						kind: (ValueKind::Object, lhs.position()),
+						kind: (ValueKind::Object, expr.lhs.position()),
 						expected_index_kind: ValueKind::String,
-						index_kind: (value.kind(), rhs.position()),
+						index_kind: (value.kind(), expr.rhs.position()),
 						because_negative: false
 					})
 				)
@@ -470,7 +428,7 @@ impl Interpreter {
 			value => {
 				create_error!(
 					self,
-					position,
+					expr.position(),
 					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
 						Some(value.kind())
 					))
@@ -489,10 +447,10 @@ impl Interpreter {
 			if !map.contains_key(&entry_name) && !parent_fields.contains_key(&entry_name) {
 				create_error!(
 					self,
-					lhs.position(),
+					expr.lhs.position(),
 					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
 						entry_name,
-						rhs.position()
+						expr.rhs.position()
 					))
 				)
 			}
@@ -503,7 +461,7 @@ impl Interpreter {
 						Some(val) if val.kind() == ValueKind::Function => {
 							create_error!(
 								self,
-								position,
+								expr.position(),
 								InterpretErrorKind::CannotReassignClassFunctions(
 									errors::CannotReassignClassFunctions
 								)
@@ -525,7 +483,7 @@ impl Interpreter {
 		Ok(Value::Empty)
 	}
 
-	fn execute_class_define(&mut self, statement: ast::ClassDefine) -> Result<Value> {
+	fn execute_class_def(&mut self, stmt: ast::ClassDef) -> Result<Value> {
 		// This is a hack to keep fields of `self` and the actual class in sync
 		let mut fields = unsafe { self.memory.alloc(HashMap::new()).promote() };
 
@@ -537,77 +495,51 @@ impl Interpreter {
 		self.context.insert(
 			String::from("self"),
 			values::RClass {
-				name: statement.name.clone(),
+				name: stmt.name.value_owned(),
 				fields: fields.clone()
 			}
 			.into()
 		);
 
 		let mut temp_fields = HashMap::new();
-		for field in statement.fields {
-			let value = field
-				.value
-				.map_or(Ok(Value::Empty), |val| self.evaluate_expression(val, false))?;
-
-			temp_fields.insert(field.name.0, value);
+		for field in stmt.fields {
+			let value = self.evaluate_expr(field.value, false)?;
+			temp_fields.insert(field.name.value_owned(), value);
 		}
 		fields.write(temp_fields);
 
 		let class = values::RClass {
-			name: statement.name.clone(),
+			name: stmt.name.value_owned(),
 			fields
 		};
 
 		self.context.shallower();
-		self.context.insert(statement.name, class.clone().into());
+		self.context.insert(stmt.name.value_owned(), class.clone().into());
 
 		Ok(class.into())
 	}
 
-	fn evaluate_expression(
+	fn evaluate_expr(
 		&mut self,
-		expression: ast::Expression,
+		expr: ast::Expr,
 		stop_on_ident: bool
 	) -> Result<Value> {
-		use ast::expressions::*;
+		use ast::Expr;
 
-		match expression {
-			Expression::Unary(expression) => {
-				self.evaluate_unary_expression(
-					expression.operator,
-					expression.operand,
-					stop_on_ident
-				)
-			}
-			Expression::Binary(expression) => {
-				self.evaluate_binary_expression(
-					expression.lhs,
-					expression.operator,
-					expression.rhs,
-					stop_on_ident
-				)
-			}
-			Expression::Term(term) => self.evaluate_term(term, stop_on_ident),
-			Expression::Empty(_) => Ok(Value::Empty)
+		match expr {
+			Expr::Unary(e) => self.evaluate_unary_expr(e, stop_on_ident),
+			Expr::Binary(e) => self.evaluate_binary_expr(e, stop_on_ident),
+			Expr::Term(t) => self.evaluate_term(t, stop_on_ident)
 		}
 	}
 
-	fn evaluate_unary_expression(
-		&mut self,
-		operator: (ast::expressions::operators::UnaryOperator, ast::Position),
-		operand: ast::expressions::Term,
-		stop_on_ident: bool
-	) -> Result<Value> {
-		use ast::expressions::operators::UnaryOperator as Op;
+	fn evaluate_unary_expr(&mut self, expr: ast::UnaryExpr, stop_on_ident: bool) -> Result<Value> {
+		use ast::UnaryOpKind as Op;
 		use Value as V;
 
-		let operator_pos = operator.1;
-		let operand_pos = operand.position();
-		let whole_pos = ast::Position::new(operator_pos.start(), operand_pos.end());
+		let operand = self.evaluate_term(expr.operand.clone(), stop_on_ident)?;
 
-		let evaluated_operand = self.evaluate_term(operand.clone(), stop_on_ident)?;
-
-		match (operator.0, evaluated_operand) {
+		match (expr.op.kind, operand) {
 			(Op::Minus, V::Number(v)) => Ok(V::Number((-v.get_owned()).into())),
 
 			(Op::Not, V::Boolean(v)) => Ok(V::Boolean((!v.get()).into())),
@@ -618,40 +550,29 @@ impl Interpreter {
 			(Op::Not, V::IntrinsicFunction(..)) => Ok(V::Boolean(false.into())),
 			(Op::Not, V::Empty) => Ok(V::Boolean(true.into())),
 
-			(_, evaluated_operand) => {
+			(op, operand) => {
 				create_error!(
 					self,
-					whole_pos,
+					expr.position(),
 					InterpretErrorKind::UnsupportedUnary(errors::UnsupportedUnary {
-						operator,
-						operand: (evaluated_operand.kind(), operand.position())
+						operator: (op, expr.op.position()),
+						operand: (operand.kind(), expr.operand.position())
 					})
 				)
 			}
 		}
 	}
 
-	fn evaluate_binary_expression(
-		&mut self,
-		lhs: ast::expressions::Term,
-		operator: (ast::expressions::operators::BinaryOperator, ast::Position),
-		rhs: ast::expressions::Term,
-		stop_on_ident: bool
-	) -> Result<Value> {
-		use ast::expressions::operators::BinaryOperator as Op;
+	fn evaluate_binary_expr(&mut self, expr: ast::BinaryExpr, stop_on_ident: bool) -> Result<Value> {
+		use ast::BinaryOpKind as Op;
 		use Value as V;
 
-		let lhs_position = lhs.position();
-		let rhs_position = rhs.position();
-
-		let whole_position = ast::Position::new(lhs_position.start(), rhs_position.end());
-
-		let evaluated_lhs = self.evaluate_term(lhs.clone(), stop_on_ident)?;
+		let lhs = self.evaluate_term(expr.lhs.clone(), stop_on_ident)?;
 		// if performing an object access and rhs is a valid identifier,
 		// essentially force the `stop_on_ident` to `true`
-		let evaluated_rhs = match (operator.0 == Op::ObjectAccess, identifier_from_term(&rhs)) {
+		let rhs = match (expr.op.kind == Op::Dot, identifier_from_term(&expr.rhs)) {
 			(true, Some(ident)) => Value::Identifier(ident),
-			_ => self.evaluate_term(rhs, stop_on_ident)?
+			_ => self.evaluate_term(expr.rhs, stop_on_ident)?
 		};
 
 		macro_rules! primitive_object_access {
@@ -662,10 +583,10 @@ impl Interpreter {
 				if function.is_none() {
 					create_error!(
 						self,
-						lhs_position,
+						expr.lhs.position(),
 						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
 							$key,
-							rhs_position
+							expr.rhs.position()
 						))
 					);
 				}
@@ -678,66 +599,66 @@ impl Interpreter {
 			}};
 		}
 
-		let evaluated_expr = match (operator.0, evaluated_lhs, evaluated_rhs) {
-			(Op::Add, V::Number(lhs), V::Number(rhs)) => V::Number(lhs + rhs),
-			(Op::Subtract, V::Number(lhs), V::Number(rhs)) => V::Number(lhs - rhs),
-			(Op::Divide, V::Number(lhs), V::Number(rhs)) => V::Number(lhs / rhs),
-			(Op::Multiply, V::Number(lhs), V::Number(rhs)) => V::Number(lhs * rhs),
-			(Op::Modulo, V::Number(lhs), V::Number(rhs)) => V::Number(lhs % rhs),
+		let evaluated_expr = match (expr.op.kind, lhs, rhs) {
+			(Op::Plus, V::Number(lhs), V::Number(rhs)) => V::Number(lhs + rhs),
+			(Op::Minus, V::Number(lhs), V::Number(rhs)) => V::Number(lhs - rhs),
+			(Op::Asterisk, V::Number(lhs), V::Number(rhs)) => V::Number(lhs * rhs),
+			(Op::Slash, V::Number(lhs), V::Number(rhs)) => V::Number(lhs / rhs),
+			(Op::Sign, V::Number(lhs), V::Number(rhs)) => V::Number(lhs % rhs),
 			(Op::Gt, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs > rhs).into()),
 			(Op::Lt, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs < rhs).into()),
 			(Op::Gte, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs >= rhs).into()),
 			(Op::Lte, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs <= rhs).into()),
 
-			(Op::Add, V::String(lhs), rhs) => V::String(format!("{}{}", lhs.get(), rhs).into()),
+			(Op::Plus, V::String(lhs), rhs) => V::String(format!("{}{}", lhs.get(), rhs).into()),
 
 			(Op::And, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean(lhs & rhs),
 			(Op::Or, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean(lhs | rhs),
 
 			(Op::EqEq, lhs, rhs) => V::Boolean((lhs == rhs).into()),
-			(Op::NotEq, lhs, rhs) => V::Boolean((lhs != rhs).into()),
+			(Op::Neq, lhs, rhs) => V::Boolean((lhs != rhs).into()),
 
-			(Op::ListAccess, V::Number(lhs), V::List(rhs)) => rhs[lhs].clone(),
+			(Op::LeftBracket, V::Number(lhs), V::List(rhs)) => rhs[lhs].clone(),
 
-			(Op::ObjectAccess, V::Object(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+			(Op::Dot, V::Object(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
 				let rhs = rhs.extract_identifier();
 				let entries = &**(lhs.get());
 
 				entries.get(rhs).cloned().unwrap_or(Value::Empty)
 			}
 
-			(Op::ObjectAccess, V::Boolean(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+			(Op::Dot, V::Boolean(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
 				let rhs = rhs.extract_identifier().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
-			(Op::ObjectAccess, V::String(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+			(Op::Dot, V::String(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
 				let rhs = rhs.extract_identifier().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
-			(Op::ObjectAccess, V::Number(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+			(Op::Dot, V::Number(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
 				let rhs = rhs.extract_identifier().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
-			(Op::ObjectAccess, V::List(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+			(Op::Dot, V::List(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
 				let rhs = rhs.extract_identifier().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
 
-			(Op::ObjectAccess, V::Class(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+			(Op::Dot, V::Class(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
 				let rhs = rhs.extract_identifier().to_owned();
 				let field = (*lhs.fields).get(&rhs).cloned();
 
 				field.ok_or(create_error!(
 					self,
-					whole_position,
+					expr.position(),
 					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
 						rhs,
-						rhs_position
+						expr.rhs.position()
 					));
 					no_bail
 				))?
 			}
-			(Op::ObjectAccess, V::ClassInstance(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
+			(Op::Dot, V::ClassInstance(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
 				let rhs = rhs.extract_identifier().to_owned();
 
 				let instance_fields = &*lhs.fields;
@@ -749,10 +670,10 @@ impl Interpreter {
 
 				let mut field = class_fields.get(&rhs).cloned().ok_or(create_error!(
 					self,
-					whole_position,
+					expr.position(),
 					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
 						rhs,
-						rhs_position
+						expr.rhs.position()
 					));
 					no_bail
 				))?;
@@ -776,14 +697,14 @@ impl Interpreter {
 				field
 			}
 
-			(_, evaluated_lhs, evaluated_rhs) => {
+			(_, lhs, rhs) => {
 				create_error!(
 					self,
-					whole_position,
+					expr.position(),
 					InterpretErrorKind::UnsupportedBinary(errors::UnsupportedBinary {
-						lhs: (evaluated_lhs.kind(), lhs_position),
-						operator,
-						rhs: (evaluated_rhs.kind(), rhs_position)
+						lhs: (lhs.kind(), expr.lhs.position()),
+						operator: (expr.op.kind, expr.op.position()),
+						rhs: (rhs.kind(), expr.rhs.position())
 					})
 				)
 			}
@@ -792,23 +713,22 @@ impl Interpreter {
 		Ok(evaluated_expr)
 	}
 
-	fn evaluate_term(
-		&mut self,
-		term: ast::expressions::Term,
-		stop_on_ident: bool
-	) -> Result<Value> {
-		use ast::expressions::*;
+	fn evaluate_term(&mut self, term: ast::Term, stop_on_ident: bool) -> Result<Value> {
+		use ast::Term;
 
 		let position = term.position();
 
 		match term {
+			// TODO: reorder according to prog_parser::Term
 			Term::Extern(ext) => self.evaluate_extern(ext),
-			Term::Object(obj) => self.evaluate_object(obj),
+			Term::Obj(obj) => self.evaluate_obj(obj),
 			Term::List(list) => self.evaluate_list(list),
 			Term::Call(call) => self.evaluate_call(call),
-			Term::Function(func) => self.evaluate_function(func),
-			Term::Literal(lit) => Ok(lit.into()),
-			Term::Identifier(ident, _) => {
+			Term::Func(func) => self.evaluate_func(func),
+			Term::Lit(lit) => Ok(lit.into()),
+			Term::Ident(ident) => {
+				let ident = ident.value_owned();
+
 				match stop_on_ident {
 					true => Ok(Value::Identifier(ident)),
 					false => {
@@ -820,11 +740,11 @@ impl Interpreter {
 					}
 				}
 			}
-			Term::Expression(value) => self.evaluate_expression(*value, stop_on_ident)
+			Term::Expr(e) => self.evaluate_expr(*e, stop_on_ident)
 		}
 	}
 
-	fn evaluate_function(&mut self, function: ast::expressions::Function) -> Result<Value> {
+	fn evaluate_func(&mut self, func: ast::Function) -> Result<Value> {
 		let context = {
 			let mut context = Context::new();
 
@@ -844,7 +764,7 @@ impl Interpreter {
 		};
 
 		let converted = RFunction {
-			ast: Box::new(function),
+			ast: Box::new(func),
 
 			source: self.source.to_owned(),
 			file: self.file.to_owned(),
@@ -855,7 +775,7 @@ impl Interpreter {
 		Ok(Value::Function(converted))
 	}
 
-	fn evaluate_extern(&mut self, ext: ast::expressions::Extern) -> Result<Value> {
+	fn evaluate_extern(&mut self, ext: ast::Extern) -> Result<Value> {
 		if !self.context.deref().flags.externs_allowed {
 			create_error!(
 				self,
@@ -867,13 +787,12 @@ impl Interpreter {
 			)
 		}
 
-		let value_pos = ext.0.position();
-		let value = match self.evaluate_expression(*ext.0, false)? {
+		let value = match self.evaluate_expr(*ext.expr, false)? {
 			Value::String(v) => v.get_owned(),
 			v => {
 				create_error!(
 					self,
-					value_pos,
+					ext.expr.position(),
 					InterpretErrorKind::InvalidExternArgument(errors::InvalidExternArgument(
 						v.kind()
 					))
@@ -883,7 +802,7 @@ impl Interpreter {
 
 		self.externs.get(&value).cloned().ok_or(create_error!(
 			self,
-			value_pos,
+			ext.expr.value(),
 			InterpretErrorKind::NonExistentExternItem(errors::NonExistentExternItem(
 				value
 			));
@@ -891,15 +810,15 @@ impl Interpreter {
 		))
 	}
 
-	fn evaluate_object(&mut self, object: ast::expressions::Object) -> Result<Value> {
+	fn evaluate_obj(&mut self, obj: ast::Obj) -> Result<Value> {
 		use std::collections::HashMap;
 
 		let mut value_map = HashMap::new();
 		let mut position_map: HashMap<String, ast::Position> = HashMap::new();
 
-		for entry in object.0 {
+		for entry in obj.0 {
 			let name = entry.name;
-			let value = self.evaluate_expression(entry.value, false)?;
+			let value = self.evaluate_expr(entry.value, false)?;
 
 			if value_map.insert(name.clone(), value).is_some() {
 				let definition_pos = position_map
@@ -929,11 +848,11 @@ impl Interpreter {
 		Ok(Value::Object(allocated.into()))
 	}
 
-	fn evaluate_list(&mut self, list: ast::expressions::List) -> Result<Value> {
+	fn evaluate_list(&mut self, list: ast::List) -> Result<Value> {
 		let mut values = vec![];
 
 		for expression in list.0 {
-			let value = self.evaluate_expression(expression, false)?;
+			let value = self.evaluate_expr(expression, false)?;
 			values.push(value);
 		}
 
@@ -941,29 +860,42 @@ impl Interpreter {
 		Ok(Value::List(allocated.into()))
 	}
 
-	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<Value> {
-		let call_site = CallSite {
-			source: self.source.clone(),
-			file: self.file.clone(),
+	fn evaluate_call(&mut self, call: ast::Call) -> Result<Value> {
+		let call_site = {
+			let func = call.func.position();
+			let _lp = call._lp.position();
+			let args = call
+				.args
+				.clone()
+				.map(|args| *args)
+				.map(|args| args.map(
+					|item| item.position(),
+					|punct| punct.position()
+				));
+			let _rp = call._rp.position();
 
-			args_pos: call.arguments.1,
-			func_pos: call.function.position(),
-			whole_pos: call.position
+			CallSite {
+				source: self.source.clone(),
+				file: self.file.clone(),
+
+				func,
+				_lp,
+				args,
+				_rp
+			}
 		};
 
-		let call_args_pos = call_site.args_pos;
 		let call_args = call
-			.arguments
-			.0
+			.args
 			.clone()
 			.into_iter()
-			.map(|arg| self.evaluate_expression(arg, false))
+			.map(|arg| self.evaluate_expr(arg, false))
 			.collect::<Result<Vec<_>>>()?;
 
 		let original_expr = *call.function.clone();
 		let function_pos = original_expr.position();
 
-		let function_expr = self.evaluate_expression(*call.function, false)?;
+		let function_expr = self.evaluate_expr(*call.function, false)?;
 
 		let convert_error = |e: arg_parser::ArgumentParseError| {
 			match e {

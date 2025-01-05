@@ -7,13 +7,16 @@ use crate::{token, ASTNode, Parse, ParseStream, Span};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term<'inp> {
 	Expr(Box<Expr<'inp>>),
-
 	ParenExpr(ParenExpr<'inp>),
+
 	Lit(Lit<'inp>),
 	Ident(token::Ident<'inp>),
+	Func(Func<'inp>),
 	Call(Call<'inp>),
+	Obj(Obj<'inp>),
 	IndexAcc(IndexAcc<'inp>),
-	FieldAcc(FieldAcc<'inp>)
+	FieldAcc(FieldAcc<'inp>),
+	Extern(Extern<'inp>)
 }
 
 impl<'inp> Term<'inp> {
@@ -25,16 +28,22 @@ impl<'inp> Term<'inp> {
 		let token = input.expect_peek()?;
 
 		let mut term = match token.kind() {
+			TokenKind::LeftParen => Self::ParenExpr(input.parse::<ParenExpr>()?),
+
 			TokenKind::Number | TokenKind::True | TokenKind::False | TokenKind::String => {
-				Term::Lit(input.parse::<Lit>()?)
+				Self::Lit(input.parse::<Lit>()?)
 			}
 
 			TokenKind::Ident => {
 				input.next();
-				Term::Ident(token::Ident::try_from(token).unwrap())
+				Self::Ident(token::Ident::try_from(token).unwrap())
 			}
 
-			TokenKind::LeftParen => Term::ParenExpr(input.parse::<ParenExpr>()?),
+			TokenKind::Func => Self::Func(input.parse::<Func>()?),
+
+			TokenKind::LeftBrace => Self::Obj(input.parse::<Obj>()?),
+
+			TokenKind::Extern => Self::Extern(input.parse::<Extern>()?),
 
 			// TODO
 			t => todo!("term `{t:?}` is not yet supported")

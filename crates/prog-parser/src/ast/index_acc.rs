@@ -28,10 +28,10 @@ impl<'inp> IndexAcc<'inp> {
 
 impl ASTNode for IndexAcc<'_> {
 	fn span(&self) -> Span {
-		let start = self.list.span().start();
-		let end = self._rb.span().end();
+		let start = self.list.start();
+		let end = self._rb.end();
 
-		let source = self.list.span().source();
+		let source = self.list.source();
 		let position = Position::new(start, end);
 
 		Span::new(source, position)

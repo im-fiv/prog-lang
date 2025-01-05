@@ -85,10 +85,10 @@ pub struct ParenExpr<'inp> {
 
 impl ASTNode for ParenExpr<'_> {
 	fn span(&self) -> Span {
-		let start = ASTNode::span(&self._lp).start();
-		let end = ASTNode::span(&self._rp).end();
+		let start = self._lp.start();
+		let end = self._rp.end();
 
-		let source = ASTNode::span(&self._lp).source();
+		let source = self._lp.source();
 		let position = Position::new(start, end);
 
 		Span::new(source, position)

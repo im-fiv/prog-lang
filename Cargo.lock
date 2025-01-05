@@ -1120,6 +1120,7 @@ dependencies = [
  "anyhow",
  "ariadne",
  "halloc",
+ "prog-lexer",
  "prog-macros",
  "prog-parser",
  "prog-utils",
@@ -1141,7 +1142,6 @@ dependencies = [
  "pest",
  "prog-interpreter",
  "prog-lexer",
- "prog-new-parser",
  "prog-parser",
  "prog-utils",
  "rustyline",
@@ -1171,11 +1171,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "prog-new-parser"
+name = "prog-old-parser"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "prog-lexer",
+ "ariadne",
+ "pest",
+ "pest_derive",
+ "prog-macros",
  "prog-utils",
  "serde",
 ]
@@ -1185,10 +1188,7 @@ name = "prog-parser"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "ariadne",
- "pest",
- "pest_derive",
- "prog-macros",
+ "prog-lexer",
  "prog-utils",
  "serde",
 ]
