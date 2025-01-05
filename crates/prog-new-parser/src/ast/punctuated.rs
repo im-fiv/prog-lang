@@ -1,25 +1,18 @@
+use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 
 use anyhow::Result;
 
 use crate::{ASTNode, Parse, ParseStream, Position, Span, Token};
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Punctuated<'inp, T, P>
-where
-	T: Clone,
-	P: Clone
-{
+#[derive(Clone, PartialEq)]
+pub struct Punctuated<'inp, T, P> {
 	pub items: Vec<(T, P)>,
 	pub tail: Option<T>,
 	pub _marker: PhantomData<&'inp (T, P)>
 }
 
-impl<'inp, T, P> Punctuated<'inp, T, P>
-where
-	T: Clone,
-	P: Clone
-{
+impl<'inp, T, P> Punctuated<'inp, T, P> {
 	pub fn new() -> Self {
 		Self {
 			items: vec![],
@@ -37,8 +30,8 @@ where
 
 impl<'inp, T, P> ASTNode<'inp> for Punctuated<'inp, T, P>
 where
-	T: Clone + Parse<'inp>,
-	P: Clone + Parse<'inp> + Token<'inp>
+	T: Parse<'inp>,
+	P: Parse<'inp> + Token<'inp>
 {
 	fn span(&'inp self) -> Span {
 		assert!(
@@ -70,8 +63,8 @@ where
 
 impl<'inp, T, P> Parse<'inp> for Punctuated<'inp, T, P>
 where
-	T: Clone + Parse<'inp>,
-	P: Clone + Parse<'inp> + Token<'inp>
+	T: Parse<'inp>,
+	P: Parse<'inp> + Token<'inp>
 {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let mut list = Self::new();
@@ -92,6 +85,27 @@ where
 		}
 
 		Ok(list)
+	}
+}
+
+impl<T, P> Debug for Punctuated<'_, T, P>
+where
+	T: Debug,
+	P: Debug
+{
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let mut s = f.debug_tuple("Punctuated");
+
+		for (t, p) in self.items.iter() {
+			s.field(t);
+			s.field(p);
+		}
+
+		if let Some(t) = self.tail.as_ref() {
+			s.field(t);
+		}
+
+		s.finish()
 	}
 }
 

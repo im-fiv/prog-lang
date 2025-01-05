@@ -1,9 +1,11 @@
+use std::fmt::{self, Debug};
+
 use anyhow::{bail, Result};
 use prog_lexer::TokenKind;
 
 use crate::{ASTNode, Parse, ParseStream, Span};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Lit<'inp> {
 	pub kind: LitKind,
 	pub span: Span<'inp>
@@ -62,5 +64,20 @@ impl<'inp> Parse<'inp> for Lit<'inp> {
 			// TODO: proper error reporting
 			kind => bail!("Unknown literal `{token}` of type `{kind:?}`")
 		}
+	}
+}
+
+impl Debug for Lit<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let mut s = f.debug_tuple("Lit");
+
+		let value = match &self.kind {
+			LitKind::Number(lit) => lit as &dyn Debug,
+			LitKind::Boolean(lit) => lit as &dyn Debug,
+			LitKind::String(lit) => lit as &dyn Debug
+		};
+
+		s.field(value);
+		s.finish()
 	}
 }
