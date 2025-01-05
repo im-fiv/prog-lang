@@ -1,4 +1,5 @@
 use anyhow::Result;
+use prog_lexer::TokenKind;
 
 use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParsePrecedence, ParseStream, Position, Span};
@@ -23,8 +24,6 @@ impl<'inp> Parse<'inp> for Expr<'inp> {
 
 impl<'inp> ParsePrecedence<'inp> for Expr<'inp> {
 	fn parse_precedence(input: &ParseStream<'inp>, precedence: u8) -> Result<Self> {
-		use prog_lexer::TokenKind;
-
 		let mut left = Self::Term(input.parse::<Term>()?);
 
 		while let Some(token) = input.peek() {

@@ -1,17 +1,18 @@
 use std::cell::Cell;
 
 use anyhow::{bail, Result};
+use prog_lexer::{Token, TokenKind};
 
 #[derive(Debug)]
 pub struct ParseStream<'inp> {
-	buffer: &'inp [prog_lexer::Token<'inp>],
+	buffer: &'inp [Token<'inp>],
 	/// Current buffer index position.
 	cursor: Cell<usize>
 }
 
 impl<'inp> ParseStream<'inp> {
 	/// Creates a new `ParseStream` from a slice of tokens.
-	pub fn new(buffer: &'inp [prog_lexer::Token<'inp>]) -> Self {
+	pub fn new(buffer: &'inp [Token<'inp>]) -> Self {
 		Self {
 			buffer,
 			cursor: Cell::new(0)
@@ -21,7 +22,7 @@ impl<'inp> ParseStream<'inp> {
 
 impl<'inp> ParseStream<'inp>
 where
-	prog_lexer::Token<'static>: Copy
+	Token<'static>: Copy
 {
 	/// Returns the current cursor position in the token buffer.
 	pub fn cursor(&self) -> usize { self.cursor.get() }
@@ -40,7 +41,7 @@ where
 	/// This is useful for lookahead parsing where you might try different options
 	/// without making *irreversible* progress in the stream.
 	pub fn try_parse<T: crate::Parse<'inp>>(&'_ self) -> Result<T> {
-		Self::try_parse_with(self, |input| input.parse::<T>())
+		self.try_parse_with(Self::parse::<T>)
 	}
 
 	/// Attempts to parse a value of type `T` from the current position in the stream
@@ -68,7 +69,7 @@ where
 	///
 	/// Returns `Some(Token)` if a token is available, or `None` if the
 	/// end of the buffer has been reached.
-	pub fn next(&'_ self) -> Option<prog_lexer::Token<'inp>> {
+	pub fn next(&'_ self) -> Option<Token<'inp>> {
 		if self.cursor.get() >= self.buffer.len() {
 			return None;
 		}
@@ -80,11 +81,30 @@ where
 		value
 	}
 
+	/// Retrieves the next token from the stream, advancing the cursor,
+	/// or returns an error if no token is available (end of input).
+	///
+	/// This function combines the behavior of `next()` with the expectation
+	/// that a token *should* exist and *be valid*.
+	/// If there are no more tokens in the stream, it will return an `Err`, rather than just `None`.
+	pub fn expect_next(&'_ self) -> Result<Token<'inp>> {
+		// TODO: proper error reporting
+
+		// Utilizing `expect_peek` to reduce code repetition with error reporting
+		let result = self.expect_peek();
+
+		if result.is_ok() {
+			let _ = self.next();
+		}
+
+		result
+	}
+
 	/// Peeks at the next token in the stream without advancing the cursor.
 	///
 	/// Returns `Some(Token)` if a token is available, or `None` if the
 	/// end of the buffer has been reached.
-	pub fn peek(&'_ self) -> Option<prog_lexer::Token<'inp>> {
+	pub fn peek(&'_ self) -> Option<Token<'inp>> {
 		if self.cursor.get() >= self.buffer.len() {
 			return None;
 		}
@@ -93,10 +113,28 @@ where
 		self.buffer.get(cursor).copied()
 	}
 
+	/// Peeks at the next token from the stream without advancing the cursor,
+	/// or returns an error if no token *valid* is available (end of input).
+	///
+	/// This function combines the behavior of `peek()` with a `Result`,
+	/// which indicates if a *valid* token is available.
+	pub fn expect_peek(&'_ self) -> Result<Token<'inp>> {
+		// TODO: proper error reporting
+
+		self.peek()
+			.and_then(|t| {
+				match t.kind() {
+					TokenKind::Eof => None,
+					_ => Some(t)
+				}
+			})
+			.ok_or(anyhow::anyhow!("Unexpected end of input"))
+	}
+
 	/// Peeks at the next token in the stream and returns it if its `TokenKind` matches the provided `kind`.
 	///
 	/// If no token is available, or the `TokenKind` does not match, `None` is returned.
-	pub fn peek_matches(&'_ self, kind: prog_lexer::TokenKind) -> Option<prog_lexer::Token<'inp>> {
+	pub fn peek_matches(&'_ self, kind: TokenKind) -> Option<Token<'inp>> {
 		match self.peek() {
 			Some(t) if t.kind() == kind => Some(t),
 			_ => None
@@ -108,18 +146,11 @@ where
 	///
 	/// If the next token matches, it is returned wrapped in `Ok`.
 	/// If the end of the stream is reached or token kinds do not match, an `Err` variant is returned instead.
-	pub fn expect(&'_ self, kind: prog_lexer::TokenKind) -> Result<prog_lexer::Token<'inp>> {
-		let token = self.next();
-
-		if token.is_none() {
-			// TODO: error handling
-			bail!("Unexpected EOI");
-		}
-
-		let token = token.unwrap();
+	pub fn expect(&'_ self, kind: TokenKind) -> Result<Token<'inp>> {
+		let token = self.expect_next()?;
 
 		if token.kind() != kind {
-			// TODO: error handling
+			// TODO: proper error reporting
 			bail!(
 				"Token kind mismatch (got={:?} != expected:{:?})",
 				token.kind(),

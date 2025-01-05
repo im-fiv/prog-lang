@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use prog_lexer::TokenKind;
 
 use crate::{ASTNode, Parse, ParseStream, Span};
 
@@ -21,19 +22,15 @@ impl ASTNode<'_> for Lit<'_> {
 
 impl<'inp> Parse<'inp> for Lit<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
-		use prog_lexer::TokenKind;
-
-		// TODO: error handling
-		let token = input.next().unwrap();
+		let token = input.expect_next()?;
 		let span = token.span();
 
 		match token.kind() {
 			TokenKind::Number => {
+				let num = token.value().parse::<f64>().unwrap();
+
 				Ok(Self {
-					kind: LitKind::Number(
-						// TODO: error handling
-						token.value().parse::<f64>().unwrap()
-					),
+					kind: LitKind::Number(num),
 					span
 				})
 			}
@@ -62,6 +59,7 @@ impl<'inp> Parse<'inp> for Lit<'inp> {
 				})
 			}
 
+			// TODO: proper error reporting
 			kind => bail!("Unknown literal `{token}` of type `{kind:?}`")
 		}
 	}

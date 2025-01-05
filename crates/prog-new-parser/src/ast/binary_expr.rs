@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use prog_lexer::TokenKind;
 
 use super::op_to_token;
 use crate::ast::*;
@@ -42,10 +43,7 @@ impl ASTNode<'_> for BinaryOp<'_> {
 
 impl<'inp> Parse<'inp> for BinaryOp<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
-		use prog_lexer::TokenKind;
-
-		// TODO: error handling
-		let token = input.next().unwrap();
+		let token = input.expect_next()?;
 		let span = token.span();
 
 		match token.kind() {
@@ -154,6 +152,7 @@ impl<'inp> Parse<'inp> for BinaryOp<'inp> {
 				})
 			}
 
+			// TODO: proper error reporting
 			kind => bail!("Unknown binary operator `{token}` of type `{kind:?}`")
 		}
 	}

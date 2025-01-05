@@ -1,4 +1,5 @@
 use anyhow::Result;
+use prog_lexer::TokenKind;
 
 use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseStream, Span};
@@ -24,10 +25,7 @@ impl ASTNode<'_> for Term<'_> {
 
 impl<'inp> Parse<'inp> for Term<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
-		use prog_lexer::TokenKind;
-
-		// TODO: error handling
-		let token = input.peek().unwrap();
+		let token = input.expect_peek()?;
 
 		let term = match token.kind() {
 			TokenKind::Number | TokenKind::True | TokenKind::False | TokenKind::String => {
@@ -46,13 +44,10 @@ impl<'inp> Parse<'inp> for Term<'inp> {
 		};
 
 		if input.peek_matches(TokenKind::LeftParen).is_some() {
-			let fork = input.fork();
-
 			let func = Box::new(term.clone());
-			let call_result = Call::parse_without_func(&fork, func);
+			let call_result = input.try_parse_with(|i| Call::parse_without_func(i, func));
 
 			if let Ok(c) = call_result.map(Self::Call) {
-				input.set_cursor(fork.cursor());
 				return Ok(c);
 			}
 		}
