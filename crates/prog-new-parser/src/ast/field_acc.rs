@@ -11,7 +11,10 @@ pub struct FieldAcc<'inp> {
 }
 
 impl<'inp> FieldAcc<'inp> {
-	pub fn parse_with_object(input: &'_ ParseStream<'inp>, object: Box<Term<'inp>>) -> Result<Self> {
+	pub fn parse_with_object(
+		input: &'_ ParseStream<'inp>,
+		object: Box<Term<'inp>>
+	) -> Result<Self> {
 		let _dot = input.parse::<token::Dot>()?;
 		let field = input.parse::<token::Ident>()?;
 

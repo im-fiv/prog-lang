@@ -54,8 +54,7 @@ impl TryFrom<TokenKind> for UnaryOpKind {
 	type Error = anyhow::Error;
 
 	fn try_from(kind: TokenKind) -> std::result::Result<Self, Self::Error> {
-		use TokenKind as T;
-		use UnaryOpKind as U;
+		use {TokenKind as T, UnaryOpKind as U};
 
 		Ok(match kind {
 			T::Minus => U::Minus,
