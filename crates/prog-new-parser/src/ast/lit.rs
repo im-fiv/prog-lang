@@ -18,6 +18,12 @@ pub enum LitKind {
 	String(String)
 }
 
+impl Lit<'_> {
+	pub fn strip_quotes(str: &str) -> &str {
+		str.trim_start_matches('\"').trim_end_matches('\"')
+	}
+}
+
 impl ASTNode<'_> for Lit<'_> {
 	fn span(&self) -> Span { self.span }
 }
@@ -52,11 +58,10 @@ impl<'inp> Parse<'inp> for Lit<'inp> {
 			}
 
 			TokenKind::String => {
+				let str = Self::strip_quotes(token.value()).to_owned();
+
 				Ok(Self {
-					kind: LitKind::String(
-						// TODO: strip quotes
-						token.value().to_owned()
-					),
+					kind: LitKind::String(str),
 					span
 				})
 			}
