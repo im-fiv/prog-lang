@@ -26,8 +26,8 @@ impl<'inp> IndexAcc<'inp> {
 	}
 }
 
-impl<'inp> ASTNode<'inp> for IndexAcc<'inp> {
-	fn span(&'inp self) -> Span<'inp> {
+impl ASTNode for IndexAcc<'_> {
+	fn span(&self) -> Span {
 		let start = self.list.span().start();
 		let end = self._rb.span().end();
 

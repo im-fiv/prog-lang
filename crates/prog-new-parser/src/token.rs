@@ -15,8 +15,8 @@ macro_rules! def_token {
 			}
 		}
 
-		impl<'inp> $crate::ASTNode<'inp> for $name<'inp> {
-			fn span(&'inp self) -> ::prog_utils::pretty_errors::Span<'inp> {
+		impl $crate::ASTNode for $name<'_> {
+			fn span(&self) -> ::prog_utils::pretty_errors::Span {
 				self.span
 			}
 		}

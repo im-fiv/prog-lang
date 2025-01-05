@@ -28,12 +28,12 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 	pub fn push_pair(&mut self, pair: (T, P)) { self.items.push(pair); }
 }
 
-impl<'inp, T, P> ASTNode<'inp> for Punctuated<'inp, T, P>
+impl<'inp, T, P> ASTNode for Punctuated<'inp, T, P>
 where
 	T: Parse<'inp>,
 	P: Parse<'inp> + Token<'inp>
 {
-	fn span(&'inp self) -> Span {
+	fn span(&self) -> Span {
 		assert!(
 			!self.is_empty(),
 			"Could not get punctuated list's span as it is empty"

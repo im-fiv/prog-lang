@@ -11,7 +11,7 @@ pub enum Expr<'inp> {
 	Term(Term<'inp>)
 }
 
-impl ASTNode<'_> for Expr<'_> {
+impl ASTNode for Expr<'_> {
 	fn span(&self) -> Span {
 		match self {
 			Self::Binary(e) => e as &dyn ASTNode,
@@ -83,8 +83,8 @@ pub struct ParenExpr<'inp> {
 	pub _rp: token::RightParen<'inp>
 }
 
-impl<'inp> ASTNode<'inp> for ParenExpr<'inp> {
-	fn span(&'inp self) -> Span<'inp> {
+impl ASTNode for ParenExpr<'_> {
+	fn span(&self) -> Span {
 		let start = ASTNode::span(&self._lp).start();
 		let end = ASTNode::span(&self._rp).end();
 

@@ -26,8 +26,8 @@ impl<'inp> FieldAcc<'inp> {
 	}
 }
 
-impl<'inp> ASTNode<'inp> for FieldAcc<'inp> {
-	fn span(&'inp self) -> prog_utils::pretty_errors::Span<'inp> {
+impl ASTNode for FieldAcc<'_> {
+	fn span(&self) -> Span {
 		let start = self.object.span().start();
 		let end = self.field.span().end();
 

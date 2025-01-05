@@ -8,11 +8,11 @@ pub use prog_utils::pretty_errors::{Position, Span};
 pub use stream::ParseStream;
 pub use token::Token;
 
-pub trait ASTNode<'inp> {
-	fn span(&'inp self) -> Span<'inp>;
+pub trait ASTNode {
+	fn span(&self) -> Span;
 }
 
-pub trait Parse<'inp>: Sized + ASTNode<'inp> {
+pub trait Parse<'inp>: Sized + ASTNode {
 	fn parse(input: &'_ ParseStream<'inp>) -> Result<Self>;
 }
 

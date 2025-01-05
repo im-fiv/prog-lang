@@ -22,7 +22,7 @@ impl Lit<'_> {
 	pub fn strip_quotes(str: &str) -> &str { str.trim_start_matches('\"').trim_end_matches('\"') }
 }
 
-impl ASTNode<'_> for Lit<'_> {
+impl ASTNode for Lit<'_> {
 	fn span(&self) -> Span { self.span }
 }
 

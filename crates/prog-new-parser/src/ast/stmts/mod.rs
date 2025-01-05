@@ -14,7 +14,7 @@ pub enum Statement<'inp> {
 	FunctionCall(ast::Call<'inp>)
 }
 
-impl ASTNode<'_> for Program<'_> {
+impl ASTNode for Program<'_> {
 	fn span(&self) -> Span {
 		assert!(
 			!self.statements.is_empty(),
@@ -34,7 +34,7 @@ impl ASTNode<'_> for Program<'_> {
 	}
 }
 
-impl ASTNode<'_> for Statement<'_> {
+impl ASTNode for Statement<'_> {
 	fn span(&self) -> Span {
 		match self {
 			Self::VariableDefinition(stmt) => stmt as &dyn ASTNode,

@@ -16,7 +16,7 @@ pub enum Term<'inp> {
 	FieldAcc(FieldAcc<'inp>)
 }
 
-impl ASTNode<'_> for Term<'_> {
+impl ASTNode for Term<'_> {
 	fn span(&self) -> Span {
 		// TODO
 		todo!()

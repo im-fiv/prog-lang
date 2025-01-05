@@ -26,7 +26,7 @@ impl<'inp> Call<'inp> {
 	}
 }
 
-impl ASTNode<'_> for Call<'_> {
+impl ASTNode for Call<'_> {
 	fn span(&self) -> Span {
 		let start = self.func.span().start();
 		let end = Token::span(&self._rp).end();

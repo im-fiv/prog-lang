@@ -12,8 +12,8 @@ pub struct BinaryExpr<'inp> {
 	pub rhs: Term<'inp>
 }
 
-impl<'inp> ASTNode<'inp> for BinaryExpr<'inp> {
-	fn span(&'inp self) -> Span<'inp> {
+impl ASTNode for BinaryExpr<'_> {
+	fn span(&self) -> Span {
 		let start = self.lhs.span().start();
 		let end = self.rhs.span().end();
 
@@ -49,7 +49,7 @@ pub enum BinaryOpKind {
 	Dot
 }
 
-impl ASTNode<'_> for BinaryOp<'_> {
+impl ASTNode for BinaryOp<'_> {
 	fn span(&self) -> Span { self.span }
 }
 

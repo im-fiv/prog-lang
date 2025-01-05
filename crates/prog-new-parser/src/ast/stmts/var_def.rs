@@ -11,7 +11,7 @@ pub struct VariableDefinition<'inp> {
 	pub value: Expr<'inp>
 }
 
-impl ASTNode<'_> for VariableDefinition<'_> {
+impl ASTNode for VariableDefinition<'_> {
 	fn span(&self) -> Span {
 		let start = Token::span(&self._def).start();
 		let end = self.value.span().end();

@@ -23,8 +23,8 @@ pub enum UnaryOpKind {
 	Not
 }
 
-impl<'inp> ASTNode<'inp> for UnaryExpr<'inp> {
-	fn span(&'inp self) -> Span<'inp> {
+impl ASTNode for UnaryExpr<'_> {
+	fn span(&self) -> Span {
 		let start = self.op.span().start();
 		let end = self.operand.span().end();
 
@@ -35,8 +35,8 @@ impl<'inp> ASTNode<'inp> for UnaryExpr<'inp> {
 	}
 }
 
-impl<'inp> ASTNode<'inp> for UnaryOp<'inp> {
-	fn span(&'inp self) -> Span<'inp> { self.span }
+impl ASTNode for UnaryOp<'_> {
+	fn span(&self) -> Span { self.span }
 }
 
 impl<'inp> Parse<'inp> for UnaryOp<'inp> {
