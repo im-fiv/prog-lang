@@ -34,7 +34,7 @@ where
 	pub fn untracked_is_empty(&self) -> bool { self.buffer.is_empty() }
 
 	/// Returns whether the token buffer is empty with respect to the cursor position.
-	pub fn is_empty(&self) -> bool { self.len() == 0 }
+	pub fn is_empty(&self) -> bool { self.len() == 0 || self.untracked_is_empty() }
 
 	/// Returns the current cursor position in the token buffer.
 	pub fn cursor(&self) -> usize { self.cursor.get() }
@@ -94,7 +94,7 @@ where
 	/// Returns `Some(Token)` if a token is available, or `None` if the
 	/// end of the buffer has been reached.
 	pub fn next(&'_ self) -> Option<Token<'inp>> {
-		if self.cursor.get() >= self.buffer.len() {
+		if self.is_empty() {
 			return None;
 		}
 
@@ -129,7 +129,7 @@ where
 	/// Returns `Some(Token)` if a token is available, or `None` if the
 	/// end of the buffer has been reached.
 	pub fn peek(&'_ self) -> Option<Token<'inp>> {
-		if self.cursor.get() >= self.buffer.len() {
+		if self.is_empty() {
 			return None;
 		}
 

@@ -16,15 +16,12 @@ pub enum Term<'inp> {
 	FieldAcc(FieldAcc<'inp>)
 }
 
-impl ASTNode for Term<'_> {
-	fn span(&self) -> Span {
-		// TODO
-		todo!()
-	}
-}
-
-impl<'inp> Parse<'inp> for Term<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+impl<'inp> Term<'inp> {
+	/// Unlike the `Parse` implementation, does not parse more than it has to.
+	///
+	/// Useful when the parse call originates from `Term`'s variants to prevent
+	/// `Term` from consuming the tokens that its variant was supposed to consume.
+	pub fn parse_bounded(input: &ParseStream<'inp>, bounded: bool) -> Result<Self> {
 		let token = input.expect_peek()?;
 
 		let mut term = match token.kind() {
@@ -42,6 +39,10 @@ impl<'inp> Parse<'inp> for Term<'inp> {
 			// TODO
 			t => todo!("term `{t:?}` is not yet supported")
 		};
+
+		if bounded {
+			return Ok(term);
+		}
 
 		while let Some(token) = input.peek() {
 			match token.kind() {
@@ -63,4 +64,15 @@ impl<'inp> Parse<'inp> for Term<'inp> {
 
 		Ok(term)
 	}
+}
+
+impl ASTNode for Term<'_> {
+	fn span(&self) -> Span {
+		// TODO
+		todo!()
+	}
+}
+
+impl<'inp> Parse<'inp> for Term<'inp> {
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> { Self::parse_bounded(input, false) }
 }

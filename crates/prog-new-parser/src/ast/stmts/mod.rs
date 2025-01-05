@@ -1,7 +1,9 @@
 mod var_def;
+use anyhow::Result;
+use prog_lexer::TokenKind;
 pub use var_def::VariableDefinition;
 
-use crate::{ast, ASTNode, Position, Span};
+use crate::{ast, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug)]
 pub struct Program<'inp> {
@@ -34,6 +36,23 @@ impl ASTNode for Program<'_> {
 	}
 }
 
+impl<'inp> Parse<'inp> for Program<'inp> {
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+		let mut stmts = vec![];
+
+		while let Some(token) = input.peek() {
+			if token.kind() == TokenKind::Eof {
+				break;
+			}
+
+			let stmt = input.parse::<Statement>()?;
+			stmts.push(stmt);
+		}
+
+		Ok(Self { statements: stmts })
+	}
+}
+
 impl ASTNode for Statement<'_> {
 	fn span(&self) -> Span {
 		match self {
@@ -41,5 +60,17 @@ impl ASTNode for Statement<'_> {
 			Self::FunctionCall(stmt) => stmt as &dyn ASTNode
 		}
 		.span()
+	}
+}
+
+impl<'inp> Parse<'inp> for Statement<'inp> {
+	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+		if input.peek_matches(TokenKind::Def).is_some() {
+			return input
+				.parse::<VariableDefinition>()
+				.map(Self::VariableDefinition);
+		}
+
+		input.parse::<ast::Call>().map(Self::FunctionCall)
 	}
 }
