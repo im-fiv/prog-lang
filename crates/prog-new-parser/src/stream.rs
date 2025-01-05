@@ -24,11 +24,27 @@ impl<'inp> ParseStream<'inp>
 where
 	Token<'static>: Copy
 {
+	/// Returns the length of the token buffer without taking the cursor into account.
+	pub fn untracked_len(&self) -> usize { self.buffer.len() }
+
+	/// Returns the *remaining* length of the token buffer with respect to the cursor position.
+	pub fn len(&self) -> usize { self.untracked_len().saturating_sub(self.cursor()) }
+
+	/// Returns whether the token buffer is empty without taking the cursor into account.
+	pub fn untracked_is_empty(&self) -> bool { self.buffer.is_empty() }
+
+	/// Returns whether the token buffer is empty with respect to the cursor position.
+	pub fn is_empty(&self) -> bool { self.len() == 0 }
+
 	/// Returns the current cursor position in the token buffer.
 	pub fn cursor(&self) -> usize { self.cursor.get() }
 
 	/// Sets the cursor position in the token buffer.
-	pub(crate) fn set_cursor(&self, cursor: usize) { self.cursor.set(cursor) }
+	pub(crate) fn set_cursor(&self, cursor: usize) {
+		// Clamping the cursor such that it does not exceed the buffer length
+		let cursor = cursor.min(self.untracked_len());
+		self.cursor.set(cursor)
+	}
 
 	/// Parses a value of type `T` from the current position in the stream.
 	///
