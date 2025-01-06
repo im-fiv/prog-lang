@@ -4,7 +4,6 @@ use prog_parser::ast;
 
 use crate::context::Context;
 
-//* Note: `Debug` and `PartialEq` are implemented manually below
 #[derive(Clone)]
 pub struct RFunction {
 	pub ast: Box<ast::Func>,

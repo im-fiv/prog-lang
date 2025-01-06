@@ -5,7 +5,6 @@ use halloc::HeapMutator;
 
 use super::{RPrimitive, Value};
 
-//* Note: `Debug` and `PartialEq` are implemented manually below
 #[derive(Clone)]
 pub struct RObject(HeapMutator<'static, HashMap<String, Value>>);
 

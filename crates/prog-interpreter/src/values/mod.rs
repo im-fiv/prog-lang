@@ -47,7 +47,6 @@ pub trait RPrimitive {
 	fn dispatch_map(&self) -> HashMap<String, RIntrinsicFunction> { HashMap::new() }
 }
 
-//* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq, VariantUnwrap, EnumKind)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
 pub enum Value {

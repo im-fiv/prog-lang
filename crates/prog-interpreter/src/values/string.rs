@@ -7,7 +7,6 @@ use prog_macros::{get_argument, get_this};
 use super::{RIntrinsicFunction, RIntrinsicFunctionData, RNumber, RPrimitive, Value, ValueKind};
 use crate::arg_parser::{Arg, ArgList, ParsedArg};
 
-//* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
 pub struct RString(String);
 

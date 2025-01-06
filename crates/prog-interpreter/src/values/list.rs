@@ -9,7 +9,6 @@ use prog_macros::get_this;
 use super::{RIntrinsicFunction, RIntrinsicFunctionData, RNumber, RPrimitive, Value};
 use crate::arg_parser::ArgList;
 
-//* Note: `Debug` and `PartialEq` are implemented manually below
 #[derive(Clone)]
 pub struct RList(HeapMutator<'static, Vec<Value>>);
 

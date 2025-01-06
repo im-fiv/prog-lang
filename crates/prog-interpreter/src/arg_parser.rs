@@ -4,7 +4,6 @@ use std::ops::Range;
 
 use crate::{Value, ValueKind};
 
-//* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
 pub struct ArgList {
 	arguments: Option<Vec<Arg>>

@@ -4,7 +4,6 @@ use std::ops::{Add, Div, Mul, Rem, Sub};
 
 use super::{RIntrinsicFunction, RPrimitive};
 
-//* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq, PartialOrd)]
 pub struct RNumber(f64);
 

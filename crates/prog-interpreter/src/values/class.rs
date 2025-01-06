@@ -6,7 +6,6 @@ use halloc::HeapMutator;
 use super::Value;
 
 // TODO: implement `Debug` manually
-//* Note: `PartialEq` is implemented manually below
 #[derive(Debug, Clone)]
 pub struct RClass {
 	pub name: String,
@@ -51,7 +50,6 @@ impl Drop for RClass {
 }
 
 // TODO: implement `Debug` manually
-//* Note: `PartialEq` is implemented manually below
 #[derive(Debug, Clone)]
 pub struct RClassInstance {
 	pub class: RClass,

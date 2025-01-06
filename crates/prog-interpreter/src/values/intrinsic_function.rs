@@ -8,7 +8,6 @@ use super::Value;
 use crate::arg_parser::{ArgList, ParsedArg};
 use crate::Interpreter;
 
-//* Note: `Debug` and `PartialEq` are implemented manually below
 #[derive(Clone)]
 pub struct RIntrinsicFunction {
 	pub pointer: RIntrinsicFunctionPtr,

@@ -3,7 +3,6 @@ use std::ops::{BitAnd, BitOr};
 
 use super::RPrimitive;
 
-//* Note: `Debug` is implemented manually below
 #[derive(Clone, PartialEq)]
 pub struct RBoolean(bool);
 
