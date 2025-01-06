@@ -108,11 +108,24 @@ fn import_function(
 		));
 	}
 
-	let path_str = path.to_str().unwrap();
-	let contents = prog_utils::read_file(path_str);
-	let ts = prog_lexer::lex(&contents, &path_str)?;
+	let path_str = unsafe {
+		let path = path.to_str().unwrap();
+		std::mem::transmute::<&'_ str, &'static str>(path)
+	};
+	let contents_a = prog_utils::read_file(path_str);
+	let contents_static = unsafe {
+		std::mem::transmute::<&'_ str, &'static str>(contents_a.as_str())
+	};
+	let ts_a = prog_lexer::lex(contents_static, &path_str)?;
+	let ts_static = unsafe {
+		std::mem::transmute::<prog_lexer::TokenStream<'_>, prog_lexer::TokenStream<'static>>(ts_a)
+	};
 
-	let ps = prog_parser::ParseStream::new(ts.buffer());
+	let buffer = unsafe {
+		std::mem::transmute::<&'_ [prog_lexer::Token<'_>], &'static [prog_lexer::Token<'static>]>(ts_static.buffer())
+	};
+
+	let ps = prog_parser::ParseStream::new(buffer);
 	let ast = ps.parse::<prog_parser::ast::Program>()?;
 
 	// Swapping the active memory to a new interpreter for the time of execution,
@@ -120,7 +133,7 @@ fn import_function(
 	let mut new_interpreter = crate::Interpreter::new();
 	swap(&mut new_interpreter.memory, &mut interpreter.memory);
 
-	let result = interpreter.interpret(&contents, path_str, ast, false)?;
+	let result = interpreter.interpret(contents_static, path_str, ast, false)?;
 	swap(&mut new_interpreter.memory, &mut interpreter.memory);
 
 	Ok(result)

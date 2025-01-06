@@ -93,7 +93,7 @@ impl Interpreter {
 		&mut self,
 		source: S,
 		file: F,
-		ast: ast::Program,
+		ast: ast::Program<'static>,
 		keep_marker: bool
 	) -> Result<Value>
 	where
@@ -111,7 +111,7 @@ impl Interpreter {
 		result
 	}
 
-	pub fn execute(&mut self, ast: ast::Program, keep_marker: bool) -> Result<Value> {
+	pub fn execute(&mut self, ast: ast::Program<'static>, keep_marker: bool) -> Result<Value> {
 		for statement in ast.stmts {
 			let result = self.execute_statement(statement)?;
 
@@ -132,7 +132,7 @@ impl Interpreter {
 		Ok(Value::Empty)
 	}
 
-	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<Value> {
+	pub fn execute_statement(&mut self, statement: ast::Statement<'static>) -> Result<Value> {
 		match statement {
 			ast::Statement::VarDefine(stmt) => self.execute_var_def(stmt),
 			ast::Statement::VarAssign(stmt) => self.execute_var_assign(stmt),
@@ -148,14 +148,18 @@ impl Interpreter {
 		}
 	}
 
-	fn execute_var_def(&mut self, stmt: ast::VarDefine) -> Result<Value> {
-		let value = self.evaluate_expr(stmt.value, false)?;
-		self.context.insert(stmt.name.value_owned(), value);
+	fn execute_var_def(&mut self, stmt: ast::VarDefine<'static>) -> Result<Value> {
+		let name = stmt.name().value_owned();
+		let value = match stmt.value() {
+			Some(e) => self.evaluate_expr(e, false)?,
+			None => Value::Empty
+		};
 
+		self.context.insert(name, value);
 		Ok(Value::Empty)
 	}
 
-	fn execute_var_assign(&mut self, stmt: ast::VarAssign) -> Result<Value> {
+	fn execute_var_assign(&mut self, stmt: ast::VarAssign<'static>) -> Result<Value> {
 		let value = self.evaluate_expr(stmt.value, false)?;
 		let update_result = self.context.update(stmt.name.value_owned(), value);
 
@@ -170,7 +174,7 @@ impl Interpreter {
 		Ok(Value::Empty)
 	}
 
-	fn execute_do_block(&mut self, stmt: ast::DoBlock) -> Result<Value> {
+	fn execute_do_block(&mut self, stmt: ast::DoBlock<'static>) -> Result<Value> {
 		let stmts = stmt.stmts;
 
 		self.context.deeper();
@@ -180,7 +184,7 @@ impl Interpreter {
 		result
 	}
 
-	fn execute_return(&mut self, stmt: ast::Return) -> Result<Value> {
+	fn execute_return(&mut self, stmt: ast::Return<'static>) -> Result<Value> {
 		let value = self.evaluate_expr(stmt.value, false)?;
 
 		Ok(Value::ControlFlow(values::ControlFlow::Return(Box::new(
@@ -188,7 +192,7 @@ impl Interpreter {
 		))))
 	}
 
-	fn execute_while_loop(&mut self, stmt: ast::WhileLoop) -> Result<Value> {
+	fn execute_while_loop(&mut self, stmt: ast::WhileLoop<'static>) -> Result<Value> {
 		let mut evaluated = self.evaluate_expr(stmt.cond.clone(), false)?;
 
 		while evaluated.is_truthy() {
@@ -223,7 +227,7 @@ impl Interpreter {
 		Ok(Value::ControlFlow(values::ControlFlow::Continue))
 	}
 
-	fn execute_if(&mut self, stmt: ast::If) -> Result<Value> {
+	fn execute_if(&mut self, stmt: ast::If<'static>) -> Result<Value> {
 		let evaluated = self.evaluate_expr(stmt.cond, false)?;
 
 		if evaluated.is_truthy() {
@@ -275,7 +279,7 @@ impl Interpreter {
 		Ok(Value::Empty)
 	}
 
-	fn execute_expr_assign(&mut self, stmt: ast::ExprAssign) -> Result<Value> {
+	fn execute_expr_assign(&mut self, stmt: ast::ExprAssign<'static>) -> Result<Value> {
 		use ast::BinaryOpKind as Op;
 
 		let expr = match stmt.expr {
@@ -308,7 +312,7 @@ impl Interpreter {
 		}
 	}
 
-	fn execute_expr_assign_list(&mut self, expr: ast::BinaryExpr, value: Value) -> Result<Value> {
+	fn execute_expr_assign_list(&mut self, expr: ast::BinaryExpr<'static>, value: Value) -> Result<Value> {
 		let list_name = match self.evaluate_term(expr.rhs.clone(), true)? {
 			Value::Identifier(identifier) => identifier,
 
@@ -380,7 +384,7 @@ impl Interpreter {
 	}
 
 	// TODO: split class logic into `execute_expression_assign_class`
-	fn execute_expr_assign_obj(&mut self, expr: ast::BinaryExpr, value: Value) -> Result<Value> {
+	fn execute_expr_assign_obj(&mut self, expr: ast::BinaryExpr<'static>, value: Value) -> Result<Value> {
 		let object_name = match self.evaluate_term(expr.lhs.clone(), true)? {
 			Value::Identifier(identifier) => identifier,
 
@@ -483,7 +487,7 @@ impl Interpreter {
 		Ok(Value::Empty)
 	}
 
-	fn execute_class_def(&mut self, stmt: ast::ClassDef) -> Result<Value> {
+	fn execute_class_def(&mut self, stmt: ast::ClassDef<'static>) -> Result<Value> {
 		// This is a hack to keep fields of `self` and the actual class in sync
 		let mut fields = unsafe { self.memory.alloc(HashMap::new()).promote() };
 
@@ -503,8 +507,13 @@ impl Interpreter {
 
 		let mut temp_fields = HashMap::new();
 		for field in stmt.fields {
-			let value = self.evaluate_expr(field.value, false)?;
-			temp_fields.insert(field.name.value_owned(), value);
+			let name = field.name().value_owned();
+			let value = match field.value() {
+				Some(e) => self.evaluate_expr(e, false)?,
+				None => Value::Empty
+			};
+
+			temp_fields.insert(name, value);
 		}
 		fields.write(temp_fields);
 
@@ -521,7 +530,7 @@ impl Interpreter {
 
 	fn evaluate_expr(
 		&mut self,
-		expr: ast::Expr,
+		expr: ast::Expr<'static>,
 		stop_on_ident: bool
 	) -> Result<Value> {
 		use ast::Expr;
@@ -533,7 +542,7 @@ impl Interpreter {
 		}
 	}
 
-	fn evaluate_unary_expr(&mut self, expr: ast::UnaryExpr, stop_on_ident: bool) -> Result<Value> {
+	fn evaluate_unary_expr(&mut self, expr: ast::UnaryExpr<'static>, stop_on_ident: bool) -> Result<Value> {
 		use ast::UnaryOpKind as Op;
 		use Value as V;
 
@@ -563,9 +572,13 @@ impl Interpreter {
 		}
 	}
 
-	fn evaluate_binary_expr(&mut self, expr: ast::BinaryExpr, stop_on_ident: bool) -> Result<Value> {
+	fn evaluate_binary_expr(&mut self, expr: ast::BinaryExpr<'static>, stop_on_ident: bool) -> Result<Value> {
 		use ast::BinaryOpKind as Op;
 		use Value as V;
+
+		let expr_pos = expr.position();
+		let lhs_pos = expr.lhs.position();
+		let rhs_pos = expr.rhs.position();
 
 		let lhs = self.evaluate_term(expr.lhs.clone(), stop_on_ident)?;
 		// if performing an object access and rhs is a valid identifier,
@@ -586,7 +599,7 @@ impl Interpreter {
 						expr.lhs.position(),
 						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
 							$key,
-							expr.rhs.position()
+							rhs_pos
 						))
 					);
 				}
@@ -621,45 +634,45 @@ impl Interpreter {
 			(Op::LeftBracket, V::Number(lhs), V::List(rhs)) => rhs[lhs].clone(),
 
 			(Op::Dot, V::Object(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier();
+				let rhs = rhs.extract_ident();
 				let entries = &**(lhs.get());
 
 				entries.get(rhs).cloned().unwrap_or(Value::Empty)
 			}
 
 			(Op::Dot, V::Boolean(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
+				let rhs = rhs.extract_ident().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
 			(Op::Dot, V::String(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
+				let rhs = rhs.extract_ident().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
 			(Op::Dot, V::Number(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
+				let rhs = rhs.extract_ident().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
 			(Op::Dot, V::List(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
+				let rhs = rhs.extract_ident().to_owned();
 				primitive_object_access!(lhs, rhs)
 			}
 
 			(Op::Dot, V::Class(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
+				let rhs = rhs.extract_ident().to_owned();
 				let field = (*lhs.fields).get(&rhs).cloned();
 
 				field.ok_or(create_error!(
 					self,
-					expr.position(),
+					expr_pos,
 					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
 						rhs,
-						expr.rhs.position()
+						rhs_pos
 					));
 					no_bail
 				))?
 			}
 			(Op::Dot, V::ClassInstance(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
+				let rhs = rhs.extract_ident().to_owned();
 
 				let instance_fields = &*lhs.fields;
 				let class_fields = &*lhs.class.fields;
@@ -670,26 +683,27 @@ impl Interpreter {
 
 				let mut field = class_fields.get(&rhs).cloned().ok_or(create_error!(
 					self,
-					expr.position(),
+					expr_pos,
 					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
 						rhs,
-						expr.rhs.position()
+						rhs_pos
 					));
 					no_bail
 				))?;
 
 				if let Value::Function(func) = &mut field {
-					let has_arguments = !func.ast.arguments.is_empty();
+					let has_arguments = func.ast.args.is_some();
 
 					if has_arguments {
-						let first_argument_name = &func.ast.arguments.first().unwrap().0;
+						let arg = func.ast.args.as_ref().map(|p| p.first().unwrap());
+						let arg_name = arg.unwrap().value_owned();
 
-						if first_argument_name == META_SELF {
+						if arg_name == META_SELF {
 							// Insert `self` into scope
 							func.context.insert(String::from("self"), lhs.into());
 
 							// Remove `self` argument from the function
-							func.ast.arguments.remove(0);
+							func.ast.args.as_mut().unwrap().pop_first();
 						}
 					}
 				}
@@ -700,11 +714,11 @@ impl Interpreter {
 			(_, lhs, rhs) => {
 				create_error!(
 					self,
-					expr.position(),
+					expr_pos,
 					InterpretErrorKind::UnsupportedBinary(errors::UnsupportedBinary {
-						lhs: (lhs.kind(), expr.lhs.position()),
+						lhs: (lhs.kind(), lhs_pos),
 						operator: (expr.op.kind, expr.op.position()),
-						rhs: (rhs.kind(), expr.rhs.position())
+						rhs: (rhs.kind(), rhs_pos)
 					})
 				)
 			}
@@ -713,7 +727,7 @@ impl Interpreter {
 		Ok(evaluated_expr)
 	}
 
-	fn evaluate_term(&mut self, term: ast::Term, stop_on_ident: bool) -> Result<Value> {
+	fn evaluate_term(&mut self, term: ast::Term<'static>, stop_on_ident: bool) -> Result<Value> {
 		use ast::Term;
 
 		let position = term.position();
@@ -746,24 +760,40 @@ impl Interpreter {
 			// TODO: that's a horrible way of doing this
 			Term::IndexAcc(acc) => {
 				eprintln!("This is a reminder to rewrite `Interpreter::evaluate_term` ASAP");
+
+				let op = unsafe {
+					let token = &acc._lb as &dyn prog_parser::Token;
+					let bin_op = ast::BinaryOp::try_from(token).unwrap();
+
+					std::mem::transmute::<ast::BinaryOp<'_>, ast::BinaryOp<'static>>(bin_op)
+				};
+
 				self.evaluate_expr(ast::Expr::Binary(ast::BinaryExpr {
 					lhs: *acc.list,
-					op: (&acc._lb as &dyn prog_parser::Token).try_into().unwrap(),
+					op,
 					rhs: ast::Term::Expr(acc.index)
 				}), false)
 			},
 			Term::FieldAcc(acc) => {
 				eprintln!("This is a reminder to rewrite `Interpreter::evaluate_term` ASAP");
+
+				let op = unsafe {
+					let token = &acc._dot as &dyn prog_parser::Token;
+					let bin_op = ast::BinaryOp::try_from(token).unwrap();
+
+					std::mem::transmute::<ast::BinaryOp<'_>, ast::BinaryOp<'static>>(bin_op)
+				};
+
 				self.evaluate_expr(ast::Expr::Binary(ast::BinaryExpr {
 					lhs: *acc.object,
-					op: (&acc._dot as &dyn prog_parser::Token).try_into().unwrap(),
+					op,
 					rhs: ast::Term::Ident(acc.field)
 				}), false)
 			}
 		}
 	}
 
-	fn evaluate_func(&mut self, func: ast::Func) -> Result<Value> {
+	fn evaluate_func(&mut self, func: ast::Func<'static>) -> Result<Value> {
 		let context = {
 			let mut context = Context::new();
 
@@ -794,7 +824,7 @@ impl Interpreter {
 		Ok(Value::Function(converted))
 	}
 
-	fn evaluate_extern(&mut self, ext: ast::Extern) -> Result<Value> {
+	fn evaluate_extern(&mut self, ext: ast::Extern<'static>) -> Result<Value> {
 		if !self.context.deref().flags.externs_allowed {
 			create_error!(
 				self,
@@ -830,7 +860,7 @@ impl Interpreter {
 		))
 	}
 
-	fn evaluate_obj(&mut self, obj: ast::Obj) -> Result<Value> {
+	fn evaluate_obj(&mut self, obj: ast::Obj<'static>) -> Result<Value> {
 		use std::collections::HashMap;
 
 		let fields = obj.fields.map(|p| p.unwrap_items()).unwrap_or_default();
@@ -871,7 +901,7 @@ impl Interpreter {
 		Ok(Value::Object(allocated.into()))
 	}
 
-	fn evaluate_list(&mut self, list: ast::List) -> Result<Value> {
+	fn evaluate_list(&mut self, list: ast::List<'static>) -> Result<Value> {
 		let items = list.items.map(|p| p.unwrap_items()).unwrap_or_default();
 		let mut values = vec![];
 
@@ -884,7 +914,7 @@ impl Interpreter {
 		Ok(Value::List(allocated.into()))
 	}
 
-	fn evaluate_call(&mut self, call: ast::Call) -> Result<Value> {
+	fn evaluate_call(&mut self, call: ast::Call<'static>) -> Result<Value> {
 		let call_site = {
 			let func = call.func.position();
 			let _lp = call._lp.position();
@@ -909,10 +939,13 @@ impl Interpreter {
 			}
 		};
 
+		let call_pos = call.position();
+		let call_args_pos = call.args.as_ref().map(|p| p.position());
 		let call_args = call
 			.args
+			.as_ref()
 			.map(|p| p.items())
-			.unwrap_or(vec![])
+			.unwrap_or_default()
 			.into_iter()
 			.map(|arg| self.evaluate_expr(arg.clone(), false))
 			.collect::<Result<Vec<_>>>()?;
@@ -931,7 +964,7 @@ impl Interpreter {
 				} => {
 					create_error!(
 						self,
-						call.args.unwrap().position(),
+						call_args_pos.unwrap(),
 						InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
 							expected,
 							end_boundary,
@@ -948,7 +981,7 @@ impl Interpreter {
 					expected,
 					got
 				} => {
-					let arg = *call.args.unwrap().items().get(index).unwrap_or_else(|| {
+					let arg = *call.args.as_ref().unwrap().items().get(index).unwrap_or_else(|| {
 						panic!("Argument at index `{index}` does not exist when it should")
 					});
 
@@ -980,13 +1013,13 @@ impl Interpreter {
 		}
 
 		if let Value::Function(mut function) = function_expr {
-			let got_len = call.args.map_or(0, |p| p.len());
-			let expected_len = function.ast.args.map_or(0, |p| p.len());
+			let got_len = call.args.as_ref().map_or(0, |p| p.len());
+			let expected_len = function.ast.args.as_ref().map_or(0, |p| p.len());
 
 			if got_len != expected_len && expected_len == 0 {
 				create_error!(
 					self,
-					call.args.unwrap().position(),
+					call_args_pos.unwrap(),
 					InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
 						expected: 0..0,
 						end_boundary: true,
@@ -1005,7 +1038,7 @@ impl Interpreter {
 						expected: expected_len..expected_len,
 						end_boundary: true,
 						got: got_len,
-						fn_call_pos: call.position(),
+						fn_call_pos: call_pos,
 						fn_def_args_pos: function.ast.args.map(|p| p.position())
 					})
 				);
@@ -1043,9 +1076,16 @@ impl Interpreter {
 					}
 				}
 
-				let argument_iter = function.ast.arguments.into_iter().zip(call_args);
-				for ((arg_name, _), arg_value) in argument_iter {
-					self.context.insert(arg_name, arg_value);
+				let arg_iter = function
+					.ast
+					.args
+					.map(|p| p.unwrap_items())
+					.unwrap_or_default()
+					.into_iter()
+					.map(|arg| arg.value_owned())
+					.zip(call_args);
+				for (name, value) in arg_iter {
+					self.context.insert(name, value);
 				}
 
 				let exec_result = self.execute(

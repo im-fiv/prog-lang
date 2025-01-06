@@ -76,6 +76,14 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 
 		items
 	}
+	
+	pub fn first(&self) -> Option<&T> {
+		self.pairs.first().map(|(item, _)| item)
+	}
+
+	pub fn pop_first(&mut self) -> (T, P) {
+		self.pairs.remove(0)
+	}
 }
 
 impl<'inp> Punctuated<'inp, Position, Position> {
@@ -85,24 +93,40 @@ impl<'inp> Punctuated<'inp, Position, Position> {
 			"Could not get punctuated list's position as it is empty"
 		);
 
-		let start = self
-			.pairs
-			.first()
-			.map(|(item, _)| item.start())
-			.unwrap();
+		match (!self.pairs.is_empty(), self.tail) {
+			(true, Some(tail)) => {
+				let end = tail.end();
+				let start = self
+					.pairs
+					.first()
+					.map(|(item, _)| item.start())
+					.unwrap();
 
-		let end = match self.tail {
-			Some(tail) => tail.end(),
-
-			None => {
-				self.pairs
-					.last()
-					.map(|(_, punct)| punct.end())
-					.unwrap()
+				Position::new(start, end)
 			}
-		};
 
-		Position::new(start, end)
+			(false, Some(tail)) => {
+				tail
+			}
+
+			(true, None) => {
+				let start = self
+					.pairs
+					.first()
+					.map(|(item, _)| item.start())
+					.unwrap();
+
+				let end = self
+					.pairs
+					.last()
+					.map(|(_, punct)| punct.start())
+					.unwrap();
+
+				Position::new(start, end)
+			}
+
+			(false, None) => unreachable!()
+		}
 	}
 }
 
@@ -117,25 +141,42 @@ where
 			"Could not get punctuated list's span as it is empty"
 		);
 
-		let (source, start) = self
-			.pairs
-			.first()
-			.map(|(item, _)| (item.source(), item.start()))
-			.unwrap();
+		match (!self.pairs.is_empty(), self.tail.as_ref()) {
+			(true, Some(tail)) => {
+				let end = tail.end();
+				let start = self
+					.pairs
+					.first()
+					.map(|(item, _)| item.start())
+					.unwrap();
 
-		let end = match self.tail {
-			Some(ref tail) => tail.end(),
-
-			None => {
-				self.pairs
-					.last()
-					.map(|(_, punct)| punct.end())
-					.unwrap()
+				let position = Position::new(start, end);
+				Span::new(tail.source(), position)
 			}
-		};
 
-		let position = Position::new(start, end);
-		Span::new(source, position)
+			(false, Some(tail)) => {
+				tail.span()
+			}
+
+			(true, None) => {
+				let (start, source) = self
+					.pairs
+					.first()
+					.map(|(item, _)| (item.start(), item.source()))
+					.unwrap();
+
+				let end = self
+					.pairs
+					.last()
+					.map(|(_, punct)| punct.start())
+					.unwrap();
+
+				let position = Position::new(start, end);
+				Span::new(source, position)
+			}
+
+			(false, None) => unreachable!()
+		}
 	}
 }
 

@@ -21,7 +21,7 @@ pub enum Term<'inp> {
 	// Lookahead terms
 	Call(Call<'inp>),
 	IndexAcc(IndexAcc<'inp>),
-	FieldAcc(FieldAcc<'inp>),
+	FieldAcc(FieldAcc<'inp>)
 }
 
 impl<'inp> Term<'inp> {
@@ -81,8 +81,20 @@ impl<'inp> Term<'inp> {
 
 impl ASTNode for Term<'_> {
 	fn span(&self) -> Span {
-		// TODO
-		todo!()
+		match self {
+			Self::Expr(t) => &**t as &dyn ASTNode,
+			Self::ParenExpr(t) => t as &dyn ASTNode,
+			Self::Lit(t) => t as &dyn ASTNode,
+			Self::Ident(t) => t as &dyn ASTNode,
+			Self::Func(t) => t as &dyn ASTNode,
+			Self::List(t) => t as &dyn ASTNode,
+			Self::Obj(t) => t as &dyn ASTNode,
+			Self::Extern(t) => t as &dyn ASTNode,
+			Self::Call(t) => t as &dyn ASTNode,
+			Self::IndexAcc(t) => t as &dyn ASTNode,
+			Self::FieldAcc(t) => t as &dyn ASTNode
+		}
+		.span()
 	}
 }
 

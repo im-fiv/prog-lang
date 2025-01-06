@@ -116,8 +116,8 @@ impl Value {
 	}
 
 	/// Extracts the inner `String` of either `Value::String` or `Value::Identifier`,
-	/// panics of the `Value` is of other variant.
-	pub fn extract_identifier(&self) -> &str {
+	/// panics if the `Value` is of other variant.
+	pub fn extract_ident(&self) -> &str {
 		match self {
 			Self::String(v) => v.get(),
 			Self::Identifier(v) => v,

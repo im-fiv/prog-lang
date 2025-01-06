@@ -18,7 +18,7 @@ pub use if_cond::{If, ElseIf, Else};
 pub use expr_assign::ExprAssign;
 pub use class_def::ClassDef;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use prog_lexer::TokenKind;
 
 use crate::{ast, ASTNode, Parse, ParseStream, Position, Span};
@@ -100,12 +100,64 @@ impl ASTNode for Statement<'_> {
 
 impl<'inp> Parse<'inp> for Statement<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+		// `def ...`
 		if input.peek_matches(TokenKind::Def).is_some() {
 			return input
 				.parse::<VarDefine>()
 				.map(Self::VarDefine);
 		}
 
-		input.parse::<ast::Call>().map(Self::Call)
+		// `do ...`
+		if input.peek_matches(TokenKind::Do).is_some() {
+			return input
+				.parse::<DoBlock>()
+				.map(Self::DoBlock);
+		}
+
+		// `return ...`
+		if input.peek_matches(TokenKind::Return).is_some() {
+			return input
+				.parse::<Return>()
+				.map(Self::Return);
+		}
+
+		// `break`
+		if let Ok(stmt) = input.try_parse::<Break>() {
+			return Ok(Self::Break(stmt));
+		}
+
+		// `continue ...`
+		if let Ok(stmt) = input.try_parse::<Continue>() {
+			return Ok(Self::Continue(stmt));
+		}
+
+		// `while ...`
+		if input.peek_matches(TokenKind::While).is_some() {
+			return input
+				.parse::<WhileLoop>()
+				.map(Self::WhileLoop);
+		}
+
+		// `if ...`
+		if input.peek_matches(TokenKind::If).is_some() {
+			return input
+				.parse::<If>()
+				.map(Self::If);
+		}
+
+		// `class ...`
+		if input.peek_matches(TokenKind::Class).is_some() {
+			return input
+				.parse::<ClassDef>()
+				.map(Self::ClassDef);
+		}
+
+		if let Ok(stmt) = input.try_parse::<ExprAssign>() {
+			return Ok(Self::ExprAssign(stmt));
+		} else if let Ok(stmt) = input.try_parse::<ast::Call>() {
+			return Ok(Self::Call(stmt));
+		}
+
+		bail!("no statement matched")
 	}
 }

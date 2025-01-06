@@ -1,12 +1,12 @@
 use std::fmt::{self, Debug, Display};
 
-use prog_parser::ast;
+use prog_parser::{ast, ASTNode};
 
 use crate::context::Context;
 
 #[derive(Clone)]
 pub struct RFunction {
-	pub ast: Box<ast::Func>,
+	pub ast: Box<ast::Func<'static>>,
 
 	pub source: String,
 	pub file: String,
@@ -26,17 +26,21 @@ impl PartialEq for RFunction {
 
 impl Debug for RFunction {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let arguments = self
+		let args = self
 			.ast
-			.arguments
-			.iter()
-			.map(|(name, _)| name)
-			.cloned()
-			.collect::<Vec<_>>();
+			.args
+			.as_ref()
+			.map(|p| {
+				p.items()
+					.into_iter()
+					.map(|i| i.value_owned())
+					.collect::<Vec<_>>()
+			})
+			.unwrap_or_default();
 
 		f.debug_struct("Function")
-			.field("arguments", &arguments)
-			.field("statements", &self.ast.statements)
+			.field("arguments", &args)
+			.field("statements", &self.ast.stmts)
 			.field("file", &self.file)
 			.finish()
 	}
@@ -44,15 +48,19 @@ impl Debug for RFunction {
 
 impl Display for RFunction {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let arguments_str = self
+		let args = self
 			.ast
-			.arguments
-			.iter()
-			.map(|(a, _)| a.to_owned())
-			.collect::<Vec<_>>()
+			.args
+			.as_ref()
+			.map(|p| {
+				p.items()
+					.into_iter()
+					.map(|i| i.value_owned())
+					.collect::<Vec<_>>()
+			})
+			.unwrap_or_default()
 			.join(", ");
 
-		let formatted = format!("func({arguments_str})");
-		write!(f, "{formatted}")
+		write!(f, "func({args})")
 	}
 }

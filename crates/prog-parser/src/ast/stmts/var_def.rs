@@ -4,22 +4,81 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct VarDefine<'inp> {
-	pub _def: token::Def<'inp>,
-	pub name: token::Ident<'inp>,
-	pub _eq: token::Eq<'inp>,
-	pub value: Expr<'inp>
+pub enum VarDefine<'inp> {
+	WithValue {
+		_def: token::Def<'inp>,
+		name: token::Ident<'inp>,
+		_eq: token::Eq<'inp>,
+		value: Expr<'inp>
+	},
+	
+	NoValue {
+		_def: token::Def<'inp>,
+		name: token::Ident<'inp>,
+	}
+}
+
+impl<'inp> VarDefine<'inp> {
+	pub fn _def(&self) -> token::Def<'inp> {
+		match self {
+			Self::WithValue { _def, .. } => *_def,
+			Self::NoValue { _def, .. } => *_def
+		}
+	}
+
+	pub fn name(&self) -> token::Ident<'inp> {
+		match self {
+			Self::WithValue { name, .. } => *name,
+			Self::NoValue { name, .. } => *name
+		}
+	}
+
+	pub fn _eq(&self) -> Option<token::Eq<'inp>> {
+		match self {
+			Self::WithValue { _eq, .. } => Some(*_eq),
+			Self::NoValue { .. } => None
+		}
+	}
+
+	pub fn value(&self) -> Option<Expr<'inp>> {
+		match self {
+			Self::WithValue { value, .. } => Some(value.clone()),
+			Self::NoValue { .. } => None
+		}
+	}
 }
 
 impl ASTNode for VarDefine<'_> {
 	fn span(&self) -> Span {
-		let start = self._def.start();
-		let end = self.value.end();
+		match self {
+			Self::WithValue {
+				_def,
+				name: _,
+				_eq,
+				value
+			} => {
+				let start = _def.start();
+				let end = value.end();
 
-		let source = self._def.source();
-		let position = Position::new(start, end);
+				let source = _def.source();
+				let position = Position::new(start, end);
 
-		Span::new(source, position)
+				Span::new(source, position)
+			}
+
+			Self::NoValue {
+				_def,
+				name
+			} => {
+				let start = _def.start();
+				let end = name.end();
+
+				let source = _def.source();
+				let position = Position::new(start, end);
+
+				Span::new(source, position)
+			}
+		}
 	}
 }
 
@@ -27,10 +86,17 @@ impl<'inp> Parse<'inp> for VarDefine<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let _def = input.parse::<token::Def>()?;
 		let name = input.parse::<token::Ident>()?;
-		let _eq = input.parse::<token::Eq>()?;
+
+		let Ok(_eq) = input.try_parse::<token::Eq>() else {
+			return Ok(Self::NoValue {
+				_def,
+				name
+			});
+		};
+
 		let value = input.parse::<Expr>()?;
 
-		Ok(Self {
+		Ok(Self::WithValue {
 			_def,
 			name,
 			_eq,
