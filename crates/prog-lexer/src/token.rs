@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use crate::{Span, Position};
+use crate::{Position, Span};
 
 #[derive(Debug)]
 pub struct TokenStream<'inp> {

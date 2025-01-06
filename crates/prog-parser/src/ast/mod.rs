@@ -13,7 +13,6 @@ mod punctuated;
 mod term;
 mod unary_expr;
 
-pub use stmts::*;
 pub use binary_expr::*;
 pub use call::*;
 pub use expr::*;
@@ -25,6 +24,7 @@ pub use list::*;
 pub use lit::*;
 pub use obj::*;
 pub use punctuated::*;
+pub use stmts::*;
 pub use term::*;
 pub use unary_expr::*;
 

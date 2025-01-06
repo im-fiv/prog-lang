@@ -17,7 +17,7 @@ pub enum Term<'inp> {
 	List(List<'inp>),
 	Obj(Obj<'inp>),
 	Extern(Extern<'inp>),
-	
+
 	// Lookahead terms
 	Call(Call<'inp>),
 	IndexAcc(IndexAcc<'inp>),

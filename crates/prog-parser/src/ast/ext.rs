@@ -1,7 +1,7 @@
 use anyhow::Result;
 
-use crate::{token, ASTNode, Parse, ParseStream, Span, Position};
 use crate::ast::*;
+use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Extern<'inp> {
@@ -26,9 +26,6 @@ impl<'inp> Parse<'inp> for Extern<'inp> {
 		let _extern = input.parse::<token::Extern>()?;
 		let value = Box::new(input.parse::<Expr>()?);
 
-		Ok(Self {
-			_extern,
-			value
-		})
+		Ok(Self { _extern, value })
 	}
 }

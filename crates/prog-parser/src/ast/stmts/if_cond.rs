@@ -1,7 +1,7 @@
 use anyhow::Result;
 
-use crate::{token, ASTNode, Parse, ParseStream, Span, Position};
 use crate::ast::*;
+use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct If<'inp> {
@@ -90,7 +90,7 @@ impl<'inp> Parse<'inp> for If<'inp> {
 				b_elifs: vec![],
 				b_else: None,
 				_end
-			})
+			});
 		}
 
 		let mut b_elifs = vec![];
@@ -105,7 +105,7 @@ impl<'inp> Parse<'inp> for If<'inp> {
 		}
 
 		let _end = input.parse::<token::End>()?;
-		
+
 		Ok(Self {
 			_if,
 			cond,
@@ -147,9 +147,6 @@ impl<'inp> Parse<'inp> for Else<'inp> {
 			stmts.push(stmt);
 		}
 
-		Ok(Self {
-			_else,
-			stmts
-		})
+		Ok(Self { _else, stmts })
 	}
 }

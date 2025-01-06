@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Span, Position};
+use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct List<'inp> {
@@ -31,10 +31,6 @@ impl<'inp> Parse<'inp> for List<'inp> {
 			.ok();
 		let _rb = input.parse::<token::RightBracket>()?;
 
-		Ok(Self {
-			_lb,
-			items,
-			_rb
-		})
+		Ok(Self { _lb, items, _rb })
 	}
 }

@@ -8,15 +8,15 @@ mod if_cond;
 mod expr_assign;
 mod class_def;
 
-pub use var_def::VarDefine;
-pub use var_assign::VarAssign;
-pub use do_block::DoBlock;
-pub use ret::Return;
-pub use while_loop::WhileLoop;
-pub use control_flow::{Break, Continue};
-pub use if_cond::{If, ElseIf, Else};
-pub use expr_assign::ExprAssign;
 pub use class_def::ClassDef;
+pub use control_flow::{Break, Continue};
+pub use do_block::DoBlock;
+pub use expr_assign::ExprAssign;
+pub use if_cond::{Else, ElseIf, If};
+pub use ret::Return;
+pub use var_assign::VarAssign;
+pub use var_def::VarDefine;
+pub use while_loop::WhileLoop;
 
 use anyhow::{bail, Result};
 use prog_lexer::TokenKind;
@@ -102,23 +102,17 @@ impl<'inp> Parse<'inp> for Statement<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		// `def ...`
 		if input.peek_matches(TokenKind::Def).is_some() {
-			return input
-				.parse::<VarDefine>()
-				.map(Self::VarDefine);
+			return input.parse::<VarDefine>().map(Self::VarDefine);
 		}
 
 		// `do ...`
 		if input.peek_matches(TokenKind::Do).is_some() {
-			return input
-				.parse::<DoBlock>()
-				.map(Self::DoBlock);
+			return input.parse::<DoBlock>().map(Self::DoBlock);
 		}
 
 		// `return ...`
 		if input.peek_matches(TokenKind::Return).is_some() {
-			return input
-				.parse::<Return>()
-				.map(Self::Return);
+			return input.parse::<Return>().map(Self::Return);
 		}
 
 		// `break`
@@ -133,23 +127,17 @@ impl<'inp> Parse<'inp> for Statement<'inp> {
 
 		// `while ...`
 		if input.peek_matches(TokenKind::While).is_some() {
-			return input
-				.parse::<WhileLoop>()
-				.map(Self::WhileLoop);
+			return input.parse::<WhileLoop>().map(Self::WhileLoop);
 		}
 
 		// `if ...`
 		if input.peek_matches(TokenKind::If).is_some() {
-			return input
-				.parse::<If>()
-				.map(Self::If);
+			return input.parse::<If>().map(Self::If);
 		}
 
 		// `class ...`
 		if input.peek_matches(TokenKind::Class).is_some() {
-			return input
-				.parse::<ClassDef>()
-				.map(Self::ClassDef);
+			return input.parse::<ClassDef>().map(Self::ClassDef);
 		}
 
 		if let Ok(stmt) = input.try_parse::<ExprAssign>() {

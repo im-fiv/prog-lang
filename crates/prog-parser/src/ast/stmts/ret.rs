@@ -1,7 +1,7 @@
 use anyhow::Result;
 
-use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 use crate::ast::*;
+use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Return<'inp> {
@@ -26,9 +26,6 @@ impl<'inp> Parse<'inp> for Return<'inp> {
 		let _return = input.parse::<token::Return>()?;
 		let value = input.parse::<Expr>()?;
 
-		Ok(Self {
-			_return,
-			value
-		})
+		Ok(Self { _return, value })
 	}
 }

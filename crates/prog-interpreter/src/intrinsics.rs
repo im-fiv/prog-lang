@@ -108,21 +108,23 @@ fn import_function(
 		));
 	}
 
+	// TODO: this is also horrible
 	let path_str = unsafe {
 		let path = path.to_str().unwrap();
 		std::mem::transmute::<&'_ str, &'static str>(path)
 	};
 	let contents_a = prog_utils::read_file(path_str);
-	let contents_static = unsafe {
-		std::mem::transmute::<&'_ str, &'static str>(contents_a.as_str())
-	};
+	let contents_static =
+		unsafe { std::mem::transmute::<&'_ str, &'static str>(contents_a.as_str()) };
 	let ts_a = prog_lexer::lex(contents_static, &path_str)?;
 	let ts_static = unsafe {
 		std::mem::transmute::<prog_lexer::TokenStream<'_>, prog_lexer::TokenStream<'static>>(ts_a)
 	};
 
 	let buffer = unsafe {
-		std::mem::transmute::<&'_ [prog_lexer::Token<'_>], &'static [prog_lexer::Token<'static>]>(ts_static.buffer())
+		std::mem::transmute::<&'_ [prog_lexer::Token<'_>], &'static [prog_lexer::Token<'static>]>(
+			ts_static.buffer()
+		)
 	};
 
 	let ps = prog_parser::ParseStream::new(buffer);

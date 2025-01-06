@@ -1,7 +1,7 @@
 use anyhow::Result;
 
-use crate::{token, ASTNode, Parse, ParseStream, Span, Position};
 use crate::ast::*;
+use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WhileLoop<'inp> {

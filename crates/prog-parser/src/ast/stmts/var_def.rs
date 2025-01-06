@@ -11,10 +11,10 @@ pub enum VarDefine<'inp> {
 		_eq: token::Eq<'inp>,
 		value: Expr<'inp>
 	},
-	
+
 	NoValue {
 		_def: token::Def<'inp>,
-		name: token::Ident<'inp>,
+		name: token::Ident<'inp>
 	}
 }
 
@@ -66,10 +66,7 @@ impl ASTNode for VarDefine<'_> {
 				Span::new(source, position)
 			}
 
-			Self::NoValue {
-				_def,
-				name
-			} => {
+			Self::NoValue { _def, name } => {
 				let start = _def.start();
 				let end = name.end();
 
@@ -88,10 +85,7 @@ impl<'inp> Parse<'inp> for VarDefine<'inp> {
 		let name = input.parse::<token::Ident>()?;
 
 		let Ok(_eq) = input.try_parse::<token::Eq>() else {
-			return Ok(Self::NoValue {
-				_def,
-				name
-			});
+			return Ok(Self::NoValue { _def, name });
 		};
 
 		let value = input.parse::<Expr>()?;

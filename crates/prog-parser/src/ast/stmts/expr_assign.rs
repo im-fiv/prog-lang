@@ -1,7 +1,7 @@
 use anyhow::Result;
 
-use crate::{token, ASTNode, Parse, ParseStream, Span, Position};
 use crate::ast::*;
+use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExprAssign<'inp> {
@@ -28,10 +28,6 @@ impl<'inp> Parse<'inp> for ExprAssign<'inp> {
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;
 
-		Ok(Self {
-			expr,
-			_eq,
-			value
-		})
+		Ok(Self { expr, _eq, value })
 	}
 }

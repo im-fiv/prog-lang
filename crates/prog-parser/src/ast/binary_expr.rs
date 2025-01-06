@@ -79,7 +79,7 @@ impl TryFrom<TokenKind> for BinaryOpKind {
 	type Error = anyhow::Error;
 
 	fn try_from(kind: TokenKind) -> std::result::Result<Self, Self::Error> {
-		use {TokenKind as T, BinaryOpKind as B};
+		use {BinaryOpKind as B, TokenKind as T};
 
 		Ok(match kind {
 			T::Plus => B::Plus,

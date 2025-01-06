@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Span, Position};
+use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Obj<'inp> {
@@ -50,11 +50,7 @@ impl<'inp> Parse<'inp> for Obj<'inp> {
 			.ok();
 		let _rb = input.parse::<token::RightBrace>()?;
 
-		Ok(Self {
-			_lb,
-			fields,
-			_rb
-		})
+		Ok(Self { _lb, fields, _rb })
 	}
 }
 
@@ -64,10 +60,6 @@ impl<'inp> Parse<'inp> for ObjField<'inp> {
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;
 
-		Ok(Self {
-			name,
-			_eq,
-			value
-		})
+		Ok(Self { name, _eq, value })
 	}
 }

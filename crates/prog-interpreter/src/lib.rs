@@ -10,9 +10,9 @@ use anyhow::Result;
 use halloc::Memory;
 use prog_parser::{ast, ASTNode as _};
 
-pub use errors::{InterpretError, InterpretErrorKind};
-pub use values::{RPrimitive, Value, ValueKind, CallSite, RFunction};
 use context::Context;
+pub use errors::{InterpretError, InterpretErrorKind};
+pub use values::{CallSite, RFunction, RPrimitive, Value, ValueKind};
 
 const META_NO_SELF_OVERRIDE: &str = "$NO_SELF_OVERRIDE";
 const META_SELF: &str = "self";
@@ -167,7 +167,9 @@ impl Interpreter {
 			create_error!(
 				self,
 				stmt.name.position(),
-				InterpretErrorKind::VariableDoesntExist(errors::VariableDoesntExist(stmt.name.value_owned()))
+				InterpretErrorKind::VariableDoesntExist(errors::VariableDoesntExist(
+					stmt.name.value_owned()
+				))
 			);
 		}
 
@@ -312,7 +314,11 @@ impl Interpreter {
 		}
 	}
 
-	fn execute_expr_assign_list(&mut self, expr: ast::BinaryExpr<'static>, value: Value) -> Result<Value> {
+	fn execute_expr_assign_list(
+		&mut self,
+		expr: ast::BinaryExpr<'static>,
+		value: Value
+	) -> Result<Value> {
 		let list_name = match self.evaluate_term(expr.rhs.clone(), true)? {
 			Value::Identifier(identifier) => identifier,
 
@@ -384,7 +390,11 @@ impl Interpreter {
 	}
 
 	// TODO: split class logic into `execute_expression_assign_class`
-	fn execute_expr_assign_obj(&mut self, expr: ast::BinaryExpr<'static>, value: Value) -> Result<Value> {
+	fn execute_expr_assign_obj(
+		&mut self,
+		expr: ast::BinaryExpr<'static>,
+		value: Value
+	) -> Result<Value> {
 		let object_name = match self.evaluate_term(expr.lhs.clone(), true)? {
 			Value::Identifier(identifier) => identifier,
 
@@ -523,16 +533,13 @@ impl Interpreter {
 		};
 
 		self.context.shallower();
-		self.context.insert(stmt.name.value_owned(), class.clone().into());
+		self.context
+			.insert(stmt.name.value_owned(), class.clone().into());
 
 		Ok(class.into())
 	}
 
-	fn evaluate_expr(
-		&mut self,
-		expr: ast::Expr<'static>,
-		stop_on_ident: bool
-	) -> Result<Value> {
+	fn evaluate_expr(&mut self, expr: ast::Expr<'static>, stop_on_ident: bool) -> Result<Value> {
 		use ast::Expr;
 
 		match expr {
@@ -542,7 +549,11 @@ impl Interpreter {
 		}
 	}
 
-	fn evaluate_unary_expr(&mut self, expr: ast::UnaryExpr<'static>, stop_on_ident: bool) -> Result<Value> {
+	fn evaluate_unary_expr(
+		&mut self,
+		expr: ast::UnaryExpr<'static>,
+		stop_on_ident: bool
+	) -> Result<Value> {
 		use ast::UnaryOpKind as Op;
 		use Value as V;
 
@@ -572,7 +583,11 @@ impl Interpreter {
 		}
 	}
 
-	fn evaluate_binary_expr(&mut self, expr: ast::BinaryExpr<'static>, stop_on_ident: bool) -> Result<Value> {
+	fn evaluate_binary_expr(
+		&mut self,
+		expr: ast::BinaryExpr<'static>,
+		stop_on_ident: bool
+	) -> Result<Value> {
 		use ast::BinaryOpKind as Op;
 		use Value as V;
 
@@ -598,8 +613,7 @@ impl Interpreter {
 						self,
 						expr.lhs.position(),
 						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
-							$key,
-							rhs_pos
+							$key, rhs_pos
 						))
 					);
 				}
@@ -755,7 +769,7 @@ impl Interpreter {
 			Term::List(list) => self.evaluate_list(list),
 			Term::Obj(obj) => self.evaluate_obj(obj),
 			Term::Extern(ext) => self.evaluate_extern(ext),
-			
+
 			Term::Call(call) => self.evaluate_call(call),
 			// TODO: that's a horrible way of doing this
 			Term::IndexAcc(acc) => {
@@ -768,12 +782,15 @@ impl Interpreter {
 					std::mem::transmute::<ast::BinaryOp<'_>, ast::BinaryOp<'static>>(bin_op)
 				};
 
-				self.evaluate_expr(ast::Expr::Binary(ast::BinaryExpr {
-					lhs: *acc.list,
-					op,
-					rhs: ast::Term::Expr(acc.index)
-				}), false)
-			},
+				self.evaluate_expr(
+					ast::Expr::Binary(ast::BinaryExpr {
+						lhs: *acc.list,
+						op,
+						rhs: ast::Term::Expr(acc.index)
+					}),
+					false
+				)
+			}
 			Term::FieldAcc(acc) => {
 				eprintln!("This is a reminder to rewrite `Interpreter::evaluate_term` ASAP");
 
@@ -784,11 +801,14 @@ impl Interpreter {
 					std::mem::transmute::<ast::BinaryOp<'_>, ast::BinaryOp<'static>>(bin_op)
 				};
 
-				self.evaluate_expr(ast::Expr::Binary(ast::BinaryExpr {
-					lhs: *acc.object,
-					op,
-					rhs: ast::Term::Ident(acc.field)
-				}), false)
+				self.evaluate_expr(
+					ast::Expr::Binary(ast::BinaryExpr {
+						lhs: *acc.object,
+						op,
+						rhs: ast::Term::Ident(acc.field)
+					}),
+					false
+				)
 			}
 		}
 	}
@@ -922,10 +942,7 @@ impl Interpreter {
 				.args
 				.clone()
 				.map(|args| *args)
-				.map(|args| args.map(
-					|item| item.position(),
-					|punct| punct.position()
-				));
+				.map(|args| args.map(|item| item.position(), |punct| punct.position()));
 			let _rp = call._rp.position();
 
 			CallSite {
@@ -981,9 +998,15 @@ impl Interpreter {
 					expected,
 					got
 				} => {
-					let arg = *call.args.as_ref().unwrap().items().get(index).unwrap_or_else(|| {
-						panic!("Argument at index `{index}` does not exist when it should")
-					});
+					let arg = *call
+						.args
+						.as_ref()
+						.unwrap()
+						.items()
+						.get(index)
+						.unwrap_or_else(|| {
+							panic!("Argument at index `{index}` does not exist when it should")
+						});
 
 					create_error!(
 						self,

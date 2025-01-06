@@ -28,10 +28,6 @@ impl<'inp> Parse<'inp> for VarAssign<'inp> {
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;
 
-		Ok(Self {
-			name,
-			_eq,
-			value
-		})
+		Ok(Self { name, _eq, value })
 	}
 }

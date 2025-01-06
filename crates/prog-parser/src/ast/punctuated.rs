@@ -47,12 +47,11 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 		}
 	}
 
-	pub fn unwrap(self) -> (Vec<(T, P)>, Option<T>) {
-		(self.pairs, self.tail)
-	}
+	pub fn unwrap(self) -> (Vec<(T, P)>, Option<T>) { (self.pairs, self.tail) }
 
 	pub fn unwrap_items(self) -> Vec<T> {
-		let mut items = self.pairs
+		let mut items = self
+			.pairs
 			.into_iter()
 			.map(|(item, _)| item)
 			.collect::<Vec<_>>();
@@ -65,10 +64,7 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 	}
 
 	pub fn items(&self) -> Vec<&T> {
-		let mut items = self.pairs
-			.iter()
-			.map(|(item, _)| item)
-			.collect::<Vec<_>>();
+		let mut items = self.pairs.iter().map(|(item, _)| item).collect::<Vec<_>>();
 
 		if let Some(ref t) = self.tail {
 			items.push(t);
@@ -76,14 +72,10 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 
 		items
 	}
-	
-	pub fn first(&self) -> Option<&T> {
-		self.pairs.first().map(|(item, _)| item)
-	}
 
-	pub fn pop_first(&mut self) -> (T, P) {
-		self.pairs.remove(0)
-	}
+	pub fn first(&self) -> Option<&T> { self.pairs.first().map(|(item, _)| item) }
+
+	pub fn pop_first(&mut self) -> (T, P) { self.pairs.remove(0) }
 }
 
 impl<'inp> Punctuated<'inp, Position, Position> {
@@ -96,31 +88,17 @@ impl<'inp> Punctuated<'inp, Position, Position> {
 		match (!self.pairs.is_empty(), self.tail) {
 			(true, Some(tail)) => {
 				let end = tail.end();
-				let start = self
-					.pairs
-					.first()
-					.map(|(item, _)| item.start())
-					.unwrap();
+				let start = self.pairs.first().map(|(item, _)| item.start()).unwrap();
 
 				Position::new(start, end)
 			}
 
-			(false, Some(tail)) => {
-				tail
-			}
+			(false, Some(tail)) => tail,
 
 			(true, None) => {
-				let start = self
-					.pairs
-					.first()
-					.map(|(item, _)| item.start())
-					.unwrap();
+				let start = self.pairs.first().map(|(item, _)| item.start()).unwrap();
 
-				let end = self
-					.pairs
-					.last()
-					.map(|(_, punct)| punct.start())
-					.unwrap();
+				let end = self.pairs.last().map(|(_, punct)| punct.start()).unwrap();
 
 				Position::new(start, end)
 			}
@@ -144,19 +122,13 @@ where
 		match (!self.pairs.is_empty(), self.tail.as_ref()) {
 			(true, Some(tail)) => {
 				let end = tail.end();
-				let start = self
-					.pairs
-					.first()
-					.map(|(item, _)| item.start())
-					.unwrap();
+				let start = self.pairs.first().map(|(item, _)| item.start()).unwrap();
 
 				let position = Position::new(start, end);
 				Span::new(tail.source(), position)
 			}
 
-			(false, Some(tail)) => {
-				tail.span()
-			}
+			(false, Some(tail)) => tail.span(),
 
 			(true, None) => {
 				let (start, source) = self
@@ -165,11 +137,7 @@ where
 					.map(|(item, _)| (item.start(), item.source()))
 					.unwrap();
 
-				let end = self
-					.pairs
-					.last()
-					.map(|(_, punct)| punct.start())
-					.unwrap();
+				let end = self.pairs.last().map(|(_, punct)| punct.start()).unwrap();
 
 				let position = Position::new(start, end);
 				Span::new(source, position)

@@ -33,10 +33,6 @@ impl<'inp> Parse<'inp> for DoBlock<'inp> {
 
 		let _end = input.parse::<token::End>()?;
 
-		Ok(Self {
-			_do,
-			stmts,
-			_end
-		})
+		Ok(Self { _do, stmts, _end })
 	}
 }
