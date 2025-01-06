@@ -6,17 +6,22 @@ use crate::{token, ASTNode, Parse, ParseStream, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term<'inp> {
+	// Wrapping terms
 	Expr(Box<Expr<'inp>>),
 	ParenExpr(ParenExpr<'inp>),
 
+	// Regular terms
 	Lit(Lit<'inp>),
 	Ident(token::Ident<'inp>),
 	Func(Func<'inp>),
-	Call(Call<'inp>),
+	List(List<'inp>),
 	Obj(Obj<'inp>),
+	Extern(Extern<'inp>),
+	
+	// Lookahead terms
+	Call(Call<'inp>),
 	IndexAcc(IndexAcc<'inp>),
 	FieldAcc(FieldAcc<'inp>),
-	Extern(Extern<'inp>)
 }
 
 impl<'inp> Term<'inp> {
@@ -40,9 +45,8 @@ impl<'inp> Term<'inp> {
 			}
 
 			TokenKind::Func => Self::Func(input.parse::<Func>()?),
-
+			TokenKind::LeftBracket => Self::List(input.parse::<List>()?),
 			TokenKind::LeftBrace => Self::Obj(input.parse::<Obj>()?),
-
 			TokenKind::Extern => Self::Extern(input.parse::<Extern>()?),
 
 			// TODO

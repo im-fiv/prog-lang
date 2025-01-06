@@ -240,7 +240,7 @@ impl Interpreter {
 			return Ok(Value::Empty);
 		}
 
-		for branch in stmt.b_elifs.unwrap_or(vec![]) {
+		for branch in stmt.b_elifs {
 			let evaluated = self.evaluate_expr(branch.cond, false)?;
 
 			if evaluated.is_truthy() {
@@ -719,12 +719,9 @@ impl Interpreter {
 		let position = term.position();
 
 		match term {
-			// TODO: reorder according to prog_parser::Term
-			Term::Extern(ext) => self.evaluate_extern(ext),
-			Term::Obj(obj) => self.evaluate_obj(obj),
-			Term::List(list) => self.evaluate_list(list),
-			Term::Call(call) => self.evaluate_call(call),
-			Term::Func(func) => self.evaluate_func(func),
+			Term::Expr(e) => self.evaluate_expr(*e, stop_on_ident),
+			Term::ParenExpr(e) => self.evaluate_expr(*e.expr, stop_on_ident),
+
 			Term::Lit(lit) => Ok(lit.into()),
 			Term::Ident(ident) => {
 				let ident = ident.value_owned();
@@ -740,11 +737,33 @@ impl Interpreter {
 					}
 				}
 			}
-			Term::Expr(e) => self.evaluate_expr(*e, stop_on_ident)
+			Term::Func(func) => self.evaluate_func(func),
+			Term::List(list) => self.evaluate_list(list),
+			Term::Obj(obj) => self.evaluate_obj(obj),
+			Term::Extern(ext) => self.evaluate_extern(ext),
+			
+			Term::Call(call) => self.evaluate_call(call),
+			// TODO: that's a horrible way of doing this
+			Term::IndexAcc(acc) => {
+				eprintln!("This is a reminder to rewrite `Interpreter::evaluate_term` ASAP");
+				self.evaluate_expr(ast::Expr::Binary(ast::BinaryExpr {
+					lhs: *acc.list,
+					op: (&acc._lb as &dyn prog_parser::Token).try_into().unwrap(),
+					rhs: ast::Term::Expr(acc.index)
+				}), false)
+			},
+			Term::FieldAcc(acc) => {
+				eprintln!("This is a reminder to rewrite `Interpreter::evaluate_term` ASAP");
+				self.evaluate_expr(ast::Expr::Binary(ast::BinaryExpr {
+					lhs: *acc.object,
+					op: (&acc._dot as &dyn prog_parser::Token).try_into().unwrap(),
+					rhs: ast::Term::Ident(acc.field)
+				}), false)
+			}
 		}
 	}
 
-	fn evaluate_func(&mut self, func: ast::Function) -> Result<Value> {
+	fn evaluate_func(&mut self, func: ast::Func) -> Result<Value> {
 		let context = {
 			let mut context = Context::new();
 
@@ -779,7 +798,7 @@ impl Interpreter {
 		if !self.context.deref().flags.externs_allowed {
 			create_error!(
 				self,
-				ext.1,
+				ext.position(),
 				InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
 					thing: String::from("externs"),
 					plural: true
@@ -787,12 +806,13 @@ impl Interpreter {
 			)
 		}
 
-		let value = match self.evaluate_expr(*ext.expr, false)? {
+		let value_pos = ext.value.position();
+		let value = match self.evaluate_expr(*ext.value, false)? {
 			Value::String(v) => v.get_owned(),
 			v => {
 				create_error!(
 					self,
-					ext.expr.position(),
+					value_pos,
 					InterpretErrorKind::InvalidExternArgument(errors::InvalidExternArgument(
 						v.kind()
 					))
@@ -802,7 +822,7 @@ impl Interpreter {
 
 		self.externs.get(&value).cloned().ok_or(create_error!(
 			self,
-			ext.expr.value(),
+			value_pos,
 			InterpretErrorKind::NonExistentExternItem(errors::NonExistentExternItem(
 				value
 			));
@@ -813,12 +833,15 @@ impl Interpreter {
 	fn evaluate_obj(&mut self, obj: ast::Obj) -> Result<Value> {
 		use std::collections::HashMap;
 
-		let mut value_map = HashMap::new();
-		let mut position_map: HashMap<String, ast::Position> = HashMap::new();
+		let fields = obj.fields.map(|p| p.unwrap_items()).unwrap_or_default();
 
-		for entry in obj.0 {
-			let name = entry.name;
-			let value = self.evaluate_expr(entry.value, false)?;
+		let mut value_map = HashMap::new();
+		let mut position_map: HashMap<String, prog_parser::Position> = HashMap::new();
+
+		for field in fields {
+			let position = field.position();
+			let name = field.name.value_owned();
+			let value = self.evaluate_expr(field.value, false)?;
 
 			if value_map.insert(name.clone(), value).is_some() {
 				let definition_pos = position_map
@@ -833,7 +856,7 @@ impl Interpreter {
 
 				create_error!(
 					self,
-					entry.position,
+					position,
 					InterpretErrorKind::DuplicateObjectEntry(errors::DuplicateObjectEntry {
 						entry_name: name,
 						definition_pos
@@ -841,7 +864,7 @@ impl Interpreter {
 				);
 			}
 
-			position_map.insert(name, entry.position);
+			position_map.insert(name, position);
 		}
 
 		let allocated = unsafe { self.memory.alloc(value_map).promote() };
@@ -849,10 +872,11 @@ impl Interpreter {
 	}
 
 	fn evaluate_list(&mut self, list: ast::List) -> Result<Value> {
+		let items = list.items.map(|p| p.unwrap_items()).unwrap_or_default();
 		let mut values = vec![];
 
-		for expression in list.0 {
-			let value = self.evaluate_expr(expression, false)?;
+		for expr in items {
+			let value = self.evaluate_expr(expr, false)?;
 			values.push(value);
 		}
 
@@ -887,15 +911,16 @@ impl Interpreter {
 
 		let call_args = call
 			.args
-			.clone()
+			.map(|p| p.items())
+			.unwrap_or(vec![])
 			.into_iter()
-			.map(|arg| self.evaluate_expr(arg, false))
+			.map(|arg| self.evaluate_expr(arg.clone(), false))
 			.collect::<Result<Vec<_>>>()?;
 
-		let original_expr = *call.function.clone();
+		let original_expr = *call.func.clone();
 		let function_pos = original_expr.position();
 
-		let function_expr = self.evaluate_expr(*call.function, false)?;
+		let function_expr = self.evaluate_term(*call.func, false)?;
 
 		let convert_error = |e: arg_parser::ArgumentParseError| {
 			match e {
@@ -906,7 +931,7 @@ impl Interpreter {
 				} => {
 					create_error!(
 						self,
-						call_args_pos,
+						call.args.unwrap().position(),
 						InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
 							expected,
 							end_boundary,
@@ -923,13 +948,13 @@ impl Interpreter {
 					expected,
 					got
 				} => {
-					let argument = call.arguments.0.get(index).unwrap_or_else(|| {
+					let arg = *call.args.unwrap().items().get(index).unwrap_or_else(|| {
 						panic!("Argument at index `{index}` does not exist when it should")
 					});
 
 					create_error!(
 						self,
-						argument.position(),
+						arg.position(),
 						InterpretErrorKind::ArgumentTypeMismatch(errors::ArgumentTypeMismatch {
 							expected,
 							got,
@@ -955,13 +980,13 @@ impl Interpreter {
 		}
 
 		if let Value::Function(mut function) = function_expr {
-			let got_len = call_args.len();
-			let expected_len = function.ast.arguments.len();
+			let got_len = call.args.map_or(0, |p| p.len());
+			let expected_len = function.ast.args.map_or(0, |p| p.len());
 
 			if got_len != expected_len && expected_len == 0 {
 				create_error!(
 					self,
-					call_args_pos,
+					call.args.unwrap().position(),
 					InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
 						expected: 0..0,
 						end_boundary: true,
@@ -973,22 +998,15 @@ impl Interpreter {
 			}
 
 			if got_len != expected_len {
-				let first_arg = function.ast.arguments.first().unwrap();
-				let last_arg = function.ast.arguments.last().unwrap();
-
-				let fn_call_pos = function_pos;
-				let fn_def_args_pos =
-					Some(ast::Position::new(first_arg.1.start(), last_arg.1.end()));
-
 				create_error!(
 					self,
-					call_args_pos,
+					call.args.unwrap().position(),
 					InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
 						expected: expected_len..expected_len,
 						end_boundary: true,
 						got: got_len,
-						fn_call_pos,
-						fn_def_args_pos
+						fn_call_pos: call.position(),
+						fn_def_args_pos: function.ast.args.map(|p| p.position())
 					})
 				);
 			}
@@ -1032,7 +1050,7 @@ impl Interpreter {
 
 				let exec_result = self.execute(
 					ast::Program {
-						statements: function.ast.statements
+						stmts: function.ast.stmts
 					},
 					false
 				);
@@ -1052,7 +1070,7 @@ impl Interpreter {
 					anyhow::anyhow!(errors::InterpretError::new(
 						source.clone(),
 						file.clone(),
-						call_site.whole_pos,
+						call_site.whole(),
 						InterpretErrorKind::FunctionPanicked(errors::FunctionPanicked)
 					))
 				});
@@ -1106,7 +1124,7 @@ impl Interpreter {
 						function_pos,
 						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
 							prop_name,
-							call_args_pos
+							call.args.unwrap().position()
 						))
 					)
 				}
@@ -1124,7 +1142,7 @@ impl Interpreter {
 
 				create_error!(
 					self,
-					call_args_pos,
+					call.args.unwrap().position(),
 					InterpretErrorKind::NonExhaustiveClassConstruction(
 						errors::NonExhaustiveClassConstruction(missing_fields)
 					)

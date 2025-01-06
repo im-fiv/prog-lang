@@ -7,33 +7,33 @@ use crate::{ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Clone, PartialEq)]
 pub struct Punctuated<'inp, T, P> {
-	pub items: Vec<(T, P)>,
-	pub tail: Option<T>,
-	pub _marker: PhantomData<(&'inp T, &'inp P)>
+	pairs: Vec<(T, P)>,
+	tail: Option<T>,
+	_marker: PhantomData<(&'inp T, &'inp P)>
 }
 
 impl<'inp, T, P> Punctuated<'inp, T, P> {
 	pub fn new() -> Self {
 		Self {
-			items: vec![],
+			pairs: vec![],
 			tail: None,
 			_marker: PhantomData
 		}
 	}
 
-	pub fn is_empty(&self) -> bool { self.items.is_empty() && self.tail.is_none() }
+	pub fn is_empty(&self) -> bool { self.pairs.is_empty() && self.tail.is_none() }
 
-	pub fn len(&self) -> usize { self.items.len() + if self.tail.is_some() { 1 } else { 0 } }
+	pub fn len(&self) -> usize { self.pairs.len() + if self.tail.is_some() { 1 } else { 0 } }
 
-	pub fn push_pair(&mut self, pair: (T, P)) { self.items.push(pair); }
+	pub fn push_pair(&mut self, pair: (T, P)) { self.pairs.push(pair); }
 
 	pub fn map<F, G, H, I>(self, f: F, g: G) -> Punctuated<'inp, H, I>
 	where
 		F: Fn(T) -> H,
 		G: Fn(P) -> I
 	{
-		let items = self
-			.items
+		let pairs = self
+			.pairs
 			.into_iter()
 			.map(|(t, p)| (f(t), g(p)))
 			.collect::<Vec<_>>();
@@ -41,10 +41,40 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 		let tail = self.tail.map(f);
 
 		Punctuated {
-			items,
+			pairs,
 			tail,
 			_marker: PhantomData
 		}
+	}
+
+	pub fn unwrap(self) -> (Vec<(T, P)>, Option<T>) {
+		(self.pairs, self.tail)
+	}
+
+	pub fn unwrap_items(self) -> Vec<T> {
+		let mut items = self.pairs
+			.into_iter()
+			.map(|(item, _)| item)
+			.collect::<Vec<_>>();
+
+		if let Some(t) = self.tail {
+			items.push(t);
+		}
+
+		items
+	}
+
+	pub fn items(&self) -> Vec<&T> {
+		let mut items = self.pairs
+			.iter()
+			.map(|(item, _)| item)
+			.collect::<Vec<_>>();
+
+		if let Some(ref t) = self.tail {
+			items.push(t);
+		}
+
+		items
 	}
 }
 
@@ -56,7 +86,7 @@ impl<'inp> Punctuated<'inp, Position, Position> {
 		);
 
 		let start = self
-			.items
+			.pairs
 			.first()
 			.map(|(item, _)| item.start())
 			.unwrap();
@@ -65,7 +95,7 @@ impl<'inp> Punctuated<'inp, Position, Position> {
 			Some(tail) => tail.end(),
 
 			None => {
-				self.items
+				self.pairs
 					.last()
 					.map(|(_, punct)| punct.end())
 					.unwrap()
@@ -88,7 +118,7 @@ where
 		);
 
 		let (source, start) = self
-			.items
+			.pairs
 			.first()
 			.map(|(item, _)| (item.source(), item.start()))
 			.unwrap();
@@ -97,7 +127,7 @@ where
 			Some(ref tail) => tail.end(),
 
 			None => {
-				self.items
+				self.pairs
 					.last()
 					.map(|(_, punct)| punct.end())
 					.unwrap()
@@ -144,7 +174,7 @@ where
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let mut s = f.debug_tuple("Punctuated");
 
-		for (t, p) in self.items.iter() {
+		for (t, p) in self.pairs.iter() {
 			s.field(t);
 			s.field(p);
 		}

@@ -1,3 +1,8 @@
+pub trait Token {
+	fn tk(&self) -> prog_lexer::TokenKind;
+	fn sp(&self) -> crate::Span;
+}
+
 macro_rules! def_token {
 	($vis:vis $name:ident) => {
 		#[derive(Debug, Clone, Copy, PartialEq, Hash)]
@@ -9,9 +14,15 @@ macro_rules! def_token {
 			pub fn new(span: ::prog_utils::pretty_errors::Span<'inp>) -> Self {
 				Self { span }
 			}
+		}
 
-			fn kind(&self) -> ::prog_lexer::TokenKind {
+		impl $crate::Token for $name<'_> {
+			fn tk(&self) -> ::prog_lexer::TokenKind {
 				::prog_lexer::TokenKind::$name
+			}
+
+			fn sp(&self) -> $crate::Span {
+				self.span
 			}
 		}
 

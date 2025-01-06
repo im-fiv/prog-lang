@@ -6,7 +6,7 @@ use crate::{token, ASTNode, Parse, ParseStream, Span, Position};
 #[derive(Debug, Clone, PartialEq)]
 pub struct Obj<'inp> {
 	pub _lb: token::LeftBrace<'inp>,
-	pub fields: Vec<ObjField<'inp>>,
+	pub fields: Option<Box<Punctuated<'inp, ObjField<'inp>, token::Comma<'inp>>>>,
 	pub _rb: token::RightBrace<'inp>
 }
 
@@ -44,12 +44,10 @@ impl ASTNode for ObjField<'_> {
 impl<'inp> Parse<'inp> for Obj<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let _lb = input.parse::<token::LeftBrace>()?;
-		let mut fields = vec![];
-
-		while let Ok(f) = input.try_parse::<ObjField>() {
-			fields.push(f);
-		}
-
+		let fields = input
+			.try_parse::<Punctuated<'inp, ObjField, token::Comma>>()
+			.map(Box::new)
+			.ok();
 		let _rb = input.parse::<token::RightBrace>()?;
 
 		Ok(Self {

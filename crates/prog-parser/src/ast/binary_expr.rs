@@ -12,18 +12,6 @@ pub struct BinaryExpr<'inp> {
 	pub rhs: Term<'inp>
 }
 
-impl ASTNode for BinaryExpr<'_> {
-	fn span(&self) -> Span {
-		let start = self.lhs.start();
-		let end = self.rhs.end();
-
-		let source = self.lhs.source();
-		let position = Position::new(start, end);
-
-		Span::new(source, position)
-	}
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BinaryOp<'inp> {
 	pub kind: BinaryOpKind,
@@ -49,6 +37,18 @@ pub enum BinaryOpKind {
 	Dot
 }
 
+impl ASTNode for BinaryExpr<'_> {
+	fn span(&self) -> Span {
+		let start = self.lhs.start();
+		let end = self.rhs.end();
+
+		let source = self.lhs.source();
+		let position = Position::new(start, end);
+
+		Span::new(source, position)
+	}
+}
+
 impl ASTNode for BinaryOp<'_> {
 	fn span(&self) -> Span { self.span }
 }
@@ -64,11 +64,22 @@ impl<'inp> Parse<'inp> for BinaryOp<'inp> {
 	}
 }
 
+impl<'inp> TryFrom<&'inp dyn crate::Token> for BinaryOp<'inp> {
+	type Error = anyhow::Error;
+
+	fn try_from(token: &'inp dyn crate::Token) -> std::result::Result<Self, Self::Error> {
+		let span = token.sp();
+		let kind = BinaryOpKind::try_from(token.tk())?;
+
+		Ok(Self { kind, span })
+	}
+}
+
 impl TryFrom<TokenKind> for BinaryOpKind {
 	type Error = anyhow::Error;
 
 	fn try_from(kind: TokenKind) -> std::result::Result<Self, Self::Error> {
-		use {BinaryOpKind as B, TokenKind as T};
+		use {TokenKind as T, BinaryOpKind as B};
 
 		Ok(match kind {
 			T::Plus => B::Plus,

@@ -1,3 +1,5 @@
+// TODO: write a proc macro for implementing ASTNode automatically, where applicable.
+
 mod stream;
 pub mod token;
 pub mod ast;
@@ -5,7 +7,9 @@ pub mod errors;
 
 use anyhow::Result;
 pub use prog_utils::pretty_errors::{Position, Span};
+
 pub use stream::ParseStream;
+pub use token::Token;
 
 pub trait ASTNode {
 	fn span(&self) -> Span;
