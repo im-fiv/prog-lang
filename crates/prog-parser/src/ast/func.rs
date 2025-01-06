@@ -7,7 +7,7 @@ use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 pub struct Func<'inp> {
 	pub _func: token::Func<'inp>,
 	pub _lp: token::LeftParen<'inp>,
-	pub args: Option<Punctuated<'inp, token::Ident<'inp>, token::Comma<'inp>>>,
+	pub args: Option<Punctuated<'inp, Ident<'inp>, token::Comma<'inp>>>,
 	pub _rp: token::RightParen<'inp>,
 	pub _do: token::Do<'inp>,
 	pub stmts: Vec<Statement<'inp>>,
@@ -31,7 +31,7 @@ impl<'inp> Parse<'inp> for Func<'inp> {
 		let _func = input.parse::<token::Func>()?;
 		let _lp = input.parse::<token::LeftParen>()?;
 		let args = input
-			.try_parse::<Punctuated<'inp, token::Ident, token::Comma>>()
+			.try_parse::<Punctuated<'inp, Ident, token::Comma>>()
 			.ok();
 		let _rp = input.parse::<token::RightParen>()?;
 		let _do = input.parse::<token::Do>()?;

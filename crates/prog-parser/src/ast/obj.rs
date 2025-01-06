@@ -12,7 +12,7 @@ pub struct Obj<'inp> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ObjField<'inp> {
-	pub name: token::Ident<'inp>,
+	pub name: Ident<'inp>,
 	pub _eq: token::Eq<'inp>,
 	pub value: Expr<'inp>
 }
@@ -56,7 +56,7 @@ impl<'inp> Parse<'inp> for Obj<'inp> {
 
 impl<'inp> Parse<'inp> for ObjField<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
-		let name = input.parse::<token::Ident>()?;
+		let name = input.parse::<Ident>()?;
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;
 

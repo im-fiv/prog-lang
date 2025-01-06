@@ -7,13 +7,13 @@ use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 pub struct FieldAcc<'inp> {
 	pub object: Box<Term<'inp>>,
 	pub _dot: token::Dot<'inp>,
-	pub field: token::Ident<'inp>
+	pub field: Ident<'inp>
 }
 
 impl<'inp> FieldAcc<'inp> {
 	pub fn parse_with_object(input: &ParseStream<'inp>, object: Box<Term<'inp>>) -> Result<Self> {
 		let _dot = input.parse::<token::Dot>()?;
-		let field = input.parse::<token::Ident>()?;
+		let field = input.parse::<Ident>()?;
 
 		Ok(Self {
 			object,

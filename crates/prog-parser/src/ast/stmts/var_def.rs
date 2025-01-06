@@ -7,14 +7,14 @@ use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
 pub enum VarDefine<'inp> {
 	WithValue {
 		_def: token::Def<'inp>,
-		name: token::Ident<'inp>,
+		name: Ident<'inp>,
 		_eq: token::Eq<'inp>,
 		value: Expr<'inp>
 	},
 
 	NoValue {
 		_def: token::Def<'inp>,
-		name: token::Ident<'inp>
+		name: Ident<'inp>
 	}
 }
 
@@ -26,7 +26,7 @@ impl<'inp> VarDefine<'inp> {
 		}
 	}
 
-	pub fn name(&self) -> token::Ident<'inp> {
+	pub fn name(&self) -> Ident<'inp> {
 		match self {
 			Self::WithValue { name, .. } => *name,
 			Self::NoValue { name, .. } => *name
@@ -82,7 +82,7 @@ impl ASTNode for VarDefine<'_> {
 impl<'inp> Parse<'inp> for VarDefine<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let _def = input.parse::<token::Def>()?;
-		let name = input.parse::<token::Ident>()?;
+		let name = input.parse::<Ident>()?;
 
 		let Ok(_eq) = input.try_parse::<token::Eq>() else {
 			return Ok(Self::NoValue { _def, name });

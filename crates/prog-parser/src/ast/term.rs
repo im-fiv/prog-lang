@@ -2,7 +2,7 @@ use anyhow::Result;
 use prog_lexer::TokenKind;
 
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Span};
+use crate::{ASTNode, Parse, ParseStream, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term<'inp> {
@@ -12,7 +12,7 @@ pub enum Term<'inp> {
 
 	// Regular terms
 	Lit(Lit<'inp>),
-	Ident(token::Ident<'inp>),
+	Ident(Ident<'inp>),
 	Func(Func<'inp>),
 	List(List<'inp>),
 	Obj(Obj<'inp>),
@@ -33,21 +33,18 @@ impl<'inp> Term<'inp> {
 		let token = input.expect_peek()?;
 
 		let mut term = match token.kind() {
-			TokenKind::LeftParen => Self::ParenExpr(input.parse::<ParenExpr>()?),
+			TokenKind::LeftParen => input.parse::<ParenExpr>().map(Self::ParenExpr)?,
 
 			TokenKind::Number | TokenKind::True | TokenKind::False | TokenKind::String => {
-				Self::Lit(input.parse::<Lit>()?)
+				input.parse::<Lit>().map(Self::Lit)?
 			}
 
-			TokenKind::Ident => {
-				input.next();
-				Self::Ident(token::Ident::try_from(token).unwrap())
-			}
+			TokenKind::Ident => input.parse::<Ident>().map(Self::Ident)?,
 
-			TokenKind::Func => Self::Func(input.parse::<Func>()?),
-			TokenKind::LeftBracket => Self::List(input.parse::<List>()?),
-			TokenKind::LeftBrace => Self::Obj(input.parse::<Obj>()?),
-			TokenKind::Extern => Self::Extern(input.parse::<Extern>()?),
+			TokenKind::Func => input.parse::<Func>().map(Self::Func)?,
+			TokenKind::LeftBracket => input.parse::<List>().map(Self::List)?,
+			TokenKind::LeftBrace => input.parse::<Obj>().map(Self::Obj)?,
+			TokenKind::Extern => input.parse::<Extern>().map(Self::Extern)?,
 
 			// TODO
 			t => todo!("term `{t:?}` is not yet supported")
@@ -60,15 +57,16 @@ impl<'inp> Term<'inp> {
 		while let Some(token) = input.peek() {
 			match token.kind() {
 				TokenKind::LeftParen => {
-					term = Self::Call(Call::parse_with_func(input, Box::new(term))?);
+					term = Call::parse_with_func(input, Box::new(term)).map(Self::Call)?;
 				}
 
 				TokenKind::LeftBracket => {
-					term = Self::IndexAcc(IndexAcc::parse_with_list(input, Box::new(term))?);
+					term = IndexAcc::parse_with_list(input, Box::new(term)).map(Self::IndexAcc)?;
 				}
 
 				TokenKind::Dot => {
-					term = Self::FieldAcc(FieldAcc::parse_with_object(input, Box::new(term))?);
+					term =
+						FieldAcc::parse_with_object(input, Box::new(term)).map(Self::FieldAcc)?;
 				}
 
 				_ => break
