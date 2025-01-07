@@ -4,16 +4,18 @@ use std::path::Path;
 
 use anyhow::Result;
 
-fn execute_string(source: String, file: &str) -> Result<()> {
-	let parser = prog_parser::Parser::new(&source[..], file);
-	let ast = parser.parse()?;
+fn execute_string(source: &str, file: &str) -> Result<()> {
+	let ts = prog_lexer::lex(source, file)?;
+	let tokens = ts.buffer();
 
-	let mut interpreter = prog_interpreter::Interpreter::new();
-	interpreter.context.deref_mut().flags.con_stdout_allowed = false;
+	let ps = prog_parser::ParseStream::new(tokens);
+	let ast = ps.parse::<prog_parser::ast::Program>()?;
 
-	interpreter
-		.interpret(source, file.to_owned(), ast, false)
-		.map(|_| ())
+	let mut interpreter = prog_interpreter::Interpreter::new(ast);
+	interpreter.context_mut().flags.con_stdout_allowed = false;
+	interpreter.interpret()?;
+	
+	Ok(())
 }
 
 fn iterate_dir(paths: ReadDir, exclusions: &[String]) {
@@ -45,8 +47,8 @@ fn iterate_dir(paths: ReadDir, exclusions: &[String]) {
 
 		let path_str = path.to_str().unwrap();
 
-		let contents = prog_utils::read_file(path_str);
-		let execution_result = execute_string(contents, path_str);
+		let source = prog_utils::read_file(path_str);
+		let execution_result = execute_string(&source, path_str);
 
 		assert!(
 			execution_result.is_ok(),

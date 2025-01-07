@@ -3,7 +3,6 @@ pub mod cli;
 use clap::Parser;
 use cli::Cli;
 use prog_interpreter::Interpreter;
-use prog_parser::Parser as ProgParser;
 use prog_utils::read_file;
 
 #[cfg(feature = "api")]
@@ -35,10 +34,10 @@ fn execute_run_command(args: cli::RunCommand) {
 	let ts = prog_lexer::lex(&contents, &args.file_path).unwrap();
 
 	let ps = prog_parser::ParseStream::new(ts.buffer());
-	let ast = ps.parse::<prog_new_parser::ast::Program>().unwrap();
+	let ast = ps.parse::<prog_parser::ast::Program>().unwrap();
 
-	let mut interpreter = Interpreter::new();
-	let result = interpreter.interpret(contents, args.file_path, ast, false);
+	let mut interpreter = Interpreter::new(ast);
+	let result = interpreter.interpret();
 
 	match result {
 		Ok(r) if !matches!(r.kind(), ValueKind::Empty) => println!("{r}"),

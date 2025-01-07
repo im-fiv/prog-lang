@@ -1,5 +1,5 @@
-use prog_interpreter::context::Context;
-use prog_interpreter::values::*;
+use prog_old_interpreter::context::Context;
+use prog_old_interpreter::values::*;
 
 #[test]
 fn insert_and_get_variable() {

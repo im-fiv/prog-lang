@@ -1,5 +1,5 @@
-use prog_interpreter::arg_parser::{Arg, ArgList, ArgumentParseError, ParsedArg};
-use prog_interpreter::values::*;
+use prog_old_interpreter::arg_parser::{Arg, ArgList, ArgumentParseError, ParsedArg};
+use prog_old_interpreter::values::*;
 use prog_macros::get_argument;
 
 #[test]

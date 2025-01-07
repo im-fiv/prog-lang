@@ -1118,14 +1118,9 @@ name = "prog-interpreter"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "ariadne",
- "halloc",
- "prog-lexer",
  "prog-macros",
  "prog-parser",
- "prog-utils",
  "serde",
- "text_io",
 ]
 
 [[package]]
@@ -1168,6 +1163,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.91",
+]
+
+[[package]]
+name = "prog-old-interpreter"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "ariadne",
+ "halloc",
+ "prog-lexer",
+ "prog-macros",
+ "prog-parser",
+ "prog-utils",
+ "serde",
+ "text_io",
 ]
 
 [[package]]
