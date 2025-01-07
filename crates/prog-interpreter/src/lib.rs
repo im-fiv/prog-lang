@@ -709,15 +709,22 @@ impl Interpreter {
 					let has_arguments = func.ast.args.is_some();
 
 					if has_arguments {
-						let arg = func.ast.args.as_ref().map(|p| p.first().unwrap());
-						let arg_name = arg.unwrap().value_owned();
+						let first_arg_name = func
+							.ast
+							.args
+							.as_ref()
+							.unwrap()
+							.get_pair(0)
+							.unwrap()
+							.0
+							.value_owned();
 
-						if arg_name == META_SELF {
+						if first_arg_name == META_SELF {
 							// Insert `self` into scope
 							func.context.insert(String::from("self"), lhs.into());
 
 							// Remove `self` argument from the function
-							func.ast.args.as_mut().unwrap().pop_first();
+							func.ast.args.as_mut().unwrap().remove_pair(0);
 						}
 					}
 				}
