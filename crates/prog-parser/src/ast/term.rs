@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use prog_lexer::TokenKind;
 
 use crate::ast::*;
@@ -78,14 +78,18 @@ impl<'inp> Term<'inp> {
 
 	pub fn parse_variant<T>(input: &ParseStream<'inp>) -> Result<T>
 	where
-		Self: TryInto<T>,
-		<Self as TryInto<T>>::Error: std::fmt::Debug
+		Self: TryInto<T>
 	{
+		use std::any::type_name;
+
 		let term = input.parse::<Self>()?;
-		
-		// We want this operation to panic if the conversion is invalid,
-		// as this function's success should only be determined by parsing.
-		Ok(term.try_into().unwrap())
+		term.try_into().map_err(|_| {
+			anyhow!(
+				"Conversion of `{}` to variant `{}` failed",
+				type_name::<Self>(),
+				type_name::<T>()
+			)
+		})
 	}
 }
 

@@ -40,11 +40,7 @@ impl<'inp> ParsePrecedence<'inp> for Expr<'inp> {
 
 				T::Dot | T::LeftBracket => (5, 6),
 
-				T::EqEq
-				| T::Gt
-				| T::Lt
-				| T::Gte
-				| T::Lte => (1, 2),
+				T::EqEq | T::Gt | T::Lt | T::Gte | T::Lte => (1, 2),
 
 				T::And => (3, 2),
 				T::Or => (1, 1),

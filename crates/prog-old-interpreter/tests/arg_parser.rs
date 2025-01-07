@@ -1,6 +1,6 @@
+use prog_macros::get_argument;
 use prog_old_interpreter::arg_parser::{Arg, ArgList, ArgumentParseError, ParsedArg};
 use prog_old_interpreter::values::*;
-use prog_macros::get_argument;
 
 #[test]
 fn parse_empty() {

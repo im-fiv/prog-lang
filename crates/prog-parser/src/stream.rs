@@ -153,7 +153,8 @@ where
 	pub fn expect_peek(&'_ self) -> Result<Token<'inp>> {
 		// TODO: proper error reporting
 
-		self.peek().ok_or(anyhow::anyhow!("Unexpected end of input"))
+		self.peek()
+			.ok_or(anyhow::anyhow!("Unexpected end of input"))
 	}
 
 	/// Peeks at the next token in the stream and returns it if its `TokenKind` matches the provided `kind`.

@@ -56,18 +56,14 @@ impl ASTNode for BinaryOp<'_> {
 impl<'inp> Parse<'inp> for BinaryOp<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
 		let token = input.expect_next()?;
-
-		let span = token.span();
-		let kind = BinaryOpKind::try_from(token.kind())?;
-
-		Ok(Self { kind, span })
+		Self::try_from(&token as &dyn crate::Token)
 	}
 }
 
-impl<'inp> TryFrom<&'inp dyn crate::Token> for BinaryOp<'inp> {
+impl<'inp> TryFrom<&dyn crate::Token<'inp>> for BinaryOp<'inp> {
 	type Error = anyhow::Error;
 
-	fn try_from(token: &'inp dyn crate::Token) -> std::result::Result<Self, Self::Error> {
+	fn try_from(token: &dyn crate::Token<'inp>) -> std::result::Result<Self, Self::Error> {
 		let span = token.sp();
 		let kind = BinaryOpKind::try_from(token.tk())?;
 

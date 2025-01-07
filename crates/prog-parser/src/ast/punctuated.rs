@@ -21,17 +21,11 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 		}
 	}
 
-	pub fn is_empty(&self) -> bool {
-		self.pairs.is_empty() && self.tail.is_none()
-	}
+	pub fn is_empty(&self) -> bool { self.pairs.is_empty() && self.tail.is_none() }
 
-	pub fn len(&self) -> usize {
-		self.pairs.len() + if self.tail.is_some() { 1 } else { 0 } 
-	}
+	pub fn len(&self) -> usize { self.pairs.len() + if self.tail.is_some() { 1 } else { 0 } }
 
-	pub fn push_pair(&mut self, pair: (T, P)) {
-		self.pairs.push(pair);
-	}
+	pub fn push_pair(&mut self, pair: (T, P)) { self.pairs.push(pair); }
 
 	pub fn push_item(&mut self, item: T) {
 		assert!(
@@ -43,17 +37,14 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 	}
 
 	pub fn push_punct(&mut self, punct: P) {
-		let item = self
-			.tail
-			.take()
-			.expect("Unable to push punctuation into a punctuated list as there is no item behind it");
+		let item = self.tail.take().expect(
+			"Unable to push punctuation into a punctuated list as there is no item behind it"
+		);
 
 		self.push_pair((item, punct));
 	}
 
-	pub fn get_pair(&self, index: usize) -> Option<&(T, P)> {
-		self.pairs.get(index)
-	}
+	pub fn get_pair(&self, index: usize) -> Option<&(T, P)> { self.pairs.get(index) }
 
 	pub fn remove_pair(&mut self, index: usize) -> Option<(T, P)> {
 		if index >= self.pairs.len() {
@@ -63,9 +54,7 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 		Some(self.pairs.remove(index))
 	}
 
-	pub fn remove_tail(&mut self) -> Option<T> {
-		self.tail.take()
-	}
+	pub fn remove_tail(&mut self) -> Option<T> { self.tail.take() }
 
 	pub fn map<F, G, H, I>(self, f: F, g: G) -> Punctuated<'inp, H, I>
 	where
@@ -127,9 +116,7 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 		}
 	}
 
-	pub fn unwrap(self) -> (Vec<(T, P)>, Option<T>) {
-		(self.pairs, self.tail)
-	}
+	pub fn unwrap(self) -> (Vec<(T, P)>, Option<T>) { (self.pairs, self.tail) }
 
 	pub fn unwrap_items(self) -> Vec<T> {
 		let mut items = self
@@ -153,11 +140,7 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 	}
 
 	pub fn items(&self) -> Vec<&T> {
-		let mut items = self
-			.pairs
-			.iter()
-			.map(|(item, _)| item)
-			.collect::<Vec<_>>();
+		let mut items = self.pairs.iter().map(|(item, _)| item).collect::<Vec<_>>();
 
 		if let Some(ref tail) = self.tail {
 			items.push(tail);
@@ -173,12 +156,7 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 			.collect::<Vec<_>>()
 	}
 
-	fn assert_non_empty(&self) {
-		assert!(
-			!self.is_empty(),
-			"Punctuated list must not be empty"
-		)
-	}
+	fn assert_non_empty(&self) { assert!(!self.is_empty(), "Punctuated list must not be empty") }
 }
 
 impl Punctuated<'_, Position, Position> {
@@ -188,11 +166,7 @@ impl Punctuated<'_, Position, Position> {
 		self.pairs
 			.first()
 			.map(|(item, _)| item.start())
-			.or_else(|| {
-				self.tail
-					.as_ref()
-					.map(|tail| tail.start())
-			})
+			.or_else(|| self.tail.as_ref().map(|tail| tail.start()))
 			.expect("`Punctuated::assert_non_empty` hasn't done its job")
 	}
 
@@ -202,17 +176,11 @@ impl Punctuated<'_, Position, Position> {
 		self.tail
 			.as_ref()
 			.map(|tail| tail.end())
-			.or_else(|| {
-				self.pairs
-					.last()
-					.map(|(_, punct)| punct.end())
-			})
+			.or_else(|| self.pairs.last().map(|(_, punct)| punct.end()))
 			.expect("`Punctuated::assert_non_empty` hasn't done its job")
 	}
 
-	pub fn position(&self) -> Position {
-		Position::new(self.start(), self.end())
-	}
+	pub fn position(&self) -> Position { Position::new(self.start(), self.end()) }
 }
 
 impl<T, P> ASTNode for Punctuated<'_, T, P>
@@ -223,10 +191,7 @@ where
 	fn span(&self) -> Span {
 		self.assert_non_empty();
 
-		let pos_list = self.map_ref(
-			T::position,
-			P::position
-		);
+		let pos_list = self.map_ref(T::position, P::position);
 
 		let start = pos_list.start();
 		let end = pos_list.end();
@@ -235,11 +200,7 @@ where
 			.pairs
 			.first()
 			.map(|(item, _)| item.source())
-			.or_else(|| {
-				self.tail
-					.as_ref()
-					.map(|tail| tail.source())
-			})
+			.or_else(|| self.tail.as_ref().map(|tail| tail.source()))
 			.unwrap_or_else(|| unreachable!());
 		let position = Position::new(start, end);
 

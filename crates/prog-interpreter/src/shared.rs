@@ -1,4 +1,4 @@
-use std::cell::{RefCell, Ref, RefMut};
+use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -13,11 +13,7 @@ impl<T> Shared<T> {
 		}
 	}
 
-	pub fn borrow(&self) -> Ref<'_, T> {
-		self.value.borrow()
-	}
+	pub fn borrow(&self) -> Ref<'_, T> { self.value.borrow() }
 
-	pub fn borrow_mut(&self) -> RefMut<'_, T> {
-		self.value.borrow_mut()
-	}
+	pub fn borrow_mut(&self) -> RefMut<'_, T> { self.value.borrow_mut() }
 }

@@ -14,7 +14,7 @@ fn execute_string(source: &str, file: &str) -> Result<()> {
 	let mut interpreter = prog_interpreter::Interpreter::new(ast);
 	interpreter.context_mut().flags.con_stdout_allowed = false;
 	interpreter.interpret()?;
-	
+
 	Ok(())
 }
 

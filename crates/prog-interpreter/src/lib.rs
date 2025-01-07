@@ -22,16 +22,11 @@ impl<'ast> Interpreter<'ast> {
 			context: Shared::new(Context::new())
 		}
 	}
-	
-	pub fn context(&self) -> std::cell::Ref<'_, Context> {
-		self.context.borrow()
-	}
 
-	pub fn context_mut(&self) -> std::cell::RefMut<'_, Context> {
-		self.context.borrow_mut()
-	}
+	pub fn context(&self) -> std::cell::Ref<'_, Context> { self.context.borrow() }
 
-	pub fn interpret(&mut self) -> Result<Value> {
-		todo!()
-	}
+	pub fn context_mut(&self) -> std::cell::RefMut<'_, Context> { self.context.borrow_mut() }
+
+	// TODO
+	pub fn interpret(&mut self) -> Result<Value> { todo!() }
 }

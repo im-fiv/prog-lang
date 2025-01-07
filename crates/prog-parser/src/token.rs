@@ -1,6 +1,6 @@
-pub trait Token {
+pub trait Token<'inp> {
 	fn tk(&self) -> prog_lexer::TokenKind;
-	fn sp(&self) -> crate::Span;
+	fn sp(&self) -> crate::Span<'inp>;
 }
 
 macro_rules! def_token {
@@ -16,12 +16,12 @@ macro_rules! def_token {
 			}
 		}
 
-		impl $crate::Token for $name<'_> {
+		impl<'inp> $crate::Token<'inp> for $name<'inp> {
 			fn tk(&self) -> ::prog_lexer::TokenKind {
 				::prog_lexer::TokenKind::$name
 			}
 
-			fn sp(&self) -> $crate::Span {
+			fn sp(&self) -> $crate::Span<'inp> {
 				self.span
 			}
 		}
@@ -70,6 +70,12 @@ macro_rules! def_token {
 			}
 		}
 	};
+}
+
+impl<'inp> Token<'inp> for prog_lexer::Token<'inp> {
+	fn tk(&self) -> prog_lexer::TokenKind { self.kind() }
+
+	fn sp(&self) -> crate::Span<'inp> { self.span() }
 }
 
 def_token!(pub True);
