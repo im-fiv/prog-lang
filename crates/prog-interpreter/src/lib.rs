@@ -28,5 +28,5 @@ impl<'ast> Interpreter<'ast> {
 	pub fn context_mut(&self) -> std::cell::RefMut<'_, Context> { self.context.borrow_mut() }
 
 	// TODO
-	pub fn interpret(&mut self) -> Result<Value> { todo!() }
+	pub fn interpret(&mut self) -> Result<Value> { Ok(Value::Empty) }
 }
