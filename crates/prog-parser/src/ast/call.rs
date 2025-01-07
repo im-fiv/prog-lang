@@ -43,7 +43,8 @@ impl ASTNode for Call<'_> {
 
 impl<'inp> Parse<'inp> for Call<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
-		let func = Box::new(Term::parse_bounded(input, true)?);
-		Self::parse_with_func(input, func)
+		// To support chained operations or complex call expressions
+		// we have to rely on `Term`'s implementation
+		Term::parse_variant::<Self>(input)
 	}
 }

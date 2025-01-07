@@ -1,7 +1,7 @@
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 
 use crate::{ASTNode, Parse, ParseStream, Position, Span};
 
@@ -21,11 +21,51 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 		}
 	}
 
-	pub fn is_empty(&self) -> bool { self.pairs.is_empty() && self.tail.is_none() }
+	pub fn is_empty(&self) -> bool {
+		self.pairs.is_empty() && self.tail.is_none()
+	}
 
-	pub fn len(&self) -> usize { self.pairs.len() + if self.tail.is_some() { 1 } else { 0 } }
+	pub fn len(&self) -> usize {
+		self.pairs.len() + if self.tail.is_some() { 1 } else { 0 } 
+	}
 
-	pub fn push_pair(&mut self, pair: (T, P)) { self.pairs.push(pair); }
+	pub fn push_pair(&mut self, pair: (T, P)) {
+		self.pairs.push(pair);
+	}
+
+	pub fn push_item(&mut self, item: T) {
+		assert!(
+			self.tail.is_none(),
+			"Unable to push item into a punctuated list as there is no punctuation behind it"
+		);
+
+		self.tail = Some(item);
+	}
+
+	pub fn push_punct(&mut self, punct: P) {
+		let item = self
+			.tail
+			.take()
+			.expect("Unable to push punctuation into a punctuated list as there is no item behind it");
+
+		self.push_pair((item, punct));
+	}
+
+	pub fn get_pair(&self, index: usize) -> Option<&(T, P)> {
+		self.pairs.get(index)
+	}
+
+	pub fn remove_pair(&mut self, index: usize) -> Option<(T, P)> {
+		if index >= self.pairs.len() {
+			return None;
+		}
+
+		Some(self.pairs.remove(index))
+	}
+
+	pub fn remove_tail(&mut self) -> Option<T> {
+		self.tail.take()
+	}
 
 	pub fn map<F, G, H, I>(self, f: F, g: G) -> Punctuated<'inp, H, I>
 	where
@@ -47,7 +87,49 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 		}
 	}
 
-	pub fn unwrap(self) -> (Vec<(T, P)>, Option<T>) { (self.pairs, self.tail) }
+	pub fn map_ref<F, G, H, I>(&self, f: F, g: G) -> Punctuated<'_, H, I>
+	where
+		F: Fn(&T) -> H,
+		G: Fn(&P) -> I
+	{
+		let pairs = self
+			.pairs
+			.iter()
+			.map(|(t, p)| (f(t), g(p)))
+			.collect::<Vec<_>>();
+
+		let tail = self.tail.as_ref().map(f);
+
+		Punctuated {
+			pairs,
+			tail,
+			_marker: PhantomData
+		}
+	}
+
+	pub fn map_mut<F, G, H, I>(&mut self, f: F, g: G) -> Punctuated<'_, H, I>
+	where
+		F: Fn(&mut T) -> H,
+		G: Fn(&mut P) -> I
+	{
+		let pairs = self
+			.pairs
+			.iter_mut()
+			.map(|(t, p)| (f(t), g(p)))
+			.collect::<Vec<_>>();
+
+		let tail = self.tail.as_mut().map(f);
+
+		Punctuated {
+			pairs,
+			tail,
+			_marker: PhantomData
+		}
+	}
+
+	pub fn unwrap(self) -> (Vec<(T, P)>, Option<T>) {
+		(self.pairs, self.tail)
+	}
 
 	pub fn unwrap_items(self) -> Vec<T> {
 		let mut items = self
@@ -56,95 +138,112 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 			.map(|(item, _)| item)
 			.collect::<Vec<_>>();
 
-		if let Some(t) = self.tail {
-			items.push(t);
+		if let Some(tail) = self.tail {
+			items.push(tail);
 		}
 
 		items
+	}
+
+	pub fn unwrap_puncts(self) -> Vec<P> {
+		self.pairs
+			.into_iter()
+			.map(|(_, punct)| punct)
+			.collect::<Vec<_>>()
 	}
 
 	pub fn items(&self) -> Vec<&T> {
-		let mut items = self.pairs.iter().map(|(item, _)| item).collect::<Vec<_>>();
+		let mut items = self
+			.pairs
+			.iter()
+			.map(|(item, _)| item)
+			.collect::<Vec<_>>();
 
-		if let Some(ref t) = self.tail {
-			items.push(t);
+		if let Some(ref tail) = self.tail {
+			items.push(tail);
 		}
 
 		items
 	}
 
-	pub fn first(&self) -> Option<&T> { self.pairs.first().map(|(item, _)| item) }
+	pub fn puncts(&self) -> Vec<&P> {
+		self.pairs
+			.iter()
+			.map(|(_, punct)| punct)
+			.collect::<Vec<_>>()
+	}
 
-	pub fn pop_first(&mut self) -> (T, P) { self.pairs.remove(0) }
-}
-
-impl<'inp> Punctuated<'inp, Position, Position> {
-	pub fn position(&self) -> Position {
+	fn assert_non_empty(&self) {
 		assert!(
 			!self.is_empty(),
-			"Could not get punctuated list's position as it is empty"
-		);
-
-		match (!self.pairs.is_empty(), self.tail) {
-			(true, Some(tail)) => {
-				let end = tail.end();
-				let start = self.pairs.first().map(|(item, _)| item.start()).unwrap();
-
-				Position::new(start, end)
-			}
-
-			(false, Some(tail)) => tail,
-
-			(true, None) => {
-				let start = self.pairs.first().map(|(item, _)| item.start()).unwrap();
-
-				let end = self.pairs.last().map(|(_, punct)| punct.start()).unwrap();
-
-				Position::new(start, end)
-			}
-
-			(false, None) => unreachable!()
-		}
+			"Punctuated list must not be empty"
+		)
 	}
 }
 
-impl<'inp, T, P> ASTNode for Punctuated<'inp, T, P>
+impl Punctuated<'_, Position, Position> {
+	pub fn start(&self) -> usize {
+		self.assert_non_empty();
+
+		self.pairs
+			.first()
+			.map(|(item, _)| item.start())
+			.or_else(|| {
+				self.tail
+					.as_ref()
+					.map(|tail| tail.start())
+			})
+			.expect("`Punctuated::assert_non_empty` hasn't done its job")
+	}
+
+	pub fn end(&self) -> usize {
+		self.assert_non_empty();
+
+		self.tail
+			.as_ref()
+			.map(|tail| tail.end())
+			.or_else(|| {
+				self.pairs
+					.last()
+					.map(|(_, punct)| punct.end())
+			})
+			.expect("`Punctuated::assert_non_empty` hasn't done its job")
+	}
+
+	pub fn position(&self) -> Position {
+		Position::new(self.start(), self.end())
+	}
+}
+
+impl<T, P> ASTNode for Punctuated<'_, T, P>
 where
-	T: Parse<'inp>,
-	P: Parse<'inp>
+	T: ASTNode,
+	P: ASTNode
 {
 	fn span(&self) -> Span {
-		assert!(
-			!self.is_empty(),
-			"Could not get punctuated list's span as it is empty"
+		self.assert_non_empty();
+
+		let pos_list = self.map_ref(
+			T::position,
+			P::position
 		);
 
-		match (!self.pairs.is_empty(), self.tail.as_ref()) {
-			(true, Some(tail)) => {
-				let end = tail.end();
-				let start = self.pairs.first().map(|(item, _)| item.start()).unwrap();
+		let start = pos_list.start();
+		let end = pos_list.end();
 
-				let position = Position::new(start, end);
-				Span::new(tail.source(), position)
-			}
+		let source = self
+			.pairs
+			.first()
+			.map(|(item, _)| item.source())
+			.or_else(|| {
+				self.tail
+					.as_ref()
+					.map(|tail| tail.source())
+			})
+			.unwrap_or_else(|| unreachable!());
+		let position = Position::new(start, end);
 
-			(false, Some(tail)) => tail.span(),
-
-			(true, None) => {
-				let (start, source) = self
-					.pairs
-					.first()
-					.map(|(item, _)| (item.start(), item.source()))
-					.unwrap();
-
-				let end = self.pairs.last().map(|(_, punct)| punct.start()).unwrap();
-
-				let position = Position::new(start, end);
-				Span::new(source, position)
-			}
-
-			(false, None) => unreachable!()
-		}
+		Span::new(source, position)
 	}
 }
 
@@ -157,18 +256,20 @@ where
 		let mut list = Self::new();
 
 		loop {
-			let item = input.try_parse::<T>();
-			if item.is_err() {
+			let Ok(item) = input.try_parse::<T>() else {
 				break;
-			}
+			};
 
-			let punct = input.try_parse::<P>();
-			if punct.is_err() {
-				list.tail = Some(item?);
+			let Ok(punct) = input.try_parse::<P>() else {
+				list.tail = Some(item);
 				break;
-			}
+			};
 
-			list.push_pair((item?, punct?));
+			list.push_pair((item, punct));
+		}
+
+		if list.is_empty() {
+			bail!("Punctuated did not parse any items");
 		}
 
 		Ok(list)
@@ -188,7 +289,7 @@ where
 			s.field(p);
 		}
 
-		if let Some(t) = self.tail.as_ref() {
+		if let Some(ref t) = self.tail {
 			s.field(t);
 		}
 
@@ -196,10 +297,6 @@ where
 	}
 }
 
-impl<T, P> Default for Punctuated<'_, T, P>
-where
-	T: Clone,
-	P: Clone
-{
+impl<T, P> Default for Punctuated<'_, T, P> {
 	fn default() -> Self { Self::new() }
 }

@@ -11,5 +11,6 @@ serde = ["dep:serde"]
 anyhow = { workspace = true }
 prog-lexer = { workspace = true }
 prog-utils = { workspace = true }
+prog-macros = { workspace = true }
 
 serde = { workspace = true, optional = true }

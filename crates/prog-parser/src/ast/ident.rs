@@ -28,7 +28,7 @@ impl ToString for Ident<'_> {
 impl Debug for Ident<'_> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let mut s = f.debug_tuple("Ident");
-		s.field(&self._ident);
+		s.field(&self._ident.value());
 		s.finish()
 	}
 }

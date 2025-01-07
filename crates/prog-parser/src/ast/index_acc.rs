@@ -40,7 +40,8 @@ impl ASTNode for IndexAcc<'_> {
 
 impl<'inp> Parse<'inp> for IndexAcc<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
-		let list = Box::new(input.parse::<Term>()?);
-		Self::parse_with_list(input, list)
+		// To support chained operations or complex index access expressions
+		// we have to rely on `Term`'s implementation
+		Term::parse_variant::<Self>(input)
 	}
 }

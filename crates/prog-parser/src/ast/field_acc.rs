@@ -37,7 +37,8 @@ impl ASTNode for FieldAcc<'_> {
 
 impl<'inp> Parse<'inp> for FieldAcc<'inp> {
 	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
-		let object = Box::new(input.parse::<Term>()?);
-		Self::parse_with_object(input, object)
+		// To support chained operations or complex field access expressions
+		// we have to rely on `Term`'s implementation
+		Term::parse_variant::<Self>(input)
 	}
 }

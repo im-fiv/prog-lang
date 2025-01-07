@@ -28,21 +28,26 @@ impl<'inp> Parse<'inp> for Expr<'inp> {
 
 impl<'inp> ParsePrecedence<'inp> for Expr<'inp> {
 	fn parse_precedence(input: &ParseStream<'inp>, precedence: u8) -> Result<Self> {
+		use TokenKind as T;
+
 		let mut left = Self::Term(input.parse::<Term>()?);
 
 		while let Some(token) = input.peek() {
 			let infix_binding_power = match token.kind() {
-				TokenKind::Plus | TokenKind::Minus => (1, 2),
+				T::Plus | T::Minus => (1, 2),
 
-				TokenKind::Asterisk | TokenKind::Slash => (3, 4),
+				T::Asterisk | T::Slash => (3, 4),
 
-				TokenKind::Dot | TokenKind::LeftBracket => (5, 6),
+				T::Dot | T::LeftBracket => (5, 6),
 
-				TokenKind::EqEq
-				| TokenKind::Gt
-				| TokenKind::Lt
-				| TokenKind::Gte
-				| TokenKind::Lte => (1, 2),
+				T::EqEq
+				| T::Gt
+				| T::Lt
+				| T::Gte
+				| T::Lte => (1, 2),
+
+				T::And => (3, 2),
+				T::Or => (1, 1),
 
 				_ => break
 			};

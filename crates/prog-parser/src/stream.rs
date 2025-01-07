@@ -134,7 +134,15 @@ where
 		}
 
 		let cursor = self.cursor.get();
-		self.buffer.get(cursor).copied()
+		self.buffer
+			.get(cursor)
+			.and_then(|t| {
+				match t.kind() {
+					TokenKind::Eof => None,
+					_ => Some(t)
+				}
+			})
+			.copied()
 	}
 
 	/// Peeks at the next token from the stream without advancing the cursor,
@@ -145,14 +153,7 @@ where
 	pub fn expect_peek(&'_ self) -> Result<Token<'inp>> {
 		// TODO: proper error reporting
 
-		self.peek()
-			.and_then(|t| {
-				match t.kind() {
-					TokenKind::Eof => None,
-					_ => Some(t)
-				}
-			})
-			.ok_or(anyhow::anyhow!("Unexpected end of input"))
+		self.peek().ok_or(anyhow::anyhow!("Unexpected end of input"))
 	}
 
 	/// Peeks at the next token in the stream and returns it if its `TokenKind` matches the provided `kind`.

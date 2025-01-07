@@ -1189,6 +1189,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "prog-lexer",
+ "prog-macros",
  "prog-utils",
  "serde",
 ]

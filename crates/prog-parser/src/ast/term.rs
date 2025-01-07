@@ -1,10 +1,10 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use prog_lexer::TokenKind;
 
 use crate::ast::*;
 use crate::{ASTNode, Parse, ParseStream, Span};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, prog_macros::VariantUnwrap)]
 pub enum Term<'inp> {
 	// Wrapping terms
 	Expr(Box<Expr<'inp>>),
@@ -46,8 +46,8 @@ impl<'inp> Term<'inp> {
 			TokenKind::LeftBrace => input.parse::<Obj>().map(Self::Obj)?,
 			TokenKind::Extern => input.parse::<Extern>().map(Self::Extern)?,
 
-			// TODO
-			t => todo!("term `{t:?}` is not yet supported")
+			// TODO: proper error reporting
+			t => bail!("unsupported term `{t:?}`")
 		};
 
 		if bounded {
@@ -74,6 +74,18 @@ impl<'inp> Term<'inp> {
 		}
 
 		Ok(term)
+	}
+
+	pub fn parse_variant<T>(input: &ParseStream<'inp>) -> Result<T>
+	where
+		Self: TryInto<T>,
+		<Self as TryInto<T>>::Error: std::fmt::Debug
+	{
+		let term = input.parse::<Self>()?;
+		
+		// We want this operation to panic if the conversion is invalid,
+		// as this function's success should only be determined by parsing.
+		Ok(term.try_into().unwrap())
 	}
 }
 

@@ -1,4 +1,4 @@
-// TODO: write a proc macro for implementing ASTNode automatically, where applicable.
+// TODO: write a derive macro for implementing ASTNode automatically, where applicable.
 
 mod stream;
 pub mod token;
@@ -15,15 +15,10 @@ pub trait ASTNode {
 	fn span(&self) -> Span;
 
 	fn source(&self) -> &str { self.span().source() }
-
 	fn value(&self) -> &str { self.span().value() }
-
 	fn value_owned(&self) -> String { self.value().to_owned() }
-
 	fn position(&self) -> Position { self.span().position() }
-
 	fn start(&self) -> usize { self.position().start() }
-
 	fn end(&self) -> usize { self.position().end() }
 }
 
