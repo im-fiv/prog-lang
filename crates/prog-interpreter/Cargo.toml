@@ -8,7 +8,6 @@ default = []
 serde = ["dep:serde", "prog-parser/serde"]
 
 [dependencies]
-anyhow = { workspace = true }
 ariadne = { workspace = true }
 
 prog-parser = { workspace = true }

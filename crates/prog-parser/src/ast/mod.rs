@@ -33,17 +33,24 @@ pub use unary_expr::*;
 macro_rules! op_to_token {
 	($op:ident : $kind:ident => $token:ident) => {
 		impl<'src> TryInto<$crate::token::$token<'src>> for $op<'src> {
-			type Error = ::anyhow::Error;
+			type Error = $crate::ParseError;
 
 			fn try_into(self) -> ::std::result::Result<$crate::token::$token<'src>, Self::Error> {
 				match self.kind {
 					$kind::$token => Ok($crate::token::$token::new(self.span)),
 
 					v => {
-						Err(::anyhow::anyhow!(
-							"Token of type `{:?}` cannot be converted to that of `{}`",
-							v,
-							stringify!($token)
+						Err($crate::ParseError::new(
+							self.span.source().to_owned(),
+							self.span.file().to_owned(),
+							self.span.position(),
+							$crate::ParseErrorKind::Internal($crate::error::Internal(
+								format!(
+									"Token of type `{:?}` cannot be converted to that of `{}`",
+									v,
+									stringify!($token)
+								)
+							))
 						))
 					}
 				}

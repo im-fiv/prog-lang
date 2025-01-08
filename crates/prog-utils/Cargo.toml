@@ -8,7 +8,6 @@ default = []
 serde = ["dep:serde", "dep:serde_json"]
 
 [dependencies]
-anyhow = { workspace = true }
 ariadne = { workspace = true }
 
 serde = { workspace = true, optional = true }

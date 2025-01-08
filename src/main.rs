@@ -8,8 +8,6 @@ use clap::Parser;
 use prog_interpreter::Interpreter;
 use prog_utils::read_file;
 
-pub type ProgResult<T> = Result<T, ProgError>;
-
 #[cfg(feature = "api")]
 const NAME_STDIN: &str = "<STDIN>";
 #[cfg(feature = "repl")]

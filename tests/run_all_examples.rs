@@ -2,9 +2,9 @@ use std::ffi::OsStr;
 use std::fs::ReadDir;
 use std::path::Path;
 
-use anyhow::Result;
+use prog_lang::ProgResult;
 
-fn execute_string(source: &str, file: &str) -> Result<()> {
+fn execute_string(source: &str, file: &str) -> ProgResult<()> {
 	let ts = prog_lexer::lex(source, file)?;
 	let tokens = ts.buffer();
 
