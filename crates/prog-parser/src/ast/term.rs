@@ -1,7 +1,7 @@
 use prog_lexer::TokenKind;
 
 use crate::ast::*;
-use crate::{errors, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span};
+use crate::{error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span};
 
 #[derive(Debug, Clone, PartialEq, prog_macros::VariantUnwrap)]
 pub enum Term<'inp> {
@@ -39,7 +39,7 @@ impl<'inp> Term<'inp> {
 				source,
 				file,
 				position,
-				ParseErrorKind::Internal(errors::Internal(format!(
+				ParseErrorKind::Internal(error::Internal(format!(
 					"Conversion of `{}` to variant `{}` failed",
 					std::any::type_name::<Self>(),
 					std::any::type_name::<T>()
@@ -93,7 +93,7 @@ impl<'inp> Parse<'inp> for Term<'inp> {
 					token.span().source().to_owned(),
 					token.span().file().to_owned(),
 					token.span().position(),
-					ParseErrorKind::Internal(errors::Internal(format!("unsupported term `{t:?}`")))
+					ParseErrorKind::Internal(error::Internal(format!("unsupported term `{t:?}`")))
 				))
 			}
 		};

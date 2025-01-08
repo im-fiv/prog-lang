@@ -21,7 +21,7 @@ pub use while_loop::WhileLoop;
 use prog_lexer::TokenKind;
 
 use crate::{
-	ast, errors, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Position,
+	ast, error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Position,
 	Span
 };
 
@@ -150,7 +150,7 @@ impl<'inp> Parse<'inp> for Statement<'inp> {
 		}
 
 		Err(ParseError::new_unspanned(ParseErrorKind::Internal(
-			errors::Internal(String::from("no statement matched"))
+			error::Internal(String::from("no statement matched"))
 		)))
 	}
 }

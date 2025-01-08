@@ -4,9 +4,9 @@
 mod stream;
 pub mod token;
 pub mod ast;
-pub mod errors;
+pub mod error;
 
-pub use errors::{ParseError, ParseErrorKind};
+pub use error::{ParseError, ParseErrorKind};
 pub use stream::ParseStream;
 pub use token::Token;
 

@@ -56,7 +56,7 @@ macro_rules! def_token {
 						token.sp().source().to_owned(),
 						token.sp().file().to_owned(),
 						token.sp().position(),
-						$crate::ParseErrorKind::Internal($crate::errors::Internal(
+						$crate::ParseErrorKind::Internal($crate::error::Internal(
 							format!("Token of type `{token_kind:?}` cannot be converted to that of `{self_kind:?}`")
 						))
 					))

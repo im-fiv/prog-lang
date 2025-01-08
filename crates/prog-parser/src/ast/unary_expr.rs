@@ -2,7 +2,7 @@ use prog_lexer::TokenKind;
 
 use crate::ast::*;
 use crate::{
-	errors, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Position, Span
+	error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Position, Span
 };
 
 use super::op_to_token;
@@ -59,7 +59,7 @@ impl<'inp> TryFrom<&dyn crate::Token<'inp>> for UnaryOp<'inp> {
 				span.source().to_owned(),
 				span.file().to_owned(),
 				span.position(),
-				ParseErrorKind::Internal(errors::Internal(e))
+				ParseErrorKind::Internal(error::Internal(e))
 			)
 		})?;
 

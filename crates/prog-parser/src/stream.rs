@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 use prog_lexer::{Token, TokenKind};
 
-use crate::{errors, ParseError, ParseErrorKind, ParseResult};
+use crate::{error, ParseError, ParseErrorKind, ParseResult};
 
 #[derive(Debug)]
 pub struct ParseStream<'src> {
@@ -152,7 +152,7 @@ where
 	pub fn expect_peek(&'_ self) -> ParseResult<Token<'src>> {
 		self.peek()
 			.ok_or(ParseError::new_unspanned(ParseErrorKind::Internal(
-				errors::Internal(String::from("unexpected end of input"))
+				error::Internal(String::from("unexpected end of input"))
 			)))
 	}
 
@@ -181,7 +181,7 @@ where
 				span.source().to_owned(),
 				span.file().to_owned(),
 				span.position(),
-				ParseErrorKind::Internal(errors::Internal(format!(
+				ParseErrorKind::Internal(error::Internal(format!(
 					"Token kind mismatch (got={:?} != expected:{:?})",
 					token.kind(),
 					kind

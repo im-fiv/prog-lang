@@ -1,8 +1,8 @@
-mod errors;
+mod error;
 mod token;
 mod stream;
 
-pub use errors::{LexError, LexErrorKind};
+pub use error::{LexError, LexErrorKind};
 pub use stream::LexStream;
 pub use token::{Token, TokenKind, TokenStream};
 
@@ -22,7 +22,7 @@ fn unexpected_token(
 		ls.source().to_owned(),
 		ls.file().to_owned(),
 		position,
-		LexErrorKind::UnexpectedToken(errors::UnexpectedToken { got, expected })
+		LexErrorKind::UnexpectedToken(error::UnexpectedToken { got, expected })
 	)
 }
 
@@ -64,7 +64,7 @@ pub fn lex<'src>(source: &'src str, file: &'src str) -> LexResult<TokenStream<'s
 					source.to_owned(),
 					file.to_owned(),
 					Position::new(start_index, start_index + 1),
-					LexErrorKind::UnexpectedToken(errors::UnexpectedToken {
+					LexErrorKind::UnexpectedToken(error::UnexpectedToken {
 						got: c,
 						expected: None
 					})
@@ -111,7 +111,7 @@ fn slash_or_comment(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 				ls.source().to_owned(),
 				ls.file().to_owned(),
 				Position::new(start_index, ls.position()),
-				LexErrorKind::UnexpectedToken(errors::UnexpectedToken {
+				LexErrorKind::UnexpectedToken(error::UnexpectedToken {
 					got: ' ',
 					expected: Some('*')
 				})
@@ -123,7 +123,7 @@ fn slash_or_comment(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 				ls.source().to_owned(),
 				ls.file().to_owned(),
 				Position::new(start_index, ls.position()),
-				LexErrorKind::UnexpectedToken(errors::UnexpectedToken {
+				LexErrorKind::UnexpectedToken(error::UnexpectedToken {
 					got: ' ',
 					expected: Some('/')
 				})
@@ -191,7 +191,7 @@ fn string(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 			ls.source().to_owned(),
 			ls.file().to_owned(),
 			Position::new(last_char.0, last_char.0 + 1),
-			LexErrorKind::UnexpectedToken(errors::UnexpectedToken {
+			LexErrorKind::UnexpectedToken(error::UnexpectedToken {
 				got: last_char.1,
 				expected: Some('"')
 			})
@@ -241,7 +241,7 @@ fn number(ls: &mut LexStream<'_>, c: char) -> LexResult<TokenKind> {
 			ls.source().to_owned(),
 			ls.file().to_owned(),
 			Position::new(start_index, ls.position()),
-			LexErrorKind::MalformedNumber(errors::MalformedNumber)
+			LexErrorKind::MalformedNumber(error::MalformedNumber)
 		));
 	}
 
