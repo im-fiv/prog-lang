@@ -20,15 +20,7 @@ pub use while_loop::WhileLoop;
 
 use prog_lexer::TokenKind;
 
-use crate::{
-	ast, error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Position,
-	Span
-};
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Program<'src> {
-	pub stmts: Vec<Stmt<'src>>
-}
+use crate::{ast, error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt<'src> {
@@ -43,26 +35,6 @@ pub enum Stmt<'src> {
 	If(If<'src>),
 	ExprAssign(ExprAssign<'src>),
 	ClassDef(ClassDef<'src>)
-}
-
-impl ASTNode for Program<'_> {
-	fn span(&self) -> Span {
-		assert!(
-			!self.stmts.is_empty(),
-			"Could not get program's span as it is empty"
-		);
-
-		let first = self.stmts.first().unwrap().span();
-
-		let start = first.position().start();
-		let end = self.stmts.last().unwrap().end();
-
-		let source = first.source();
-		let file = first.file();
-		let position = Position::new(start, end);
-
-		Span::new(source, file, position)
-	}
 }
 
 impl ASTNode for Stmt<'_> {
@@ -84,25 +56,11 @@ impl ASTNode for Stmt<'_> {
 	}
 }
 
-impl<'src> Parse<'src> for Program<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
-		let mut stmts = vec![];
-
-		while let Some(token) = input.peek() {
-			if token.kind() == TokenKind::Eof {
-				break;
-			}
-
-			let stmt = input.parse::<Stmt>()?;
-			stmts.push(stmt);
-		}
-
-		Ok(Self { stmts })
-	}
-}
-
 impl<'src> Parse<'src> for Stmt<'src> {
 	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+		let token = input.expect_peek()?;
+		let span = token.span();
+
 		// `def ...`
 		if input.peek_matches(TokenKind::Def).is_some() {
 			return input.parse::<VarDefine>().map(Self::VarDefine);
@@ -149,8 +107,13 @@ impl<'src> Parse<'src> for Stmt<'src> {
 			return Ok(Self::Call(stmt));
 		}
 
-		Err(ParseError::new_unspanned(ParseErrorKind::Internal(
-			error::Internal(String::from("no statement matched"))
-		)))
+		Err(ParseError::new(
+			span.source().to_owned(),
+			span.file().to_owned(),
+			span.position(),
+			ParseErrorKind::Internal(error::Internal(
+				String::from("no statement matched")
+			))
+		))
 	}
 }
