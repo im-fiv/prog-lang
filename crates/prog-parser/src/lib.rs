@@ -19,11 +19,11 @@ pub trait ASTNode {
 
 	fn source(&self) -> &str { self.span().source() }
 	fn file(&self) -> &str { self.span().file() }
-	fn value(&self) -> &str { self.span().value() }
-	fn value_owned(&self) -> String { self.value().to_owned() }
 	fn position(&self) -> Position { self.span().position() }
 	fn start(&self) -> usize { self.position().start() }
 	fn end(&self) -> usize { self.position().end() }
+	fn value(&self) -> &str { self.span().value() }
+	fn value_owned(&self) -> String { self.value().to_owned() }
 }
 
 pub trait Parse<'src>: Sized + ASTNode {
