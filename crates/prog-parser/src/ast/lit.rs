@@ -73,8 +73,8 @@ impl<'src> Parse<'src> for Lit<'src> {
 
 			kind => {
 				Err(ParseError::new(
-					span.source().to_owned(),
-					span.file().to_owned(),
+					span.source(),
+					span.file(),
 					span.position(),
 					ParseErrorKind::Internal(error::Internal(format!(
 						"Unknown literal `{token}` of type `{kind:?}`"

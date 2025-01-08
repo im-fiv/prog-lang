@@ -171,8 +171,8 @@ where
 		let span = token.span();
 
 		self.peek().ok_or(ParseError::new(
-			span.source().to_owned(),
-			span.file().to_owned(),
+			span.source(),
+			span.file(),
 			span.position(),
 			ParseErrorKind::UnexpectedToken(error::UnexpectedToken {
 				got: TokenKind::Eof,
@@ -203,8 +203,8 @@ where
 			let span = token.span();
 
 			return Err(ParseError::new(
-				span.source().to_owned(),
-				span.file().to_owned(),
+				span.source(),
+				span.file(),
 				span.position(),
 				ParseErrorKind::UnexpectedToken(error::UnexpectedToken {
 					got: token.kind(),

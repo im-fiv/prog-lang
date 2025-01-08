@@ -19,8 +19,8 @@ fn unexpected_token(
 	let position = Position::new(start.unwrap_or(ls.position()), ls.position() + 1);
 
 	LexError::new(
-		ls.source().to_owned(),
-		ls.file().to_owned(),
+		ls.source(),
+		ls.file(),
 		position,
 		LexErrorKind::UnexpectedToken(error::UnexpectedToken { got, expected })
 	)
@@ -61,8 +61,8 @@ pub fn lex<'src>(source: &'src str, file: &'src str) -> LexResult<TokenStream<'s
 
 			c => {
 				return Err(LexError::new(
-					source.to_owned(),
-					file.to_owned(),
+					source,
+					file,
 					Position::new(start_index, start_index + 1),
 					LexErrorKind::UnexpectedToken(error::UnexpectedToken {
 						got: c,
@@ -108,8 +108,8 @@ fn slash_or_comment(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 		// Multiline comment
 		if !ls.next_while_exact('*', true) {
 			return Err(LexError::new(
-				ls.source().to_owned(),
-				ls.file().to_owned(),
+				ls.source(),
+				ls.file(),
 				Position::new(start_index, ls.position()),
 				LexErrorKind::UnexpectedToken(error::UnexpectedToken {
 					got: ' ',
@@ -120,8 +120,8 @@ fn slash_or_comment(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 
 		if !ls.peek_matches_exact('/', true) {
 			return Err(LexError::new(
-				ls.source().to_owned(),
-				ls.file().to_owned(),
+				ls.source(),
+				ls.file(),
 				Position::new(start_index, ls.position()),
 				LexErrorKind::UnexpectedToken(error::UnexpectedToken {
 					got: ' ',
@@ -188,8 +188,8 @@ fn string(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 
 	if !closed {
 		return Err(LexError::new(
-			ls.source().to_owned(),
-			ls.file().to_owned(),
+			ls.source(),
+			ls.file(),
 			Position::new(last_char.0, last_char.0 + 1),
 			LexErrorKind::UnexpectedToken(error::UnexpectedToken {
 				got: last_char.1,
@@ -249,8 +249,8 @@ fn number(ls: &mut LexStream<'_>, c: char) -> LexResult<TokenKind> {
 
 	if number.parse::<f64>().is_err() {
 		return Err(LexError::new(
-			ls.source().to_owned(),
-			ls.file().to_owned(),
+			ls.source(),
+			ls.file(),
 			Position::new(start_index, ls.position()),
 			LexErrorKind::MalformedNumber(error::MalformedNumber)
 		));

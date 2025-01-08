@@ -43,8 +43,8 @@ macro_rules! op_to_token {
 
 					v => {
 						Err($crate::ParseError::new(
-							self.span.source().to_owned(),
-							self.span.file().to_owned(),
+							self.span.source(),
+							self.span.file(),
 							self.span.position(),
 							$crate::ParseErrorKind::Internal($crate::error::Internal(format!(
 								"Token of type `{}` cannot be converted to that of `{}`",

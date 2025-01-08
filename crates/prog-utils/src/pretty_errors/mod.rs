@@ -20,14 +20,21 @@ pub trait AriadneCompatible {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrettyError<Kind: PrettyErrorKind> {
-	pub source: String,
-	pub file: String,
+	pub source: Box<str>,
+	pub file: Box<str>,
 	pub position: Position,
 	pub kind: Kind
 }
 
 impl<Kind: PrettyErrorKind> PrettyError<Kind> {
-	pub fn new(source: String, file: String, position: Position, kind: Kind) -> Self {
+	pub fn new<S, F>(source: S, file: F, position: Position, kind: Kind) -> Self
+	where
+		S: Into<Box<str>>,
+		F: Into<Box<str>>
+	{
+		let source = source.into();
+		let file = file.into();
+
 		Self {
 			source,
 			file,
@@ -38,8 +45,8 @@ impl<Kind: PrettyErrorKind> PrettyError<Kind> {
 
 	pub fn new_unspanned(kind: Kind) -> Self {
 		Self {
-			source: String::new(),
-			file: String::new(),
+			source: "".into(),
+			file: "".into(),
 			position: Position::new(0, 0),
 			kind
 		}

@@ -58,8 +58,8 @@ impl<'src> TryFrom<&dyn crate::Token<'src>> for UnaryOp<'src> {
 		let span = token.sp();
 		let kind = UnaryOpKind::try_from(token.tk()).map_err(|e| {
 			ParseError::new(
-				span.source().to_owned(),
-				span.file().to_owned(),
+				span.source(),
+				span.file(),
 				span.position(),
 				ParseErrorKind::Internal(error::Internal(e))
 			)
