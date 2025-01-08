@@ -54,8 +54,8 @@ The specifications of Prog Lang are still being considered, but here's the curre
 /* and so is this */
 
 def variable_definition = "hello, world!"
-def module_import = ("path goes here") -> import
-def user_input = ("what is your favorite food?: ") -> input
+def module_import = import("path goes here")
+def user_input = input("what is your favorite food?: ")
 
 variable_definition = "variable reassign!"
 
@@ -67,20 +67,18 @@ def returning_nothing = func() do
     return none
 end
 
-def function_call = (2, 2) -> function_definition
-() -> returning_nothing
+def function_call = function_definition(2, 2)
+returning_nothing()
 
 if function_call == 4 then
-    ("math works!") -> print
+    print("math works!")
 end
 
 while function_call < 15 do
-    ("while loop: ", function_call) -> print
+    print("while loop: ", function_call)
     function_call = function_call + 1
 end
 ```
-
-Alternatively, the grammar file can be found at [crates/prog-parser/src/grammar.pest](../main/crates/prog-parser/src/grammar.pest)
 
 ## License
 

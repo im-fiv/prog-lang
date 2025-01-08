@@ -15,13 +15,13 @@ pub trait PrettyErrorKind: Clone + fmt::Debug + AriadneCompatible {}
 
 pub trait AriadneCompatible {
 	fn message(&self) -> String;
-	fn labels(self, file: &str, position: Position) -> Vec<Label<Span>>;
+	fn labels(self, span: Span) -> Vec<Label<Span>>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrettyError<Kind: PrettyErrorKind> {
-	pub file: String,
 	pub source: String,
+	pub file: String,
 	pub position: Position,
 	pub kind: Kind
 }
@@ -36,13 +36,22 @@ impl<Kind: PrettyErrorKind> PrettyError<Kind> {
 		}
 	}
 
+	pub fn new_unspanned(kind: Kind) -> Self {
+		Self {
+			source: String::new(),
+			file: String::new(),
+			position: Position::new(0, 0),
+			kind
+		}
+	}
+
 	fn create_report(&self) -> Report<Span> {
-		let span = Span::new(&self.source[..], self.position);
+		let span = Span::new(&self.source, &self.file, self.position);
 		let message = self.kind.message();
 
 		let mut report = Report::build(ReportKind::Error, span).with_message(message);
 
-		report.add_labels(self.kind.clone().labels(&self.file, self.position));
+		report.add_labels(self.kind.clone().labels(span));
 		report.finish()
 	}
 
@@ -79,8 +88,8 @@ impl<Kind: PrettyErrorKind> serde::Serialize for PrettyError<Kind> {
 
 		let mut s = serializer.serialize_struct("PrettyError", 5)?;
 		s.serialize_field("message", &self.kind.message())?;
-		s.serialize_field("file", &self.file)?;
 		s.serialize_field("source", &self.source)?;
+		s.serialize_field("file", &self.file)?;
 		s.serialize_field("position", &self.position)?;
 		s.serialize_field("kind", &self.kind)?;
 

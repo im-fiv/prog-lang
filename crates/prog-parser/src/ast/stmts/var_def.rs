@@ -1,7 +1,5 @@
-use anyhow::Result;
-
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum VarDefine<'inp> {
@@ -61,9 +59,10 @@ impl ASTNode for VarDefine<'_> {
 				let end = value.end();
 
 				let source = _def.source();
+				let file = _def.file();
 				let position = Position::new(start, end);
 
-				Span::new(source, position)
+				Span::new(source, file, position)
 			}
 
 			Self::NoValue { _def, name } => {
@@ -71,16 +70,17 @@ impl ASTNode for VarDefine<'_> {
 				let end = name.end();
 
 				let source = _def.source();
+				let file = _def.file();
 				let position = Position::new(start, end);
 
-				Span::new(source, position)
+				Span::new(source, file, position)
 			}
 		}
 	}
 }
 
 impl<'inp> Parse<'inp> for VarDefine<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _def = input.parse::<token::Def>()?;
 		let name = input.parse::<Ident>()?;
 

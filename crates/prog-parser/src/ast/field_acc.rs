@@ -1,7 +1,5 @@
-use anyhow::Result;
-
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldAcc<'inp> {
@@ -11,7 +9,7 @@ pub struct FieldAcc<'inp> {
 }
 
 impl<'inp> FieldAcc<'inp> {
-	pub fn parse_with_object(input: &ParseStream<'inp>, object: Box<Term<'inp>>) -> Result<Self> {
+	pub fn parse_with_object(input: &ParseStream<'inp>, object: Box<Term<'inp>>) -> ParseResult<Self> {
 		let _dot = input.parse::<token::Dot>()?;
 		let field = input.parse::<Ident>()?;
 
@@ -29,14 +27,15 @@ impl ASTNode for FieldAcc<'_> {
 		let end = self.field.end();
 
 		let source = self.object.source();
+		let file = self.object.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
 impl<'inp> Parse<'inp> for FieldAcc<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		// To support chained operations or complex field access expressions
 		// we have to rely on `Term`'s implementation
 		Term::parse_variant::<Self>(input)

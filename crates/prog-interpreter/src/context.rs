@@ -19,13 +19,17 @@ impl Default for ContextFlags {
 
 #[derive(Debug)]
 pub struct Context {
-	pub flags: ContextFlags
+	pub flags: ContextFlags,
+	pub stdin: Vec<u8>,
+	pub stdout: Vec<u8>
 }
 
 impl Context {
 	pub fn new() -> Self {
 		Self {
-			flags: Default::default()
+			flags: Default::default(),
+			stdin: vec![],
+			stdout: vec![]
 		}
 	}
 }

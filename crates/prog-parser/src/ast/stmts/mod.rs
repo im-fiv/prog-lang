@@ -18,10 +18,9 @@ pub use var_assign::VarAssign;
 pub use var_def::VarDefine;
 pub use while_loop::WhileLoop;
 
-use anyhow::{bail, Result};
 use prog_lexer::TokenKind;
 
-use crate::{ast, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{ast, errors, ParseResult, ParseError, ParseErrorKind, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program<'inp> {
@@ -56,14 +55,15 @@ impl ASTNode for Program<'_> {
 		let end = self.stmts.last().unwrap().end();
 
 		let source = first.source();
+		let file = first.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
 impl<'inp> Parse<'inp> for Program<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let mut stmts = vec![];
 
 		while let Some(token) = input.peek() {
@@ -99,7 +99,7 @@ impl ASTNode for Statement<'_> {
 }
 
 impl<'inp> Parse<'inp> for Statement<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		// `def ...`
 		if input.peek_matches(TokenKind::Def).is_some() {
 			return input.parse::<VarDefine>().map(Self::VarDefine);
@@ -146,6 +146,10 @@ impl<'inp> Parse<'inp> for Statement<'inp> {
 			return Ok(Self::Call(stmt));
 		}
 
-		bail!("no statement matched")
+		Err(ParseError::new_unspanned(
+			ParseErrorKind::Internal(errors::Internal(
+				String::from("no statement matched")
+			))
+		))
 	}
 }

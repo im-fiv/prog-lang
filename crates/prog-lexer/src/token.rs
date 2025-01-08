@@ -3,18 +3,22 @@ use std::fmt::{self, Display};
 use crate::{Position, Span};
 
 #[derive(Debug)]
-pub struct TokenStream<'inp> {
-	buffer: Vec<Token<'inp>>
+pub struct TokenStream<'src> {
+	buffer: Vec<Token<'src>>
 }
 
-impl<'inp> TokenStream<'inp> {
+impl<'src> TokenStream<'src> {
 	pub fn new() -> Self { Self { buffer: vec![] } }
 
-	pub fn buffer(&'inp self) -> &'inp [Token<'inp>] { &self.buffer }
+	pub fn buffer(&'src self) -> &'src [Token<'src>] { &self.buffer }
 
-	pub fn unwrap(self) -> Vec<Token<'inp>> { self.buffer }
+	pub fn unwrap(self) -> Vec<Token<'src>> { self.buffer }
 
-	pub(crate) fn push(&mut self, token: Token<'inp>) { self.buffer.push(token); }
+	pub(crate) fn push(&mut self, token: Token<'src>) { self.buffer.push(token); }
+
+	pub(crate) fn filter_comments(&mut self) {
+		self.buffer.retain(|t| t.kind() != TokenKind::Comment);
+	}
 }
 
 impl Display for TokenStream<'_> {
@@ -32,21 +36,21 @@ impl Default for TokenStream<'_> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Token<'inp> {
+pub struct Token<'src> {
 	kind: TokenKind,
-	span: Span<'inp>
+	span: Span<'src>
 }
 
-impl<'inp> Token<'inp> {
-	pub fn new(kind: TokenKind, span: Span<'inp>) -> Self { Self { kind, span } }
+impl<'src> Token<'src> {
+	pub fn new(kind: TokenKind, span: Span<'src>) -> Self { Self { kind, span } }
 
 	pub fn kind(&self) -> TokenKind { self.kind }
 
-	pub fn span(&self) -> Span<'inp> { self.span }
+	pub fn span(&self) -> Span<'src> { self.span }
 
 	pub fn position(&self) -> Position { self.span().position() }
 
-	pub fn value(&self) -> &'inp str { self.span().value() }
+	pub fn value(&self) -> &'src str { self.span().value() }
 }
 
 impl Display for Token<'_> {

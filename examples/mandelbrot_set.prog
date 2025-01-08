@@ -30,16 +30,16 @@ def print_mandelbrot = func(s) do
 		x = s.x.min
 
 		while x < s.x.max do
-			if (x, y, s.threshold) -> in_mandelbrot then
-				("*") -> raw_print
+			if in_mandelbrot(x, y, s.threshold) then
+				raw_print("*")
 			else
-				(".") -> raw_print
+				raw_print(".")
 			end
 
 			x = x + dx
 		end
 
-		("\n") -> raw_print
+		raw_print("\n")
 		y = y - dy
 	end
 end
@@ -61,4 +61,4 @@ def settings = {
 	threshold = 1000
 }
 
-(settings) -> print_mandelbrot
+print_mandelbrot(settings)

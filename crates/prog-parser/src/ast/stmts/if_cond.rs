@@ -1,7 +1,5 @@
-use anyhow::Result;
-
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct If<'inp> {
@@ -34,9 +32,10 @@ impl ASTNode for If<'_> {
 		let end = self._end.end();
 
 		let source = self._if.source();
+		let file = self._if.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
@@ -49,9 +48,10 @@ impl ASTNode for ElseIf<'_> {
 		};
 
 		let source = self._elseif.source();
+		let file = self._elseif.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
@@ -64,14 +64,15 @@ impl ASTNode for Else<'_> {
 		};
 
 		let source = self._else.source();
+		let file = self._else.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
 impl<'inp> Parse<'inp> for If<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _if = input.parse::<token::If>()?;
 		let cond = input.parse::<Expr>()?;
 		let _then = input.parse::<token::Then>()?;
@@ -119,7 +120,7 @@ impl<'inp> Parse<'inp> for If<'inp> {
 }
 
 impl<'inp> Parse<'inp> for ElseIf<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _elseif = input.parse::<token::ElseIf>()?;
 		let cond = input.parse::<Expr>()?;
 		let _then = input.parse::<token::Then>()?;
@@ -139,7 +140,7 @@ impl<'inp> Parse<'inp> for ElseIf<'inp> {
 }
 
 impl<'inp> Parse<'inp> for Else<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _else = input.parse::<token::Else>()?;
 		let mut stmts = vec![];
 

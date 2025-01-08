@@ -1,27 +1,27 @@
-pub trait Token<'inp> {
+pub trait Token<'src> {
 	fn tk(&self) -> prog_lexer::TokenKind;
-	fn sp(&self) -> crate::Span<'inp>;
+	fn sp(&self) -> crate::Span<'src>;
 }
 
 macro_rules! def_token {
 	($vis:vis $name:ident) => {
 		#[derive(Debug, Clone, Copy, PartialEq, Hash)]
-		$vis struct $name<'inp> {
-			span: ::prog_utils::pretty_errors::Span<'inp>
+		$vis struct $name<'src> {
+			span: ::prog_utils::pretty_errors::Span<'src>
 		}
 
-		impl<'inp> $name<'inp> {
-			pub fn new(span: ::prog_utils::pretty_errors::Span<'inp>) -> Self {
+		impl<'src> $name<'src> {
+			pub fn new(span: ::prog_utils::pretty_errors::Span<'src>) -> Self {
 				Self { span }
 			}
 		}
 
-		impl<'inp> $crate::Token<'inp> for $name<'inp> {
+		impl<'src> $crate::Token<'src> for $name<'src> {
 			fn tk(&self) -> ::prog_lexer::TokenKind {
 				::prog_lexer::TokenKind::$name
 			}
 
-			fn sp(&self) -> $crate::Span<'inp> {
+			fn sp(&self) -> $crate::Span<'src> {
 				self.span
 			}
 		}
@@ -32,8 +32,8 @@ macro_rules! def_token {
 			}
 		}
 
-		impl<'inp> $crate::Parse<'inp> for $name<'inp> {
-			fn parse(input: &$crate::ParseStream<'inp>) -> ::anyhow::Result<Self> {
+		impl<'src> $crate::Parse<'src> for $name<'src> {
+			fn parse(input: &$crate::ParseStream<'src>) -> $crate::ParseResult<Self> {
 				let token = input.expect(::prog_lexer::TokenKind::$name)?;
 
 				Ok(Self {
@@ -42,20 +42,27 @@ macro_rules! def_token {
 			}
 		}
 
-		impl<'inp> TryFrom<::prog_lexer::Token<'inp>> for $name<'inp> {
-			type Error = ::anyhow::Error;
+		impl<'src> TryFrom<::prog_lexer::Token<'src>> for $name<'src> {
+			type Error = $crate::ParseError;
 
-			fn try_from(value: ::prog_lexer::Token<'inp>) -> Result<Self, Self::Error> {
-				let value_kind = value.kind();
+			fn try_from(token: ::prog_lexer::Token<'src>) -> Result<Self, Self::Error> {
+				let token = &token as &dyn $crate::Token;
+
+				let token_kind = token.tk();
 				let self_kind = ::prog_lexer::TokenKind::$name;
 
-				if value.kind() != ::prog_lexer::TokenKind::$name {
-					Err(::anyhow::anyhow!(
-						"Token of type `{value_kind:?}` cannot be converted to that of `{self_kind:?}`"
+				if token_kind != self_kind {
+					Err($crate::ParseError::new(
+						token.sp().source().to_owned(),
+						token.sp().file().to_owned(),
+						token.sp().position(),
+						$crate::ParseErrorKind::Internal($crate::errors::Internal(
+							format!("Token of type `{token_kind:?}` cannot be converted to that of `{self_kind:?}`")
+						))
 					))
 				} else {
 					Ok(Self {
-						span: value.span()
+						span: token.sp()
 					})
 				}
 			}

@@ -1,13 +1,16 @@
 mod context;
+pub mod error;
 mod shared;
 pub mod value;
 
 pub use context::{Context, ContextFlags};
+pub use error::{InterpretError, InterpretErrorKind};
 pub use shared::Shared;
 pub use value::{Value, ValueKind};
 
-use anyhow::Result;
 use prog_parser::ast;
+
+pub type InterpretResult<T> = Result<T, InterpretError>;
 
 #[derive(Debug)]
 pub struct Interpreter<'ast> {
@@ -28,5 +31,5 @@ impl<'ast> Interpreter<'ast> {
 	pub fn context_mut(&self) -> std::cell::RefMut<'_, Context> { self.context.borrow_mut() }
 
 	// TODO
-	pub fn interpret(&mut self) -> Result<Value> { Ok(Value::Empty) }
+	pub fn interpret(&mut self) -> InterpretResult<Value> { Ok(Value::Empty) }
 }

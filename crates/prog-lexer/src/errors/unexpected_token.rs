@@ -1,5 +1,5 @@
 use ariadne::{ColorGenerator, Label};
-use prog_utils::pretty_errors::{AriadneCompatible, Position, Span};
+use prog_utils::pretty_errors::{AriadneCompatible, Span};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -11,10 +11,10 @@ pub struct UnexpectedToken {
 impl AriadneCompatible for UnexpectedToken {
 	fn message(&self) -> String { String::from("unexpected token") }
 
-	fn labels(self, file: &str, position: Position) -> Vec<ariadne::Label<Span>> {
+	fn labels(self, span: Span) -> Vec<ariadne::Label<Span>> {
 		let mut colors = ColorGenerator::new();
 
-		let mut label = Label::new(Span::new_unchecked(file, position))
+		let mut label = Label::new(span)
 			.with_message(&format!("unexpected `{}`", self.got))
 			.with_color(colors.next());
 

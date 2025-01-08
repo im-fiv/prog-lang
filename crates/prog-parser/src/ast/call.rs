@@ -1,7 +1,5 @@
-use anyhow::Result;
-
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Call<'inp> {
@@ -12,7 +10,7 @@ pub struct Call<'inp> {
 }
 
 impl<'inp> Call<'inp> {
-	pub fn parse_with_func(input: &ParseStream<'inp>, func: Box<Term<'inp>>) -> Result<Self> {
+	pub fn parse_with_func(input: &ParseStream<'inp>, func: Box<Term<'inp>>) -> ParseResult<Self> {
 		let _lp = input.parse::<token::LeftParen>()?;
 		let args = input
 			.try_parse::<Punctuated<'inp, Expr, token::Comma>>()
@@ -35,14 +33,15 @@ impl ASTNode for Call<'_> {
 		let end = self._rp.end();
 
 		let source = self.func.source();
+		let file = self.func.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
 impl<'inp> Parse<'inp> for Call<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		// To support chained operations or complex call expressions
 		// we have to rely on `Term`'s implementation
 		Term::parse_variant::<Self>(input)

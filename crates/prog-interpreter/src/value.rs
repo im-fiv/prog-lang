@@ -1,6 +1,7 @@
 use std::fmt::{self, Display};
 
 #[derive(Debug, Clone, PartialEq, prog_macros::EnumKind)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum Value {
 	Empty
 }

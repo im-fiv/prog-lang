@@ -1,6 +1,4 @@
-use anyhow::Result;
-
-use crate::{token, ASTNode, Parse, ParseStream, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Break<'inp> {
@@ -17,7 +15,7 @@ impl ASTNode for Break<'_> {
 }
 
 impl<'inp> Parse<'inp> for Break<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _break = input.parse::<token::Break>()?;
 
 		Ok(Self { _break })
@@ -29,7 +27,7 @@ impl ASTNode for Continue<'_> {
 }
 
 impl<'inp> Parse<'inp> for Continue<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _continue = input.parse::<token::Continue>()?;
 
 		Ok(Self { _continue })

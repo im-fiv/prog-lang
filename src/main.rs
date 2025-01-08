@@ -1,54 +1,60 @@
 pub mod cli;
+mod error;
+
+use cli::Cli;
+use error::ProgError;
 
 use clap::Parser;
-use cli::Cli;
 use prog_interpreter::Interpreter;
 use prog_utils::read_file;
+
+pub type ProgResult<T> = Result<T, ProgError>;
 
 #[cfg(feature = "api")]
 const NAME_STDIN: &str = "<STDIN>";
 #[cfg(feature = "repl")]
 const NAME_REPL: &str = "<REPL>";
 
-type ProgResult<T> = std::result::Result<T, ProgError>;
-
-#[derive(Debug)]
-enum ProgError {
-	Lex(prog_lexer::LexError)
-}
-
 #[cfg(feature = "api")]
-fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
-	let interpret_error = anyhow_error.downcast_ref::<prog_interpreter::InterpretError>();
-
-	let parse_error = anyhow_error.downcast_ref::<prog_parser::ParseError>();
-
-	if let Some(interpret_error) = interpret_error {
-		return serde_json::to_string_pretty(interpret_error).map_err(|e| e.to_string());
+fn serialize_prog(err: ProgError) -> Result<String, String> {
+	macro_rules! ser {
+		($err:ident) => {
+			serde_json::to_string_pretty($err).map_err(|e| e.to_string())
+		};
 	}
 
-	if let Some(parse_error) = parse_error {
-		return serde_json::to_string_pretty(parse_error).map_err(|e| e.to_string());
+	match err {
+		ProgError::Lex(ref e) => ser!(e),
+		ProgError::Parse(ref e) => ser!(e),
+		ProgError::Interpret(ref e) => ser!(e)
 	}
-
-	Err(String::from("Failed to serialize anyhow error to JSON"))
 }
 
 fn execute_run_command(args: cli::RunCommand) {
 	use prog_interpreter::ValueKind;
 
 	let contents = read_file(&args.file_path);
-	let ts = prog_lexer::lex(&contents, &args.file_path).unwrap();
+	let ts = match prog_lexer::lex(&contents, &args.file_path).map_err(ProgError::Lex) {
+		Ok(ts) => ts,
+		Err(err) => {
+			eprintln!("{err}");
+			return;
+		}
+	};
 
 	let ps = prog_parser::ParseStream::new(ts.buffer());
-	let ast = ps.parse::<prog_parser::ast::Program>().unwrap();
+	let ast = match ps.parse::<prog_parser::ast::Program>().map_err(ProgError::Parse) {
+		Ok(ast) => ast,
+		Err(err) => {
+			eprintln!("{err}");
+			return;
+		}
+	};
 
 	let mut interpreter = Interpreter::new(ast);
-	let result = interpreter.interpret();
-
-	match result {
-		Ok(r) if !matches!(r.kind(), ValueKind::Empty) => println!("{r}"),
-		Err(e) => eprintln!("{e}"),
+	match interpreter.interpret().map_err(ProgError::Interpret) {
+		Ok(val) if !matches!(val.kind(), ValueKind::Empty) => println!("{val}"),
+		Err(err) => eprintln!("{err}"),
 
 		_ => ()
 	};
@@ -56,11 +62,15 @@ fn execute_run_command(args: cli::RunCommand) {
 
 #[cfg(feature = "repl")]
 fn repl() {
+	// TODO
+	todo!("REPL")
+	
+	/*
 	use rustyline::error::ReadlineError;
 	use rustyline::DefaultEditor;
 
 	let mut rl = DefaultEditor::new().unwrap();
-	let mut interpreter = Interpreter::new();
+	let mut interpreter = None;
 	let mut line_counter = 0usize;
 
 	println!(
@@ -78,14 +88,22 @@ fn repl() {
 
 				// A hacky way to keep track of the line number without having to re-interpret the entire REPL
 				let source = format!("{}{}", "\n".repeat(line_counter), line);
+				let ts = match prog_lexer::lex(&source, NAME_REPL).map_err(ProgError::Lex) {
+					Ok(ts) => ts,
+					Err(err) => {
+						eprintln!("{err}");
+						continue;
+					}
+				};
 
-				let parser = ProgParser::new(&source, NAME_REPL);
-				let ast = parser.parse();
-
-				if ast.is_err() {
-					println!("{:?}", ast.unwrap_err());
-					continue;
-				}
+				let ps = prog_parser::ParseStream::new(ts.buffer());
+				let ast = match ps.parse::<prog_parser::ast::Program>().map_err(ProgError::Parse) {
+					Ok(ast) => ast,
+					Err(err) => {
+						eprintln!("{err}");
+						continue;
+					}
+				};
 
 				let result = interpreter.interpret(source, NAME_REPL, ast.unwrap(), false);
 
@@ -114,6 +132,7 @@ fn repl() {
 			}
 		}
 	}
+	*/
 }
 
 #[cfg(feature = "api")]
@@ -126,8 +145,8 @@ fn execute_serve_command(args: cli::ServeCommand) {
 
 	env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-	fn handle_anyhow_error(error: anyhow::Error) -> HttpResponse {
-		let json = match serialize_anyhow(error) {
+	fn handle_prog_error(error: ProgError) -> HttpResponse {
+		let json = match serialize_prog(error) {
 			Ok(s) => s,
 			Err(error) => return HttpResponse::InternalServerError().body(error)
 		};
@@ -137,34 +156,41 @@ fn execute_serve_command(args: cli::ServeCommand) {
 
 	#[post("/execute")]
 	async fn execute_str(req_body: String) -> impl Responder {
-		let parser = ProgParser::new(&req_body, NAME_STDIN);
-		let ast = match parser.parse() {
-			Ok(ast) => ast,
-			Err(error) => return handle_anyhow_error(error)
+		let ts = match prog_lexer::lex(&req_body, NAME_STDIN).map_err(ProgError::Lex) {
+			Ok(ts) => ts,
+			Err(err) => return handle_prog_error(err)
 		};
 
-		let mut interpreter = Interpreter::new();
-		interpreter.context.deref_mut().flags.con_stdout_allowed = false;
-		interpreter.context.deref_mut().flags.imports_allowed = false;
-		interpreter.context.deref_mut().flags.inputs_allowed = false;
+		let ps = prog_parser::ParseStream::new(ts.buffer());
+		let ast = match ps.parse::<prog_parser::ast::Program>().map_err(ProgError::Parse) {
+			Ok(ast) => ast,
+			Err(err) => return handle_prog_error(err)
+		};
 
-		let result = match interpreter.interpret(req_body, NAME_STDIN, ast, false) {
-			Ok(result) => result,
-			Err(error) => return handle_anyhow_error(error)
+		let mut interpreter = Interpreter::new(ast);
+		interpreter.context_mut().flags.con_stdout_allowed = false;
+		interpreter.context_mut().flags.imports_allowed = false;
+		interpreter.context_mut().flags.inputs_allowed = false;
+
+		let result = match interpreter.interpret().map_err(ProgError::Interpret) {
+			Ok(val) => val,
+			Err(err) => return handle_prog_error(err)
 		};
 
 		#[derive(Debug, serde::Serialize)]
 		struct Result {
 			value: Value,
-			stdin: String,
-			stdout: String
+			stdin: Vec<u8>,
+			stdout: Vec<u8>
 		}
 
-		let unwrapped_context = interpreter.context.unwrap_or_clone();
+		let stdin = interpreter.context().stdin.clone();
+		let stdout = interpreter.context().stdout.clone();
+
 		let result_struct = Result {
 			value: result,
-			stdin: unwrapped_context.stdin,
-			stdout: unwrapped_context.stdout
+			stdin,
+			stdout
 		};
 
 		let json = match serde_json::to_string_pretty(&result_struct) {

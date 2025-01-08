@@ -1,7 +1,5 @@
-use anyhow::Result;
-
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct List<'inp> {
@@ -16,14 +14,15 @@ impl ASTNode for List<'_> {
 		let end = self._rb.end();
 
 		let source = self._lb.source();
+		let file = self._lb.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
 impl<'inp> Parse<'inp> for List<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _lb = input.parse::<token::LeftBracket>()?;
 		let items = input
 			.try_parse::<Punctuated<'inp, Expr, token::Comma>>()

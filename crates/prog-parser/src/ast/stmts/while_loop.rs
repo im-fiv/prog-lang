@@ -1,7 +1,5 @@
-use anyhow::Result;
-
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WhileLoop<'inp> {
@@ -16,14 +14,15 @@ impl ASTNode for WhileLoop<'_> {
 		let end = self.block.end();
 
 		let source = self._while.source();
+		let file = self._while.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
 impl<'inp> Parse<'inp> for WhileLoop<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _while = input.parse::<token::While>()?;
 		let cond = input.parse::<Expr>()?;
 		let block = input.parse::<DoBlock>()?;

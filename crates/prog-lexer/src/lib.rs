@@ -3,9 +3,10 @@ mod token;
 mod stream;
 
 pub use errors::{LexError, LexErrorKind};
-use prog_utils::pretty_errors::{Position, Span};
 pub use stream::LexStream;
 pub use token::{Token, TokenKind, TokenStream};
+
+use prog_utils::pretty_errors::{Position, Span};
 
 pub type LexResult<T> = Result<T, LexError>;
 
@@ -25,7 +26,7 @@ fn unexpected_token(
 	)
 }
 
-pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> LexResult<TokenStream<'inp>> {
+pub fn lex<'src>(source: &'src str, file: &'src str) -> LexResult<TokenStream<'src>> {
 	let mut ls = LexStream::new(source, file);
 	let mut ts = TokenStream::new();
 
@@ -60,8 +61,8 @@ pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> LexResult<TokenStream<'i
 
 			c => {
 				return Err(LexError::new(
-					source.to_owned(),
-					file.to_owned(),
+				source.to_owned(),
+				file.to_owned(),
 					Position::new(start_index, start_index + 1),
 					LexErrorKind::UnexpectedToken(errors::UnexpectedToken {
 						got: c,
@@ -73,15 +74,17 @@ pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> LexResult<TokenStream<'i
 
 		let end_index = ls.peek().map_or(source.len(), |(idx, _)| *idx);
 		let position = Position::new(start_index, end_index);
-		let span = Span::new(source, position);
+		let span = Span::new(source, file, position);
 
 		ts.push(Token::new(kind, span));
 	}
 
 	ts.push(Token::new(
 		TokenKind::Eof,
-		Span::new(source, Position::new(source.len(), source.len()))
+		Span::new(source, file, Position::new(source.len(), source.len()))
 	));
+
+	ts.filter_comments();
 
 	Ok(ts)
 }

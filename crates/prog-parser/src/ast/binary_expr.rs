@@ -1,9 +1,8 @@
-use anyhow::{bail, Result};
 use prog_lexer::TokenKind;
 
 use super::op_to_token;
 use crate::ast::*;
-use crate::{ASTNode, Parse, ParseStream, Position, Span};
+use crate::{errors, ParseResult, ParseError, ParseErrorKind, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinaryExpr<'inp> {
@@ -43,9 +42,10 @@ impl ASTNode for BinaryExpr<'_> {
 		let end = self.rhs.end();
 
 		let source = self.lhs.source();
+		let file = self.lhs.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
@@ -54,25 +54,32 @@ impl ASTNode for BinaryOp<'_> {
 }
 
 impl<'inp> Parse<'inp> for BinaryOp<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let token = input.expect_next()?;
 		Self::try_from(&token as &dyn crate::Token)
 	}
 }
 
 impl<'inp> TryFrom<&dyn crate::Token<'inp>> for BinaryOp<'inp> {
-	type Error = anyhow::Error;
+	type Error = ParseError;
 
 	fn try_from(token: &dyn crate::Token<'inp>) -> std::result::Result<Self, Self::Error> {
 		let span = token.sp();
-		let kind = BinaryOpKind::try_from(token.tk())?;
+		let kind = BinaryOpKind::try_from(token.tk()).map_err(|e| {
+			ParseError::new(
+				span.source().to_owned(),
+				span.file().to_owned(),
+				span.position(),
+				ParseErrorKind::Internal(errors::Internal(e))
+			)
+		})?;
 
 		Ok(Self { kind, span })
 	}
 }
 
 impl TryFrom<TokenKind> for BinaryOpKind {
-	type Error = anyhow::Error;
+	type Error = String;
 
 	fn try_from(kind: TokenKind) -> std::result::Result<Self, Self::Error> {
 		use {BinaryOpKind as B, TokenKind as T};
@@ -95,7 +102,7 @@ impl TryFrom<TokenKind> for BinaryOpKind {
 			T::Dot => B::Dot,
 
 			// TODO: proper error reporting
-			kind => bail!("Unknown binary operator of type `{kind:?}`")
+			kind => return Err(format!("Unknown binary operator of type `{kind:?}`"))
 		})
 	}
 }

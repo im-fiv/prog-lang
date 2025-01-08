@@ -1,8 +1,7 @@
-use anyhow::{anyhow, bail, Result};
 use prog_lexer::TokenKind;
 
 use crate::ast::*;
-use crate::{ASTNode, Parse, ParseStream, Span};
+use crate::{errors, ParseResult, ParseError, ParseErrorKind, ASTNode, Parse, ParseStream, Span};
 
 #[derive(Debug, Clone, PartialEq, prog_macros::VariantUnwrap)]
 pub enum Term<'inp> {
@@ -25,69 +24,39 @@ pub enum Term<'inp> {
 }
 
 impl<'inp> Term<'inp> {
-	/// Unlike the `Parse` implementation, does not parse more than it has to.
-	///
-	/// Useful when the parse call originates from `Term`'s variants to prevent
-	/// `Term` from consuming the tokens that its variant was supposed to consume.
-	pub fn parse_bounded(input: &ParseStream<'inp>, bounded: bool) -> Result<Self> {
-		let token = input.expect_peek()?;
-
-		let mut term = match token.kind() {
-			TokenKind::LeftParen => input.parse::<ParenExpr>().map(Self::ParenExpr)?,
-
-			TokenKind::Number | TokenKind::True | TokenKind::False | TokenKind::String => {
-				input.parse::<Lit>().map(Self::Lit)?
-			}
-
-			TokenKind::Ident => input.parse::<Ident>().map(Self::Ident)?,
-
-			TokenKind::Func => input.parse::<Func>().map(Self::Func)?,
-			TokenKind::LeftBracket => input.parse::<List>().map(Self::List)?,
-			TokenKind::LeftBrace => input.parse::<Obj>().map(Self::Obj)?,
-			TokenKind::Extern => input.parse::<Extern>().map(Self::Extern)?,
-
-			// TODO: proper error reporting
-			t => bail!("unsupported term `{t:?}`")
-		};
-
-		if bounded {
-			return Ok(term);
-		}
-
-		while let Some(token) = input.peek() {
-			match token.kind() {
-				TokenKind::LeftParen => {
-					term = Call::parse_with_func(input, Box::new(term)).map(Self::Call)?;
-				}
-
-				TokenKind::LeftBracket => {
-					term = IndexAcc::parse_with_list(input, Box::new(term)).map(Self::IndexAcc)?;
-				}
-
-				TokenKind::Dot => {
-					term =
-						FieldAcc::parse_with_object(input, Box::new(term)).map(Self::FieldAcc)?;
-				}
-
-				_ => break
-			}
-		}
-
-		Ok(term)
-	}
-
-	pub fn parse_variant<T>(input: &ParseStream<'inp>) -> Result<T>
+	pub fn parse_variant<T>(input: &ParseStream<'inp>) -> ParseResult<T>
 	where
 		Self: TryInto<T>
 	{
 		use std::any::type_name;
 
+		// let term = input.parse::<Self>()?;
+		// term.try_into().map_err(|_| {
+		// 	anyhow!(
+		// 		"Conversion of `{}` to variant `{}` failed",
+		// 		type_name::<Self>(),
+		// 		type_name::<T>()
+		// 	)
+		// })
+
 		let term = input.parse::<Self>()?;
+		
+		let source = term.span().source().to_owned();
+		let file = term.span().file().to_owned();
+		let position = term.span().position();
+
 		term.try_into().map_err(|_| {
-			anyhow!(
-				"Conversion of `{}` to variant `{}` failed",
-				type_name::<Self>(),
-				type_name::<T>()
+			ParseError::new(
+				source,
+				file,
+				position,
+				ParseErrorKind::Internal(errors::Internal(
+					format!(
+						"Conversion of `{}` to variant `{}` failed",
+						type_name::<Self>(),
+						type_name::<T>()
+					)
+				))
 			)
 		})
 	}
@@ -113,5 +82,55 @@ impl ASTNode for Term<'_> {
 }
 
 impl<'inp> Parse<'inp> for Term<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> { Self::parse_bounded(input, false) }
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+		use TokenKind as T;
+
+		let token = input.expect_peek()?;
+
+		let mut term = match token.kind() {
+			T::LeftParen => input.parse::<ParenExpr>().map(Self::ParenExpr)?,
+
+			T::Number | T::True | T::False | T::String | T::None => {
+				input.parse::<Lit>().map(Self::Lit)?
+			}
+
+			T::Ident => input.parse::<Ident>().map(Self::Ident)?,
+
+			T::Func => input.parse::<Func>().map(Self::Func)?,
+			T::LeftBracket => input.parse::<List>().map(Self::List)?,
+			T::LeftBrace => input.parse::<Obj>().map(Self::Obj)?,
+			T::Extern => input.parse::<Extern>().map(Self::Extern)?,
+
+			// TODO: proper error reporting
+			t => return Err(ParseError::new(
+				token.span().source().to_owned(),
+				token.span().file().to_owned(),
+				token.span().position(),
+				ParseErrorKind::Internal(errors::Internal(
+					format!("unsupported term `{t:?}`")
+				))
+			))
+		};
+
+		while let Some(token) = input.peek() {
+			match token.kind() {
+				T::LeftParen => {
+					term = Call::parse_with_func(input, Box::new(term)).map(Self::Call)?;
+				}
+
+				T::LeftBracket => {
+					term = IndexAcc::parse_with_list(input, Box::new(term)).map(Self::IndexAcc)?;
+				}
+
+				T::Dot => {
+					term =
+						FieldAcc::parse_with_object(input, Box::new(term)).map(Self::FieldAcc)?;
+				}
+
+				_ => break
+			}
+		}
+
+		Ok(term)
+	}
 }

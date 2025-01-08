@@ -1,7 +1,5 @@
-use anyhow::Result;
-
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Obj<'inp> {
@@ -23,9 +21,10 @@ impl ASTNode for Obj<'_> {
 		let end = self._rb.end();
 
 		let source = self._lb.source();
+		let file = self._lb.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
@@ -35,14 +34,15 @@ impl ASTNode for ObjField<'_> {
 		let end = self.value.end();
 
 		let source = self.name.source();
+		let file = self.name.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
 impl<'inp> Parse<'inp> for Obj<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _lb = input.parse::<token::LeftBrace>()?;
 		let fields = input
 			.try_parse::<Punctuated<'inp, ObjField, token::Comma>>()
@@ -55,7 +55,7 @@ impl<'inp> Parse<'inp> for Obj<'inp> {
 }
 
 impl<'inp> Parse<'inp> for ObjField<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let name = input.parse::<Ident>()?;
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;

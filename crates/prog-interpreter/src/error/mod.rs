@@ -1,16 +1,16 @@
-mod internal;
+mod todo;
 
-pub use internal::Internal;
+pub use todo::*;
 
 use prog_macros::ImplAriadneCompatible;
 use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 
-pub type ParseError = PrettyError<ParseErrorKind>;
+pub type InterpretError = PrettyError<InterpretErrorKind>;
 
 #[derive(Debug, Clone, ImplAriadneCompatible)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub enum ParseErrorKind {
-	Internal(Internal)
+pub enum InterpretErrorKind {
+	Todo(Todo)
 }
 
-impl PrettyErrorKind for ParseErrorKind {}
+impl PrettyErrorKind for InterpretErrorKind {}

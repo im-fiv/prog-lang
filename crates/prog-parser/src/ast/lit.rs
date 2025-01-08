@@ -1,9 +1,8 @@
 use std::fmt::{self, Debug};
 
-use anyhow::{bail, Result};
 use prog_lexer::TokenKind;
 
-use crate::{ASTNode, Parse, ParseStream, Span};
+use crate::{errors, ParseResult, ParseError, ParseErrorKind, ASTNode, Parse, ParseStream, Span};
 
 #[derive(Clone, PartialEq)]
 pub struct Lit<'inp> {
@@ -15,7 +14,8 @@ pub struct Lit<'inp> {
 pub enum LitKind {
 	Number(f64),
 	Boolean(bool),
-	String(String)
+	String(String),
+	None
 }
 
 impl Lit<'_> {
@@ -27,7 +27,7 @@ impl ASTNode for Lit<'_> {
 }
 
 impl<'inp> Parse<'inp> for Lit<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let token = input.expect_next()?;
 		let span = token.span();
 
@@ -64,8 +64,21 @@ impl<'inp> Parse<'inp> for Lit<'inp> {
 				})
 			}
 
-			// TODO: proper error reporting
-			kind => bail!("Unknown literal `{token}` of type `{kind:?}`")
+			TokenKind::None => {
+				Ok(Self {
+					kind: LitKind::None,
+					span
+				})
+			}
+
+			kind => Err(ParseError::new(
+				span.source().to_owned(),
+				span.file().to_owned(),
+				span.position(),
+				ParseErrorKind::Internal(errors::Internal(
+					format!("Unknown literal `{token}` of type `{kind:?}`")
+				))
+			))
 		}
 	}
 }
@@ -77,7 +90,8 @@ impl Debug for Lit<'_> {
 		let value = match &self.kind {
 			LitKind::Number(lit) => lit as &dyn Debug,
 			LitKind::Boolean(lit) => lit as &dyn Debug,
-			LitKind::String(lit) => lit as &dyn Debug
+			LitKind::String(lit) => lit as &dyn Debug,
+			LitKind::None => &"none" as &dyn Debug
 		};
 
 		s.field(value);

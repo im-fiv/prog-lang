@@ -1,8 +1,6 @@
 use std::fmt::{self, Debug};
 
-use anyhow::Result;
-
-use crate::{token, ASTNode, Parse, ParseStream, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Span};
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Ident<'inp> {
@@ -14,7 +12,7 @@ impl ASTNode for Ident<'_> {
 }
 
 impl<'inp> Parse<'inp> for Ident<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		Ok(Self {
 			_ident: input.parse::<token::Ident>()?
 		})

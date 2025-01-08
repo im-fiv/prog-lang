@@ -1084,8 +1084,10 @@ name = "prog-interpreter"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "ariadne",
  "prog-macros",
  "prog-parser",
+ "prog-utils",
  "serde",
 ]
 
@@ -1136,6 +1138,7 @@ name = "prog-parser"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "ariadne",
  "prog-lexer",
  "prog-macros",
  "prog-utils",

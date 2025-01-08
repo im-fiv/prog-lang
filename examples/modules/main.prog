@@ -1,11 +1,11 @@
-("[main.prog] hello from main.prog!") -> print
+print("[main.prog] hello from main.prog!")
 
 // We will now import the module and print its value
-def calculate_sqrt = ("examples/modules/sqrt") -> import
+def calculate_sqrt = import("examples/modules/sqrt")
 
-("[main.prog] value of imported file is ", calculate_sqrt) -> print
+print("[main.prog] value of imported file is ", calculate_sqrt)
 
-def result = (69) -> calculate_sqrt
-("[main.prog] resulting value is ", result) -> print
+def result = calculate_sqrt(69)
+print("[main.prog] resulting value is ", result)
 
 return result

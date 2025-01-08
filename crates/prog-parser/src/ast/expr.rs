@@ -1,8 +1,7 @@
-use anyhow::Result;
 use prog_lexer::TokenKind;
 
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParsePrecedence, ParseStream, Position, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParsePrecedence, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'inp> {
@@ -23,11 +22,13 @@ impl ASTNode for Expr<'_> {
 }
 
 impl<'inp> Parse<'inp> for Expr<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> { Self::parse_precedence(input, 0) }
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+		Self::parse_precedence(input, 0)
+	}
 }
 
 impl<'inp> ParsePrecedence<'inp> for Expr<'inp> {
-	fn parse_precedence(input: &ParseStream<'inp>, precedence: u8) -> Result<Self> {
+	fn parse_precedence(input: &ParseStream<'inp>, precedence: u8) -> ParseResult<Self> {
 		use TokenKind as T;
 
 		let mut left = Self::Term(input.parse::<Term>()?);
@@ -90,14 +91,15 @@ impl ASTNode for ParenExpr<'_> {
 		let end = self._rp.end();
 
 		let source = self._lp.source();
+		let file = self._lp.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
 impl<'inp> Parse<'inp> for ParenExpr<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _lp = input.parse::<token::LeftParen>()?;
 		let expr = Box::new(Expr::parse_precedence(input, 0)?);
 		let _rp = input.parse::<token::RightParen>()?;

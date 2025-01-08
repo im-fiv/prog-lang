@@ -1,9 +1,7 @@
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 
-use anyhow::{bail, Result};
-
-use crate::{ASTNode, Parse, ParseStream, Position, Span};
+use crate::{errors, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Position, Span, Token};
 
 #[derive(Clone, PartialEq)]
 pub struct Punctuated<'inp, T, P> {
@@ -196,15 +194,15 @@ where
 		let start = pos_list.start();
 		let end = pos_list.end();
 
-		let source = self
+		let (source, file) = self
 			.pairs
 			.first()
-			.map(|(item, _)| item.source())
-			.or_else(|| self.tail.as_ref().map(|tail| tail.source()))
+			.map(|(item, _)| (item.source(), item.file()))
+			.or_else(|| self.tail.as_ref().map(|tail| (tail.source(), tail.file())))
 			.unwrap_or_else(|| unreachable!());
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
@@ -213,7 +211,7 @@ where
 	T: Parse<'inp>,
 	P: Parse<'inp>
 {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let mut list = Self::new();
 
 		loop {
@@ -230,7 +228,18 @@ where
 		}
 
 		if list.is_empty() {
-			bail!("Punctuated did not parse any items");
+			// TODO: refine this
+			let token = input.peek().unwrap();
+			let span = token.sp();
+
+			return Err(ParseError::new(
+				span.source().to_owned(),
+				span.file().to_owned(),
+				span.position(),
+				ParseErrorKind::Internal(errors::Internal(
+					String::from("Punctuated list did not parse any items")
+				))
+			));
 		}
 
 		Ok(list)

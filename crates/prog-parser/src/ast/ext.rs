@@ -1,7 +1,5 @@
-use anyhow::Result;
-
 use crate::ast::*;
-use crate::{token, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Extern<'inp> {
@@ -15,14 +13,15 @@ impl ASTNode for Extern<'_> {
 		let end = self.value.end();
 
 		let source = self._extern.source();
+		let file = self._extern.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
 impl<'inp> Parse<'inp> for Extern<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let _extern = input.parse::<token::Extern>()?;
 		let value = Box::new(input.parse::<Expr>()?);
 

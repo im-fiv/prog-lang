@@ -37,7 +37,7 @@ pub(crate) fn expand_impl(item: ItemEnum) -> syn::Result<pm2::TokenStream> {
 	let enum_name = item.ident;
 
 	let message_match_arms = expand_match_arms(&item.variants, "message", vec![])?;
-	let labels_match_arms = expand_match_arms(&item.variants, "labels", vec!["file", "position"])?;
+	let labels_match_arms = expand_match_arms(&item.variants, "labels", vec!["span"])?;
 
 	let expanded = quote! {
 		impl ::prog_utils::pretty_errors::AriadneCompatible for #enum_name {
@@ -47,7 +47,7 @@ pub(crate) fn expand_impl(item: ItemEnum) -> syn::Result<pm2::TokenStream> {
 				}
 			}
 
-			fn labels(self, file: &str, position: ::prog_utils::pretty_errors::Position) -> ::std::vec::Vec<
+			fn labels(self, span: ::prog_utils::pretty_errors::Span) -> ::std::vec::Vec<
 				::ariadne::Label<
 					::prog_utils::pretty_errors::Span
 				>

@@ -1,8 +1,7 @@
-use anyhow::{bail, Result};
 use prog_lexer::TokenKind;
 
 use crate::ast::*;
-use crate::{ASTNode, Parse, ParseStream, Position, Span};
+use crate::{errors, ParseResult, ParseError, ParseErrorKind, ASTNode, Parse, ParseStream, Position, Span};
 
 use super::op_to_token;
 
@@ -30,9 +29,10 @@ impl ASTNode for UnaryExpr<'_> {
 		let end = self.operand.end();
 
 		let source = self.op.source();
+		let file = self.op.file();
 		let position = Position::new(start, end);
 
-		Span::new(source, position)
+		Span::new(source, file, position)
 	}
 }
 
@@ -41,18 +41,32 @@ impl ASTNode for UnaryOp<'_> {
 }
 
 impl<'inp> Parse<'inp> for UnaryOp<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> Result<Self> {
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
 		let token = input.expect_next()?;
+		Self::try_from(&token as &dyn crate::Token)
+	}
+}
 
-		let kind = UnaryOpKind::try_from(token.kind())?;
-		let span = token.span();
+impl<'inp> TryFrom<&dyn crate::Token<'inp>> for UnaryOp<'inp> {
+	type Error = ParseError;
+
+	fn try_from(token: &dyn crate::Token<'inp>) -> std::result::Result<Self, Self::Error> {
+		let span = token.sp();
+		let kind = UnaryOpKind::try_from(token.tk()).map_err(|e| {
+			ParseError::new(
+				span.source().to_owned(),
+				span.file().to_owned(),
+				span.position(),
+				ParseErrorKind::Internal(errors::Internal(e))
+			)
+		})?;
 
 		Ok(Self { kind, span })
 	}
 }
 
 impl TryFrom<TokenKind> for UnaryOpKind {
-	type Error = anyhow::Error;
+	type Error = String;
 
 	fn try_from(kind: TokenKind) -> std::result::Result<Self, Self::Error> {
 		use {TokenKind as T, UnaryOpKind as U};
@@ -61,8 +75,7 @@ impl TryFrom<TokenKind> for UnaryOpKind {
 			T::Minus => U::Minus,
 			T::Not => U::Not,
 
-			// TODO: proper error reporting
-			kind => bail!("Unknown unary operator of type `{kind:?}`")
+			kind => return Err(format!("Unknown unary operator of type `{kind:?}`"))
 		})
 	}
 }

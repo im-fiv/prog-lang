@@ -3,20 +3,23 @@ use std::fmt::{self, Debug};
 #[derive(Clone, Copy, PartialEq, Hash)]
 pub struct Span<'inp> {
 	source: &'inp str,
+	file: &'inp str,
 	position: Position
 }
 
 impl<'inp> Span<'inp> {
-	pub fn new(source: &'inp str, position: Position) -> Self {
+	pub fn new(source: &'inp str, file: &'inp str, position: Position) -> Self {
 		assert!(position.end() <= source.len(), "Span exceeds source length");
-		Self::new_unchecked(source, position)
+		Self::new_unchecked(source, file, position)
 	}
 
-	pub fn new_unchecked(source: &'inp str, position: Position) -> Self {
-		Self { source, position }
+	pub fn new_unchecked(source: &'inp str, file: &'inp str, position: Position) -> Self {
+		Self { source, file, position }
 	}
 
 	pub fn source(&self) -> &'inp str { self.source }
+
+	pub fn file(&self) -> &'inp str { self.file }
 
 	pub fn value(&self) -> &'inp str {
 		&self.source[self.position().start()..self.position().end()]
@@ -28,7 +31,7 @@ impl<'inp> Span<'inp> {
 impl<'inp> ariadne::Span for Span<'inp> {
 	type SourceId = &'inp str;
 
-	fn source(&self) -> &Self::SourceId { &self.source }
+	fn source(&self) -> &Self::SourceId { &self.file }
 
 	fn start(&self) -> usize { self.position.start() }
 

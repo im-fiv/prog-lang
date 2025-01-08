@@ -9,6 +9,8 @@ serde = ["dep:serde"]
 
 [dependencies]
 anyhow = { workspace = true }
+ariadne = { workspace = true }
+
 prog-lexer = { workspace = true }
 prog-utils = { workspace = true }
 prog-macros = { workspace = true }
