@@ -221,19 +221,30 @@ fn ident_or_keyword(ls: &mut LexStream<'_>, c: char) -> TokenKind {
 	}
 }
 
+// TODO: add exponents and hexadecimal/octal/binary formats
 fn number(ls: &mut LexStream<'_>, c: char) -> LexResult<TokenKind> {
 	let start_index = ls.position() - 1;
 
 	let mut number = String::new();
 	number.push(c);
 
-	while let Some((_, next_char)) = ls.peek() {
-		if !next_char.is_ascii_digit() {
-			break;
-		}
+	let mut has_decimal = false;
 
-		number.push(*next_char);
-		ls.next();
+	while let Some((_, char)) = ls.peek() {
+		match char {
+			'0'..='9' => {
+				number.push(*char);
+				ls.next();
+			}
+
+			'.' if !has_decimal => {
+				has_decimal = true;
+				number.push(*char);
+				ls.next();
+			}
+
+			_ => break
+		}
 	}
 
 	if number.parse::<f64>().is_err() {
