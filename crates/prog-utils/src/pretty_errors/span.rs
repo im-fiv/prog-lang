@@ -35,6 +35,9 @@ impl<'inp> Span<'inp> {
 impl<'inp> ariadne::Span for Span<'inp> {
 	type SourceId = &'inp str;
 
+	// This is not a mistake, this function is supposed to return
+	// the *source identifier* of the span, not the actual source.
+	#[allow(clippy::misnamed_getters)]
 	fn source(&self) -> &Self::SourceId { &self.file }
 
 	fn start(&self) -> usize { self.position.start() }
