@@ -2,14 +2,14 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Func<'inp> {
-	pub _func: token::Func<'inp>,
-	pub _lp: token::LeftParen<'inp>,
-	pub args: Option<Punctuated<'inp, Ident<'inp>, token::Comma<'inp>>>,
-	pub _rp: token::RightParen<'inp>,
-	pub _do: token::Do<'inp>,
-	pub stmts: Vec<Statement<'inp>>,
-	pub _end: token::End<'inp>
+pub struct Func<'src> {
+	pub _func: token::Func<'src>,
+	pub _lp: token::LeftParen<'src>,
+	pub args: Option<Punctuated<'src, Ident<'src>, token::Comma<'src>>>,
+	pub _rp: token::RightParen<'src>,
+	pub _do: token::Do<'src>,
+	pub stmts: Vec<Stmt<'src>>,
+	pub _end: token::End<'src>
 }
 
 impl ASTNode for Func<'_> {
@@ -25,18 +25,18 @@ impl ASTNode for Func<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for Func<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for Func<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _func = input.parse::<token::Func>()?;
 		let _lp = input.parse::<token::LeftParen>()?;
 		let args = input
-			.try_parse::<Punctuated<'inp, Ident, token::Comma>>()
+			.try_parse::<Punctuated<'src, Ident, token::Comma>>()
 			.ok();
 		let _rp = input.parse::<token::RightParen>()?;
 		let _do = input.parse::<token::Do>()?;
 		let mut stmts = vec![];
 
-		while let Ok(stmt) = input.try_parse::<Statement>() {
+		while let Ok(stmt) = input.try_parse::<Stmt>() {
 			stmts.push(stmt);
 		}
 

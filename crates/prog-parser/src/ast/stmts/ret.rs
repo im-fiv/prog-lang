@@ -2,9 +2,9 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Return<'inp> {
-	pub _return: token::Return<'inp>,
-	pub value: Expr<'inp>
+pub struct Return<'src> {
+	pub _return: token::Return<'src>,
+	pub value: Expr<'src>
 }
 
 impl ASTNode for Return<'_> {
@@ -20,8 +20,8 @@ impl ASTNode for Return<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for Return<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for Return<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _return = input.parse::<token::Return>()?;
 		let value = input.parse::<Expr>()?;
 

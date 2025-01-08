@@ -2,43 +2,43 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum VarDefine<'inp> {
+pub enum VarDefine<'src> {
 	WithValue {
-		_def: token::Def<'inp>,
-		name: Ident<'inp>,
-		_eq: token::Eq<'inp>,
-		value: Expr<'inp>
+		_def: token::Def<'src>,
+		name: Ident<'src>,
+		_eq: token::Eq<'src>,
+		value: Expr<'src>
 	},
 
 	NoValue {
-		_def: token::Def<'inp>,
-		name: Ident<'inp>
+		_def: token::Def<'src>,
+		name: Ident<'src>
 	}
 }
 
-impl<'inp> VarDefine<'inp> {
-	pub fn _def(&self) -> token::Def<'inp> {
+impl<'src> VarDefine<'src> {
+	pub fn _def(&self) -> token::Def<'src> {
 		match self {
 			Self::WithValue { _def, .. } => *_def,
 			Self::NoValue { _def, .. } => *_def
 		}
 	}
 
-	pub fn name(&self) -> Ident<'inp> {
+	pub fn name(&self) -> Ident<'src> {
 		match self {
 			Self::WithValue { name, .. } => *name,
 			Self::NoValue { name, .. } => *name
 		}
 	}
 
-	pub fn _eq(&self) -> Option<token::Eq<'inp>> {
+	pub fn _eq(&self) -> Option<token::Eq<'src>> {
 		match self {
 			Self::WithValue { _eq, .. } => Some(*_eq),
 			Self::NoValue { .. } => None
 		}
 	}
 
-	pub fn value(&self) -> Option<Expr<'inp>> {
+	pub fn value(&self) -> Option<Expr<'src>> {
 		match self {
 			Self::WithValue { value, .. } => Some(value.clone()),
 			Self::NoValue { .. } => None
@@ -79,8 +79,8 @@ impl ASTNode for VarDefine<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for VarDefine<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for VarDefine<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _def = input.parse::<token::Def>()?;
 		let name = input.parse::<Ident>()?;
 

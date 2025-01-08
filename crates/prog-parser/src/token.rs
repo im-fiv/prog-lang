@@ -68,8 +68,8 @@ macro_rules! def_token {
 			}
 		}
 
-		impl<'inp> From<$name<'inp>> for ::prog_lexer::Token<'inp> {
-			fn from(value: $name<'inp>) -> Self {
+		impl<'src> From<$name<'src>> for ::prog_lexer::Token<'src> {
+			fn from(value: $name<'src>) -> Self {
 				Self::new(
 					::prog_lexer::TokenKind::$name,
 					value.span
@@ -79,10 +79,10 @@ macro_rules! def_token {
 	};
 }
 
-impl<'inp> Token<'inp> for prog_lexer::Token<'inp> {
+impl<'src> Token<'src> for prog_lexer::Token<'src> {
 	fn tk(&self) -> prog_lexer::TokenKind { self.kind() }
 
-	fn sp(&self) -> crate::Span<'inp> { self.span() }
+	fn sp(&self) -> crate::Span<'src> { self.span() }
 }
 
 def_token!(pub True);

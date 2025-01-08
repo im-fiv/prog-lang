@@ -2,21 +2,21 @@ use std::iter::Peekable;
 use std::str::CharIndices;
 
 #[derive(Debug)]
-pub struct LexStream<'inp> {
-	iter: Peekable<CharIndices<'inp>>,
-	source: &'inp str,
-	file: &'inp str
+pub struct LexStream<'src> {
+	iter: Peekable<CharIndices<'src>>,
+	source: &'src str,
+	file: &'src str
 }
 
-impl<'inp> LexStream<'inp> {
-	pub fn new(source: &'inp str, file: &'inp str) -> Self {
+impl<'src> LexStream<'src> {
+	pub fn new(source: &'src str, file: &'src str) -> Self {
 		let iter = source.char_indices().peekable();
 		Self { iter, source, file }
 	}
 
-	pub fn source(&self) -> &'inp str { self.source }
+	pub fn source(&self) -> &'src str { self.source }
 
-	pub fn file(&self) -> &'inp str { self.file }
+	pub fn file(&self) -> &'src str { self.file }
 
 	pub fn position(&mut self) -> usize {
 		let source_len = self.source.len();

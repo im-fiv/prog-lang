@@ -2,11 +2,11 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ClassDef<'inp> {
-	pub _class: token::Class<'inp>,
-	pub name: Ident<'inp>,
-	pub fields: Vec<VarDefine<'inp>>,
-	pub _end: token::End<'inp>
+pub struct ClassDef<'src> {
+	pub _class: token::Class<'src>,
+	pub name: Ident<'src>,
+	pub fields: Vec<VarDefine<'src>>,
+	pub _end: token::End<'src>
 }
 
 impl ASTNode for ClassDef<'_> {
@@ -22,8 +22,8 @@ impl ASTNode for ClassDef<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for ClassDef<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for ClassDef<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _class = input.parse::<token::Class>()?;
 		let name = input.parse::<Ident>()?;
 		let mut fields = vec![];

@@ -1,19 +1,19 @@
 use std::fmt::{self, Debug};
 
 #[derive(Clone, Copy, PartialEq, Hash)]
-pub struct Span<'inp> {
-	source: &'inp str,
-	file: &'inp str,
+pub struct Span<'src> {
+	source: &'src str,
+	file: &'src str,
 	position: Position
 }
 
-impl<'inp> Span<'inp> {
-	pub fn new(source: &'inp str, file: &'inp str, position: Position) -> Self {
+impl<'src> Span<'src> {
+	pub fn new(source: &'src str, file: &'src str, position: Position) -> Self {
 		assert!(position.end() <= source.len(), "Span exceeds source length");
 		Self::new_unchecked(source, file, position)
 	}
 
-	pub fn new_unchecked(source: &'inp str, file: &'inp str, position: Position) -> Self {
+	pub fn new_unchecked(source: &'src str, file: &'src str, position: Position) -> Self {
 		Self {
 			source,
 			file,
@@ -21,19 +21,19 @@ impl<'inp> Span<'inp> {
 		}
 	}
 
-	pub fn source(&self) -> &'inp str { self.source }
+	pub fn source(&self) -> &'src str { self.source }
 
-	pub fn file(&self) -> &'inp str { self.file }
+	pub fn file(&self) -> &'src str { self.file }
 
-	pub fn value(&self) -> &'inp str {
+	pub fn value(&self) -> &'src str {
 		&self.source[self.position().start()..self.position().end()]
 	}
 
 	pub fn position(&self) -> Position { self.position }
 }
 
-impl<'inp> ariadne::Span for Span<'inp> {
-	type SourceId = &'inp str;
+impl<'src> ariadne::Span for Span<'src> {
+	type SourceId = &'src str;
 
 	// This is not a mistake, this function is supposed to return
 	// the *source identifier* of the span, not the actual source.

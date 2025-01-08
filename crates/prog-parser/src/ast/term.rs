@@ -4,27 +4,27 @@ use crate::ast::*;
 use crate::{error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span};
 
 #[derive(Debug, Clone, PartialEq, prog_macros::VariantUnwrap)]
-pub enum Term<'inp> {
+pub enum Term<'src> {
 	// Wrapping terms
-	Expr(Box<Expr<'inp>>),
-	ParenExpr(ParenExpr<'inp>),
+	Expr(Box<Expr<'src>>),
+	ParenExpr(ParenExpr<'src>),
 
 	// Regular terms
-	Lit(Lit<'inp>),
-	Ident(Ident<'inp>),
-	Func(Func<'inp>),
-	List(List<'inp>),
-	Obj(Obj<'inp>),
-	Extern(Extern<'inp>),
+	Lit(Lit<'src>),
+	Ident(Ident<'src>),
+	Func(Func<'src>),
+	List(List<'src>),
+	Obj(Obj<'src>),
+	Extern(Extern<'src>),
 
 	// Lookahead terms
-	Call(Call<'inp>),
-	IndexAcc(IndexAcc<'inp>),
-	FieldAcc(FieldAcc<'inp>)
+	Call(Call<'src>),
+	IndexAcc(IndexAcc<'src>),
+	FieldAcc(FieldAcc<'src>)
 }
 
-impl<'inp> Term<'inp> {
-	pub fn parse_variant<T>(input: &ParseStream<'inp>) -> ParseResult<T>
+impl<'src> Term<'src> {
+	pub fn parse_variant<T>(input: &ParseStream<'src>) -> ParseResult<T>
 	where
 		Self: TryInto<T>
 	{
@@ -68,8 +68,8 @@ impl ASTNode for Term<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for Term<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for Term<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		use TokenKind as T;
 
 		let token = input.expect_peek()?;

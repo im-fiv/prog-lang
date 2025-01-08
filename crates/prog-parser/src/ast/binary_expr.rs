@@ -7,16 +7,16 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct BinaryExpr<'inp> {
-	pub lhs: Term<'inp>,
-	pub op: BinaryOp<'inp>,
-	pub rhs: Term<'inp>
+pub struct BinaryExpr<'src> {
+	pub lhs: Term<'src>,
+	pub op: BinaryOp<'src>,
+	pub rhs: Term<'src>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct BinaryOp<'inp> {
+pub struct BinaryOp<'src> {
 	pub kind: BinaryOpKind,
-	pub span: Span<'inp>
+	pub span: Span<'src>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -55,17 +55,17 @@ impl ASTNode for BinaryOp<'_> {
 	fn span(&self) -> Span { self.span }
 }
 
-impl<'inp> Parse<'inp> for BinaryOp<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for BinaryOp<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let token = input.expect_next()?;
 		Self::try_from(&token as &dyn crate::Token)
 	}
 }
 
-impl<'inp> TryFrom<&dyn crate::Token<'inp>> for BinaryOp<'inp> {
+impl<'src> TryFrom<&dyn crate::Token<'src>> for BinaryOp<'src> {
 	type Error = ParseError;
 
-	fn try_from(token: &dyn crate::Token<'inp>) -> std::result::Result<Self, Self::Error> {
+	fn try_from(token: &dyn crate::Token<'src>) -> std::result::Result<Self, Self::Error> {
 		let span = token.sp();
 		let kind = BinaryOpKind::try_from(token.tk()).map_err(|e| {
 			ParseError::new(

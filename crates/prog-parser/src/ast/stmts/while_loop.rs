@@ -2,10 +2,10 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct WhileLoop<'inp> {
-	pub _while: token::While<'inp>,
-	pub cond: Expr<'inp>,
-	pub block: DoBlock<'inp>
+pub struct WhileLoop<'src> {
+	pub _while: token::While<'src>,
+	pub cond: Expr<'src>,
+	pub block: DoBlock<'src>
 }
 
 impl ASTNode for WhileLoop<'_> {
@@ -21,8 +21,8 @@ impl ASTNode for WhileLoop<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for WhileLoop<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for WhileLoop<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _while = input.parse::<token::While>()?;
 		let cond = input.parse::<Expr>()?;
 		let block = input.parse::<DoBlock>()?;

@@ -3,16 +3,16 @@ use std::fmt::{self, Debug, Display};
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Span};
 
 #[derive(Clone, Copy, PartialEq)]
-pub struct Ident<'inp> {
-	_ident: token::Ident<'inp>
+pub struct Ident<'src> {
+	_ident: token::Ident<'src>
 }
 
 impl ASTNode for Ident<'_> {
 	fn span(&self) -> Span { self._ident.span() }
 }
 
-impl<'inp> Parse<'inp> for Ident<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for Ident<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		Ok(Self {
 			_ident: input.parse::<token::Ident>()?
 		})

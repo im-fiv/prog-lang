@@ -32,10 +32,10 @@ pub use unary_expr::*;
 
 macro_rules! op_to_token {
 	($op:ident : $kind:ident => $token:ident) => {
-		impl<'inp> TryInto<$crate::token::$token<'inp>> for $op<'inp> {
+		impl<'src> TryInto<$crate::token::$token<'src>> for $op<'src> {
 			type Error = ::anyhow::Error;
 
-			fn try_into(self) -> ::std::result::Result<$crate::token::$token<'inp>, Self::Error> {
+			fn try_into(self) -> ::std::result::Result<$crate::token::$token<'src>, Self::Error> {
 				match self.kind {
 					$kind::$token => Ok($crate::token::$token::new(self.span)),
 

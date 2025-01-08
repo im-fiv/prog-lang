@@ -2,28 +2,28 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct If<'inp> {
-	pub _if: token::If<'inp>,
-	pub cond: Expr<'inp>,
-	pub _then: token::Then<'inp>,
-	pub stmts: Vec<Statement<'inp>>,
-	pub b_elifs: Vec<ElseIf<'inp>>,
-	pub b_else: Option<Else<'inp>>,
-	pub _end: token::End<'inp>
+pub struct If<'src> {
+	pub _if: token::If<'src>,
+	pub cond: Expr<'src>,
+	pub _then: token::Then<'src>,
+	pub stmts: Vec<Stmt<'src>>,
+	pub b_elifs: Vec<ElseIf<'src>>,
+	pub b_else: Option<Else<'src>>,
+	pub _end: token::End<'src>
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ElseIf<'inp> {
-	pub _elseif: token::ElseIf<'inp>,
-	pub cond: Expr<'inp>,
-	pub _then: token::Then<'inp>,
-	pub stmts: Vec<Statement<'inp>>
+pub struct ElseIf<'src> {
+	pub _elseif: token::ElseIf<'src>,
+	pub cond: Expr<'src>,
+	pub _then: token::Then<'src>,
+	pub stmts: Vec<Stmt<'src>>
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Else<'inp> {
-	pub _else: token::Else<'inp>,
-	pub stmts: Vec<Statement<'inp>>
+pub struct Else<'src> {
+	pub _else: token::Else<'src>,
+	pub stmts: Vec<Stmt<'src>>
 }
 
 impl ASTNode for If<'_> {
@@ -71,14 +71,14 @@ impl ASTNode for Else<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for If<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for If<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _if = input.parse::<token::If>()?;
 		let cond = input.parse::<Expr>()?;
 		let _then = input.parse::<token::Then>()?;
 		let mut stmts = vec![];
 
-		while let Ok(stmt) = input.try_parse::<Statement>() {
+		while let Ok(stmt) = input.try_parse::<Stmt>() {
 			stmts.push(stmt);
 		}
 
@@ -119,14 +119,14 @@ impl<'inp> Parse<'inp> for If<'inp> {
 	}
 }
 
-impl<'inp> Parse<'inp> for ElseIf<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for ElseIf<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _elseif = input.parse::<token::ElseIf>()?;
 		let cond = input.parse::<Expr>()?;
 		let _then = input.parse::<token::Then>()?;
 		let mut stmts = vec![];
 
-		while let Ok(stmt) = input.try_parse::<Statement>() {
+		while let Ok(stmt) = input.try_parse::<Stmt>() {
 			stmts.push(stmt);
 		}
 
@@ -139,12 +139,12 @@ impl<'inp> Parse<'inp> for ElseIf<'inp> {
 	}
 }
 
-impl<'inp> Parse<'inp> for Else<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for Else<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _else = input.parse::<token::Else>()?;
 		let mut stmts = vec![];
 
-		while let Ok(stmt) = input.try_parse::<Statement>() {
+		while let Ok(stmt) = input.try_parse::<Stmt>() {
 			stmts.push(stmt);
 		}
 

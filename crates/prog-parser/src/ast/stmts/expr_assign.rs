@@ -2,10 +2,10 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ExprAssign<'inp> {
-	pub expr: Expr<'inp>,
-	pub _eq: token::Eq<'inp>,
-	pub value: Expr<'inp>
+pub struct ExprAssign<'src> {
+	pub expr: Expr<'src>,
+	pub _eq: token::Eq<'src>,
+	pub value: Expr<'src>
 }
 
 impl ASTNode for ExprAssign<'_> {
@@ -21,8 +21,8 @@ impl ASTNode for ExprAssign<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for ExprAssign<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for ExprAssign<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let expr = input.parse::<Expr>()?;
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;

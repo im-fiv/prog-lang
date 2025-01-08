@@ -2,15 +2,15 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct IndexAcc<'inp> {
-	pub list: Box<Term<'inp>>,
-	pub _lb: token::LeftBracket<'inp>,
-	pub index: Box<Expr<'inp>>,
-	pub _rb: token::RightBracket<'inp>
+pub struct IndexAcc<'src> {
+	pub list: Box<Term<'src>>,
+	pub _lb: token::LeftBracket<'src>,
+	pub index: Box<Expr<'src>>,
+	pub _rb: token::RightBracket<'src>
 }
 
-impl<'inp> IndexAcc<'inp> {
-	pub fn parse_with_list(input: &ParseStream<'inp>, list: Box<Term<'inp>>) -> ParseResult<Self> {
+impl<'src> IndexAcc<'src> {
+	pub fn parse_with_list(input: &ParseStream<'src>, list: Box<Term<'src>>) -> ParseResult<Self> {
 		let _lb = input.parse::<token::LeftBracket>()?;
 		let index = Box::new(input.parse::<Expr>()?);
 		let _rb = input.parse::<token::RightBracket>()?;
@@ -37,8 +37,8 @@ impl ASTNode for IndexAcc<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for IndexAcc<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for IndexAcc<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		// To support chained operations or complex index access expressions
 		// we have to rely on `Term`'s implementation
 		Term::parse_variant::<Self>(input)

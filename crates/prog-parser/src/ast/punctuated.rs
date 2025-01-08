@@ -6,13 +6,13 @@ use crate::{
 };
 
 #[derive(Clone, PartialEq)]
-pub struct Punctuated<'inp, T, P> {
+pub struct Punctuated<'src, T, P> {
 	pairs: Vec<(T, P)>,
 	tail: Option<T>,
-	_marker: PhantomData<(&'inp T, &'inp P)>
+	_marker: PhantomData<(&'src T, &'src P)>
 }
 
-impl<'inp, T, P> Punctuated<'inp, T, P> {
+impl<'src, T, P> Punctuated<'src, T, P> {
 	pub fn new() -> Self {
 		Self {
 			pairs: vec![],
@@ -56,7 +56,7 @@ impl<'inp, T, P> Punctuated<'inp, T, P> {
 
 	pub fn remove_tail(&mut self) -> Option<T> { self.tail.take() }
 
-	pub fn map<F, G, H, I>(self, f: F, g: G) -> Punctuated<'inp, H, I>
+	pub fn map<F, G, H, I>(self, f: F, g: G) -> Punctuated<'src, H, I>
 	where
 		F: Fn(T) -> H,
 		G: Fn(P) -> I
@@ -208,12 +208,12 @@ where
 	}
 }
 
-impl<'inp, T, P> Parse<'inp> for Punctuated<'inp, T, P>
+impl<'src, T, P> Parse<'src> for Punctuated<'src, T, P>
 where
-	T: Parse<'inp>,
-	P: Parse<'inp>
+	T: Parse<'src>,
+	P: Parse<'src>
 {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let mut list = Self::new();
 
 		loop {

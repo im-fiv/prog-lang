@@ -2,17 +2,17 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Obj<'inp> {
-	pub _lb: token::LeftBrace<'inp>,
-	pub fields: Option<Box<Punctuated<'inp, ObjField<'inp>, token::Comma<'inp>>>>,
-	pub _rb: token::RightBrace<'inp>
+pub struct Obj<'src> {
+	pub _lb: token::LeftBrace<'src>,
+	pub fields: Option<Box<Punctuated<'src, ObjField<'src>, token::Comma<'src>>>>,
+	pub _rb: token::RightBrace<'src>
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ObjField<'inp> {
-	pub name: Ident<'inp>,
-	pub _eq: token::Eq<'inp>,
-	pub value: Expr<'inp>
+pub struct ObjField<'src> {
+	pub name: Ident<'src>,
+	pub _eq: token::Eq<'src>,
+	pub value: Expr<'src>
 }
 
 impl ASTNode for Obj<'_> {
@@ -41,11 +41,11 @@ impl ASTNode for ObjField<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for Obj<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for Obj<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _lb = input.parse::<token::LeftBrace>()?;
 		let fields = input
-			.try_parse::<Punctuated<'inp, ObjField, token::Comma>>()
+			.try_parse::<Punctuated<'src, ObjField, token::Comma>>()
 			.map(Box::new)
 			.ok();
 		let _rb = input.parse::<token::RightBrace>()?;
@@ -54,8 +54,8 @@ impl<'inp> Parse<'inp> for Obj<'inp> {
 	}
 }
 
-impl<'inp> Parse<'inp> for ObjField<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for ObjField<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let name = input.parse::<Ident>()?;
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;

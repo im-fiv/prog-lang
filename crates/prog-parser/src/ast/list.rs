@@ -2,10 +2,10 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct List<'inp> {
-	pub _lb: token::LeftBracket<'inp>,
-	pub items: Option<Box<Punctuated<'inp, Expr<'inp>, token::Comma<'inp>>>>,
-	pub _rb: token::RightBracket<'inp>
+pub struct List<'src> {
+	pub _lb: token::LeftBracket<'src>,
+	pub items: Option<Box<Punctuated<'src, Expr<'src>, token::Comma<'src>>>>,
+	pub _rb: token::RightBracket<'src>
 }
 
 impl ASTNode for List<'_> {
@@ -21,11 +21,11 @@ impl ASTNode for List<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for List<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for List<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _lb = input.parse::<token::LeftBracket>()?;
 		let items = input
-			.try_parse::<Punctuated<'inp, Expr, token::Comma>>()
+			.try_parse::<Punctuated<'src, Expr, token::Comma>>()
 			.map(Box::new)
 			.ok();
 		let _rb = input.parse::<token::RightBracket>()?;

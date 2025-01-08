@@ -2,10 +2,10 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct VarAssign<'inp> {
-	pub name: Ident<'inp>,
-	pub _eq: token::Eq<'inp>,
-	pub value: Expr<'inp>
+pub struct VarAssign<'src> {
+	pub name: Ident<'src>,
+	pub _eq: token::Eq<'src>,
+	pub value: Expr<'src>
 }
 
 impl ASTNode for VarAssign<'_> {
@@ -21,8 +21,8 @@ impl ASTNode for VarAssign<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for VarAssign<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for VarAssign<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let name = input.parse::<Ident>()?;
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;

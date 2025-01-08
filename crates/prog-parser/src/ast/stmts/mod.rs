@@ -26,23 +26,23 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Program<'inp> {
-	pub stmts: Vec<Statement<'inp>>
+pub struct Program<'src> {
+	pub stmts: Vec<Stmt<'src>>
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Statement<'inp> {
-	VarDefine(VarDefine<'inp>),
-	VarAssign(VarAssign<'inp>),
-	DoBlock(DoBlock<'inp>),
-	Return(Return<'inp>),
-	Call(ast::Call<'inp>),
-	WhileLoop(WhileLoop<'inp>),
-	Break(Break<'inp>),
-	Continue(Continue<'inp>),
-	If(If<'inp>),
-	ExprAssign(ExprAssign<'inp>),
-	ClassDef(ClassDef<'inp>)
+pub enum Stmt<'src> {
+	VarDefine(VarDefine<'src>),
+	VarAssign(VarAssign<'src>),
+	DoBlock(DoBlock<'src>),
+	Return(Return<'src>),
+	Call(ast::Call<'src>),
+	WhileLoop(WhileLoop<'src>),
+	Break(Break<'src>),
+	Continue(Continue<'src>),
+	If(If<'src>),
+	ExprAssign(ExprAssign<'src>),
+	ClassDef(ClassDef<'src>)
 }
 
 impl ASTNode for Program<'_> {
@@ -65,24 +65,7 @@ impl ASTNode for Program<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for Program<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
-		let mut stmts = vec![];
-
-		while let Some(token) = input.peek() {
-			if token.kind() == TokenKind::Eof {
-				break;
-			}
-
-			let stmt = input.parse::<Statement>()?;
-			stmts.push(stmt);
-		}
-
-		Ok(Self { stmts })
-	}
-}
-
-impl ASTNode for Statement<'_> {
+impl ASTNode for Stmt<'_> {
 	fn span(&self) -> Span {
 		match self {
 			Self::VarDefine(s) => s as &dyn ASTNode,
@@ -101,8 +84,25 @@ impl ASTNode for Statement<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for Statement<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for Program<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+		let mut stmts = vec![];
+
+		while let Some(token) = input.peek() {
+			if token.kind() == TokenKind::Eof {
+				break;
+			}
+
+			let stmt = input.parse::<Stmt>()?;
+			stmts.push(stmt);
+		}
+
+		Ok(Self { stmts })
+	}
+}
+
+impl<'src> Parse<'src> for Stmt<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		// `def ...`
 		if input.peek_matches(TokenKind::Def).is_some() {
 			return input.parse::<VarDefine>().map(Self::VarDefine);

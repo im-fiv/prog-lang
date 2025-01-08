@@ -5,9 +5,9 @@ use prog_lexer::TokenKind;
 use crate::{error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span};
 
 #[derive(Clone, PartialEq)]
-pub struct Lit<'inp> {
+pub struct Lit<'src> {
 	pub kind: LitKind,
-	pub span: Span<'inp>
+	pub span: Span<'src>
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -26,8 +26,8 @@ impl ASTNode for Lit<'_> {
 	fn span(&self) -> Span { self.span }
 }
 
-impl<'inp> Parse<'inp> for Lit<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for Lit<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let token = input.expect_next()?;
 		let span = token.span();
 

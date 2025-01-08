@@ -2,10 +2,10 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct DoBlock<'inp> {
-	pub _do: token::Do<'inp>,
-	pub stmts: Vec<Statement<'inp>>,
-	pub _end: token::End<'inp>
+pub struct DoBlock<'src> {
+	pub _do: token::Do<'src>,
+	pub stmts: Vec<Stmt<'src>>,
+	pub _end: token::End<'src>
 }
 
 impl ASTNode for DoBlock<'_> {
@@ -21,12 +21,12 @@ impl ASTNode for DoBlock<'_> {
 	}
 }
 
-impl<'inp> Parse<'inp> for DoBlock<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
+impl<'src> Parse<'src> for DoBlock<'src> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _do = input.parse::<token::Do>()?;
 
 		let mut stmts = vec![];
-		while let Ok(stmt) = input.try_parse::<Statement>() {
+		while let Ok(stmt) = input.try_parse::<Stmt>() {
 			stmts.push(stmt);
 		}
 
