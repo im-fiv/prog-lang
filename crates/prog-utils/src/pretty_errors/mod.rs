@@ -1,16 +1,17 @@
 mod formatter_writer;
 mod span;
 
-use std::{fmt, io};
-
-use ariadne::{Label, Report, ReportKind, Source};
 use formatter_writer::FormatterWriter;
 pub use span::{Position, Span};
 
+use std::{fmt, io};
+
+use ariadne::{Label, Report, ReportKind, Source};
+
 #[cfg(feature = "serde")]
-pub trait PrettyErrorKind: Clone + AriadneCompatible + serde::Serialize {}
+pub trait PrettyErrorKind: Clone + fmt::Debug + AriadneCompatible + serde::Serialize {}
 #[cfg(not(feature = "serde"))]
-pub trait PrettyErrorKind: Clone + AriadneCompatible {}
+pub trait PrettyErrorKind: Clone + fmt::Debug + AriadneCompatible {}
 
 pub trait AriadneCompatible {
 	fn message(&self) -> String;
@@ -86,3 +87,5 @@ impl<Kind: PrettyErrorKind> serde::Serialize for PrettyError<Kind> {
 		s.end()
 	}
 }
+
+impl<Kind: PrettyErrorKind> std::error::Error for PrettyError<Kind> {}

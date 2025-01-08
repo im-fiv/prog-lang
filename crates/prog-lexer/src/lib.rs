@@ -2,11 +2,12 @@ mod errors;
 mod token;
 mod stream;
 
-use anyhow::{bail, Result};
 pub use errors::{LexError, LexErrorKind};
 use prog_utils::pretty_errors::{Position, Span};
 pub use stream::LexStream;
 pub use token::{Token, TokenKind, TokenStream};
+
+pub type LexResult<T> = Result<T, LexError>;
 
 fn unexpected_token(
 	ls: &mut LexStream<'_>,
@@ -24,7 +25,7 @@ fn unexpected_token(
 	)
 }
 
-pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>> {
+pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> LexResult<TokenStream<'inp>> {
 	let mut ls = LexStream::new(source, file);
 	let mut ts = TokenStream::new();
 
@@ -58,7 +59,7 @@ pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>
 			c if c.is_ascii_digit() => number(&mut ls, c)?,
 
 			c => {
-				bail!(LexError::new(
+				return Err(LexError::new(
 					source.to_owned(),
 					file.to_owned(),
 					Position::new(start_index, start_index + 1),
@@ -66,7 +67,7 @@ pub fn lex<'inp>(source: &'inp str, file: &'inp str) -> Result<TokenStream<'inp>
 						got: c,
 						expected: None
 					})
-				))
+				));
 			}
 		};
 
@@ -93,7 +94,7 @@ fn minus_or_arrow(ls: &mut LexStream<'_>) -> TokenKind {
 	}
 }
 
-fn slash_or_comment(ls: &mut LexStream<'_>) -> Result<TokenKind> {
+fn slash_or_comment(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 	let start_index = ls.position() - 1;
 
 	if ls.peek_matches_exact('/', true) {
@@ -103,7 +104,7 @@ fn slash_or_comment(ls: &mut LexStream<'_>) -> Result<TokenKind> {
 	} else if ls.peek_matches_exact('*', true) {
 		// Multiline comment
 		if !ls.next_while_exact('*', true) {
-			bail!(LexError::new(
+			return Err(LexError::new(
 				ls.source().to_owned(),
 				ls.file().to_owned(),
 				Position::new(start_index, ls.position()),
@@ -115,7 +116,7 @@ fn slash_or_comment(ls: &mut LexStream<'_>) -> Result<TokenKind> {
 		}
 
 		if !ls.peek_matches_exact('/', true) {
-			bail!(LexError::new(
+			return Err(LexError::new(
 				ls.source().to_owned(),
 				ls.file().to_owned(),
 				Position::new(start_index, ls.position()),
@@ -142,24 +143,24 @@ fn eq_or_fat_arrow_or_eqeq(ls: &mut LexStream<'_>) -> TokenKind {
 	}
 }
 
-fn neq(ls: &mut LexStream<'_>) -> Result<TokenKind> {
+fn neq(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 	let start_index = ls.position() - 1;
 	let next = ls.next();
 
 	if next.is_none() {
-		bail!(unexpected_token(ls, ' ', Some('='), Some(start_index)));
+		return Err(unexpected_token(ls, ' ', Some('='), Some(start_index)));
 	}
 
 	let next = next.unwrap();
 
 	if next.1 != '=' {
-		bail!(unexpected_token(ls, next.1, Some('='), Some(start_index)));
+		return Err(unexpected_token(ls, next.1, Some('='), Some(start_index)));
 	}
 
 	Ok(TokenKind::Neq)
 }
 
-fn string(ls: &mut LexStream<'_>) -> Result<TokenKind> {
+fn string(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 	let start_index = ls.position() - 1;
 
 	let mut closed = false;
@@ -183,7 +184,7 @@ fn string(ls: &mut LexStream<'_>) -> Result<TokenKind> {
 	}
 
 	if !closed {
-		bail!(LexError::new(
+		return Err(LexError::new(
 			ls.source().to_owned(),
 			ls.file().to_owned(),
 			Position::new(last_char.0, last_char.0 + 1),
@@ -217,7 +218,7 @@ fn ident_or_keyword(ls: &mut LexStream<'_>, c: char) -> TokenKind {
 	}
 }
 
-fn number(ls: &mut LexStream<'_>, c: char) -> Result<TokenKind> {
+fn number(ls: &mut LexStream<'_>, c: char) -> LexResult<TokenKind> {
 	let start_index = ls.position() - 1;
 
 	let mut number = String::new();
@@ -233,7 +234,7 @@ fn number(ls: &mut LexStream<'_>, c: char) -> Result<TokenKind> {
 	}
 
 	if number.parse::<f64>().is_err() {
-		bail!(LexError::new(
+		return Err(LexError::new(
 			ls.source().to_owned(),
 			ls.file().to_owned(),
 			Position::new(start_index, ls.position()),

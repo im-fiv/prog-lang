@@ -10,6 +10,13 @@ const NAME_STDIN: &str = "<STDIN>";
 #[cfg(feature = "repl")]
 const NAME_REPL: &str = "<REPL>";
 
+type ProgResult<T> = std::result::Result<T, ProgError>;
+
+#[derive(Debug)]
+enum ProgError {
+	Lex(prog_lexer::LexError)
+}
+
 #[cfg(feature = "api")]
 fn serialize_anyhow(anyhow_error: anyhow::Error) -> Result<String, String> {
 	let interpret_error = anyhow_error.downcast_ref::<prog_interpreter::InterpretError>();

@@ -5,6 +5,7 @@ edition = "2021"
 
 [features]
 default = []
+full = ["repl", "serde", "api", "website"]
 repl = ["dep:rustyline"]
 serde = [
 	"dep:serde",

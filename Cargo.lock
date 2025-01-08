@@ -1041,40 +1041,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pest_derive"
-version = "2.7.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "816518421cfc6887a0d62bf441b6ffb4536fcc926395a69e1a85852d4363f57e"
-dependencies = [
- "pest",
- "pest_generator",
-]
-
-[[package]]
-name = "pest_generator"
-version = "2.7.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d1396fd3a870fc7838768d171b4616d5c91f6cc25e377b673d714567d99377b"
-dependencies = [
- "pest",
- "pest_meta",
- "proc-macro2",
- "quote",
- "syn 2.0.91",
-]
-
-[[package]]
-name = "pest_meta"
-version = "2.7.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1e58089ea25d717bfd31fb534e4f3afcc2cc569c70de3e239778991ea3b7dea"
-dependencies = [
- "once_cell",
- "pest",
- "sha2",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1163,34 +1129,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.91",
-]
-
-[[package]]
-name = "prog-old-interpreter"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "ariadne",
- "halloc",
- "prog-lexer",
- "prog-macros",
- "prog-parser",
- "prog-utils",
- "serde",
- "text_io",
-]
-
-[[package]]
-name = "prog-old-parser"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "ariadne",
- "pest",
- "pest_derive",
- "prog-macros",
- "prog-utils",
- "serde",
 ]
 
 [[package]]
@@ -1431,17 +1369,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sha2"
-version = "0.10.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "793db75ad2bcafc3ffa7c68b215fee268f537982cd901d132f89c6343f3a3dc8"
-dependencies = [
- "cfg-if",
- "cpufeatures",
- "digest",
-]
-
-[[package]]
 name = "signal-hook-registry"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1502,12 +1429,6 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
-
-[[package]]
-name = "text_io"
-version = "0.1.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5f0c8eb2ad70c12a6a69508f499b3051c924f4b1cfeae85bfad96e6bc5bba46"
 
 [[package]]
 name = "thiserror"
