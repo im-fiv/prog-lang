@@ -193,3 +193,57 @@ impl TokenKind {
 		}
 	}
 }
+
+impl Display for TokenKind {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::True => write!(f, "true"),
+			Self::False => write!(f, "false"),
+			Self::Def => write!(f, "def"),
+			Self::Func => write!(f, "func"),
+			Self::Do => write!(f, "do"),
+			Self::End => write!(f, "end"),
+			Self::Return => write!(f, "return"),
+			Self::While => write!(f, "while"),
+			Self::Break => write!(f, "break"),
+			Self::Continue => write!(f, "continue"),
+			Self::If => write!(f, "if"),
+			Self::Then => write!(f, "then"),
+			Self::ElseIf => write!(f, "elseif"),
+			Self::Else => write!(f, "else"),
+			Self::None => write!(f, "none"),
+			Self::And => write!(f, "and"),
+			Self::Or => write!(f, "or"),
+			Self::Not => write!(f, "not"),
+			Self::Class => write!(f, "class"),
+			Self::Extern => write!(f, "extern"),
+			Self::Ident => write!(f, "identifier"),
+			Self::Comment => write!(f, "comment"),
+			Self::Number => write!(f, "number"),
+			Self::String => write!(f, "string"),
+			Self::Plus => write!(f, "+"),
+			Self::Minus => write!(f, "-"),
+			Self::Asterisk => write!(f, "*"),
+			Self::Slash => write!(f, "/"),
+			Self::Sign => write!(f, "%"),
+			Self::Eq => write!(f, "="),
+			Self::EqEq => write!(f, "=="),
+			Self::Neq => write!(f, "!="),
+			Self::Arrow => write!(f, "->"),
+			Self::FatArrow => write!(f, "=>"),
+			Self::Dot => write!(f, "."),
+			Self::Comma => write!(f, ","),
+			Self::Gt => write!(f, ">"),
+			Self::Lt => write!(f, "<"),
+			Self::Gte => write!(f, ">="),
+			Self::Lte => write!(f, "<="),
+			Self::LeftParen => write!(f, "("),
+			Self::RightParen => write!(f, ")"),
+			Self::LeftBrace => write!(f, "{{"),
+			Self::RightBrace => write!(f, "}}"),
+			Self::LeftBracket => write!(f, "["),
+			Self::RightBracket => write!(f, "]"),
+			Self::Eof => write!(f, "<EOF>")
+		}
+	}
+}

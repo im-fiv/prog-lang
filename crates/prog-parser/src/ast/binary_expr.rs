@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 use prog_lexer::TokenKind;
 
 use super::op_to_token;
@@ -84,27 +86,49 @@ impl TryFrom<TokenKind> for BinaryOpKind {
 	type Error = String;
 
 	fn try_from(kind: TokenKind) -> std::result::Result<Self, Self::Error> {
-		use {BinaryOpKind as B, TokenKind as T};
+		use TokenKind as T;
 
 		Ok(match kind {
-			T::Plus => B::Plus,
-			T::Minus => B::Minus,
-			T::Slash => B::Slash,
-			T::Asterisk => B::Asterisk,
-			T::Sign => B::Sign,
-			T::EqEq => B::EqEq,
-			T::Neq => B::Neq,
-			T::And => B::And,
-			T::Or => B::Or,
-			T::Gt => B::Gt,
-			T::Lt => B::Lt,
-			T::Gte => B::Gte,
-			T::Lte => B::Lte,
-			T::LeftBracket => B::LeftBracket,
-			T::Dot => B::Dot,
+			T::Plus => Self::Plus,
+			T::Minus => Self::Minus,
+			T::Slash => Self::Slash,
+			T::Asterisk => Self::Asterisk,
+			T::Sign => Self::Sign,
+			T::EqEq => Self::EqEq,
+			T::Neq => Self::Neq,
+			T::And => Self::And,
+			T::Or => Self::Or,
+			T::Gt => Self::Gt,
+			T::Lt => Self::Lt,
+			T::Gte => Self::Gte,
+			T::Lte => Self::Lte,
+			T::LeftBracket => Self::LeftBracket,
+			T::Dot => Self::Dot,
 
 			kind => return Err(format!("Unknown binary operator of type `{kind:?}`"))
 		})
+	}
+}
+
+impl Display for BinaryOpKind {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Plus => write!(f, "+"),
+			Self::Minus => write!(f, "-"),
+			Self::Slash => write!(f, "/"),
+			Self::Asterisk => write!(f, "*"),
+			Self::Sign => write!(f, "%"),
+			Self::EqEq => write!(f, "=="),
+			Self::Neq => write!(f, "!="),
+			Self::And => write!(f, "and"),
+			Self::Or => write!(f, "or"),
+			Self::Gt => write!(f, ">"),
+			Self::Lt => write!(f, "<"),
+			Self::Gte => write!(f, ">="),
+			Self::Lte => write!(f, "<="),
+			Self::LeftBracket => write!(f, "["),
+			Self::Dot => write!(f, ".")
+		}
 	}
 }
 

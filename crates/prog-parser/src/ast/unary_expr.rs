@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 use prog_lexer::TokenKind;
 
 use crate::ast::*;
@@ -71,14 +73,23 @@ impl TryFrom<TokenKind> for UnaryOpKind {
 	type Error = String;
 
 	fn try_from(kind: TokenKind) -> std::result::Result<Self, Self::Error> {
-		use {TokenKind as T, UnaryOpKind as U};
+		use TokenKind as T;
 
 		Ok(match kind {
-			T::Minus => U::Minus,
-			T::Not => U::Not,
+			T::Minus => Self::Minus,
+			T::Not => Self::Not,
 
 			kind => return Err(format!("Unknown unary operator of type `{kind:?}`"))
 		})
+	}
+}
+
+impl Display for UnaryOpKind {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Minus => write!(f, "-"),
+			Self::Not => write!(f, "not")
+		}
 	}
 }
 

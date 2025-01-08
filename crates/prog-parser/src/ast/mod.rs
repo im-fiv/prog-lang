@@ -48,7 +48,7 @@ macro_rules! op_to_token {
 							self.span.position(),
 							$crate::ParseErrorKind::Internal($crate::error::Internal(
 								format!(
-									"Token of type `{:?}` cannot be converted to that of `{}`",
+									"Token of type `{}` cannot be converted to that of `{}`",
 									v,
 									stringify!($token)
 								)

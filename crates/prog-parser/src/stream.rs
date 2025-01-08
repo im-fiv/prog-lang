@@ -90,6 +90,19 @@ where
 		result
 	}
 
+	/// Peeks at the current token in the stream without advancing the cursor.
+	///
+	/// Returns `Some(Token)` if a token is available, or `None` if the
+	/// end of the buffer has been reached, or if there is no current token.
+	pub fn current(&'_ self) -> Option<Token<'src>> {
+		if self.is_empty() {
+			return None;
+		}
+
+		let cursor = self.cursor.get().saturating_sub(1);
+		self.buffer.get(cursor).copied()
+	}
+
 	/// Gets the next token from the stream and advances the cursor.
 	///
 	/// Returns `Some(Token)` if a token is available, or `None` if the
@@ -150,10 +163,23 @@ where
 	/// This function combines the behavior of `peek()` with a `Result`,
 	/// which indicates if a *valid* token is available.
 	pub fn expect_peek(&'_ self) -> ParseResult<Token<'src>> {
-		self.peek()
+		let token = self
+			.current()
 			.ok_or(ParseError::new_unspanned(ParseErrorKind::Internal(
 				error::Internal(String::from("unexpected end of input"))
-			)))
+			)))?;
+		let span = token.span();
+
+		self.peek()
+			.ok_or(ParseError::new(
+				span.source().to_owned(),
+				span.file().to_owned(),
+				span.position(),
+				ParseErrorKind::UnexpectedToken(error::UnexpectedToken {
+					got: TokenKind::Eof,
+					expected: None
+				})
+			))
 	}
 
 	/// Peeks at the next token in the stream and returns it if its `TokenKind` matches the provided `kind`.
@@ -181,12 +207,11 @@ where
 				span.source().to_owned(),
 				span.file().to_owned(),
 				span.position(),
-				ParseErrorKind::Internal(error::Internal(format!(
-					"Token kind mismatch (got={:?} != expected:{:?})",
-					token.kind(),
-					kind
-				)))
-			));
+				ParseErrorKind::UnexpectedToken(error::UnexpectedToken {
+					got: token.kind(),
+					expected: Some(kind)
+				})
+			))
 		}
 
 		Ok(token)
