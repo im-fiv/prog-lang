@@ -1,4 +1,3 @@
-mod stmts;
 mod binary_expr;
 mod call;
 mod expr;
@@ -12,6 +11,7 @@ mod lit;
 mod obj;
 mod punctuated;
 mod term;
+mod stmts;
 mod unary_expr;
 
 pub use binary_expr::*;
@@ -30,7 +30,7 @@ pub use stmts::*;
 pub use term::*;
 pub use unary_expr::*;
 
-use crate::{ASTNode, Parse, ParseResult, ParseStream, Span, Position};
+use crate::{ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 macro_rules! op_to_token {
 	($op:ident : $kind:ident => $token:ident) => {
@@ -46,13 +46,11 @@ macro_rules! op_to_token {
 							self.span.source().to_owned(),
 							self.span.file().to_owned(),
 							self.span.position(),
-							$crate::ParseErrorKind::Internal($crate::error::Internal(
-								format!(
-									"Token of type `{}` cannot be converted to that of `{}`",
-									v,
-									stringify!($token)
-								)
-							))
+							$crate::ParseErrorKind::Internal($crate::error::Internal(format!(
+								"Token of type `{}` cannot be converted to that of `{}`",
+								v,
+								stringify!($token)
+							)))
 						))
 					}
 				}

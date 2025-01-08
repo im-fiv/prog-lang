@@ -20,7 +20,9 @@ pub use while_loop::WhileLoop;
 
 use prog_lexer::TokenKind;
 
-use crate::{ast, error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span};
+use crate::{
+	ast, error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt<'src> {
@@ -111,9 +113,7 @@ impl<'src> Parse<'src> for Stmt<'src> {
 			span.source().to_owned(),
 			span.file().to_owned(),
 			span.position(),
-			ParseErrorKind::Internal(error::Internal(
-				String::from("no statement matched")
-			))
+			ParseErrorKind::Internal(error::Internal(String::from("no statement matched")))
 		))
 	}
 }

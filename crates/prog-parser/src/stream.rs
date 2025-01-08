@@ -170,16 +170,15 @@ where
 			)))?;
 		let span = token.span();
 
-		self.peek()
-			.ok_or(ParseError::new(
-				span.source().to_owned(),
-				span.file().to_owned(),
-				span.position(),
-				ParseErrorKind::UnexpectedToken(error::UnexpectedToken {
-					got: TokenKind::Eof,
-					expected: None
-				})
-			))
+		self.peek().ok_or(ParseError::new(
+			span.source().to_owned(),
+			span.file().to_owned(),
+			span.position(),
+			ParseErrorKind::UnexpectedToken(error::UnexpectedToken {
+				got: TokenKind::Eof,
+				expected: None
+			})
+		))
 	}
 
 	/// Peeks at the next token in the stream and returns it if its `TokenKind` matches the provided `kind`.
@@ -211,7 +210,7 @@ where
 					got: token.kind(),
 					expected: Some(kind)
 				})
-			))
+			));
 		}
 
 		Ok(token)
