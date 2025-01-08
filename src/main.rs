@@ -43,7 +43,10 @@ fn execute_run_command(args: cli::RunCommand) {
 	};
 
 	let ps = prog_parser::ParseStream::new(ts.buffer());
-	let ast = match ps.parse::<prog_parser::ast::Program>().map_err(ProgError::Parse) {
+	let ast = match ps
+		.parse::<prog_parser::ast::Program>()
+		.map_err(ProgError::Parse)
+	{
 		Ok(ast) => ast,
 		Err(err) => {
 			eprintln!("{err}");
@@ -64,7 +67,7 @@ fn execute_run_command(args: cli::RunCommand) {
 fn repl() {
 	// TODO
 	todo!("REPL")
-	
+
 	/*
 	use rustyline::error::ReadlineError;
 	use rustyline::DefaultEditor;
@@ -162,7 +165,10 @@ fn execute_serve_command(args: cli::ServeCommand) {
 		};
 
 		let ps = prog_parser::ParseStream::new(ts.buffer());
-		let ast = match ps.parse::<prog_parser::ast::Program>().map_err(ProgError::Parse) {
+		let ast = match ps
+			.parse::<prog_parser::ast::Program>()
+			.map_err(ProgError::Parse)
+		{
 			Ok(ast) => ast,
 			Err(err) => return handle_prog_error(err)
 		};

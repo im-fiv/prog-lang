@@ -2,7 +2,7 @@ use std::fmt::{self, Debug};
 
 use prog_lexer::TokenKind;
 
-use crate::{errors, ParseResult, ParseError, ParseErrorKind, ASTNode, Parse, ParseStream, Span};
+use crate::{errors, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span};
 
 #[derive(Clone, PartialEq)]
 pub struct Lit<'inp> {
@@ -71,14 +71,16 @@ impl<'inp> Parse<'inp> for Lit<'inp> {
 				})
 			}
 
-			kind => Err(ParseError::new(
-				span.source().to_owned(),
-				span.file().to_owned(),
-				span.position(),
-				ParseErrorKind::Internal(errors::Internal(
-					format!("Unknown literal `{token}` of type `{kind:?}`")
+			kind => {
+				Err(ParseError::new(
+					span.source().to_owned(),
+					span.file().to_owned(),
+					span.position(),
+					ParseErrorKind::Internal(errors::Internal(format!(
+						"Unknown literal `{token}` of type `{kind:?}`"
+					)))
 				))
-			))
+			}
 		}
 	}
 }

@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldAcc<'inp> {
@@ -9,7 +9,10 @@ pub struct FieldAcc<'inp> {
 }
 
 impl<'inp> FieldAcc<'inp> {
-	pub fn parse_with_object(input: &ParseStream<'inp>, object: Box<Term<'inp>>) -> ParseResult<Self> {
+	pub fn parse_with_object(
+		input: &ParseStream<'inp>,
+		object: Box<Term<'inp>>
+	) -> ParseResult<Self> {
 		let _dot = input.parse::<token::Dot>()?;
 		let field = input.parse::<Ident>()?;
 

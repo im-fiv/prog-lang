@@ -8,7 +8,5 @@ pub struct Todo;
 impl AriadneCompatible for Todo {
 	fn message(&self) -> String { String::from("TODO") }
 
-	fn labels(self, span: Span) -> Vec<ariadne::Label<Span>> {
-		vec![]
-	}
+	fn labels(self, span: Span) -> Vec<ariadne::Label<Span>> { vec![] }
 }

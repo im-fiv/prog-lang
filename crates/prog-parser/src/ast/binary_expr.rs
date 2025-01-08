@@ -2,7 +2,9 @@ use prog_lexer::TokenKind;
 
 use super::op_to_token;
 use crate::ast::*;
-use crate::{errors, ParseResult, ParseError, ParseErrorKind, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{
+	errors, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Position, Span
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinaryExpr<'inp> {
@@ -101,7 +103,6 @@ impl TryFrom<TokenKind> for BinaryOpKind {
 			T::LeftBracket => B::LeftBracket,
 			T::Dot => B::Dot,
 
-			// TODO: proper error reporting
 			kind => return Err(format!("Unknown binary operator of type `{kind:?}`"))
 		})
 	}

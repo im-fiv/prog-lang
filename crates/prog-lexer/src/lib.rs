@@ -61,8 +61,8 @@ pub fn lex<'src>(source: &'src str, file: &'src str) -> LexResult<TokenStream<'s
 
 			c => {
 				return Err(LexError::new(
-				source.to_owned(),
-				file.to_owned(),
+					source.to_owned(),
+					file.to_owned(),
 					Position::new(start_index, start_index + 1),
 					LexErrorKind::UnexpectedToken(errors::UnexpectedToken {
 						got: c,
@@ -195,7 +195,7 @@ fn string(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 				got: last_char.1,
 				expected: Some('"')
 			})
-		))
+		));
 	}
 
 	Ok(TokenKind::String)

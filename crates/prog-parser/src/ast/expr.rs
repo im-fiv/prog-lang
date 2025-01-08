@@ -1,7 +1,7 @@
 use prog_lexer::TokenKind;
 
 use crate::ast::*;
-use crate::{token, ParseResult, ASTNode, Parse, ParsePrecedence, ParseStream, Position, Span};
+use crate::{token, ASTNode, Parse, ParsePrecedence, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'inp> {
@@ -22,9 +22,7 @@ impl ASTNode for Expr<'_> {
 }
 
 impl<'inp> Parse<'inp> for Expr<'inp> {
-	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> {
-		Self::parse_precedence(input, 0)
-	}
+	fn parse(input: &ParseStream<'inp>) -> ParseResult<Self> { Self::parse_precedence(input, 0) }
 }
 
 impl<'inp> ParsePrecedence<'inp> for Expr<'inp> {

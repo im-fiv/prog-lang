@@ -6,9 +6,9 @@ pub mod token;
 pub mod ast;
 pub mod errors;
 
+pub use errors::{ParseError, ParseErrorKind};
 pub use stream::ParseStream;
 pub use token::Token;
-pub use errors::{ParseError, ParseErrorKind};
 
 pub use prog_utils::pretty_errors::{Position, Span};
 

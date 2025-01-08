@@ -1,7 +1,7 @@
 use prog_lexer::TokenKind;
 
 use crate::ast::*;
-use crate::{errors, ParseResult, ParseError, ParseErrorKind, ASTNode, Parse, ParseStream, Span};
+use crate::{errors, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span};
 
 #[derive(Debug, Clone, PartialEq, prog_macros::VariantUnwrap)]
 pub enum Term<'inp> {
@@ -28,19 +28,8 @@ impl<'inp> Term<'inp> {
 	where
 		Self: TryInto<T>
 	{
-		use std::any::type_name;
-
-		// let term = input.parse::<Self>()?;
-		// term.try_into().map_err(|_| {
-		// 	anyhow!(
-		// 		"Conversion of `{}` to variant `{}` failed",
-		// 		type_name::<Self>(),
-		// 		type_name::<T>()
-		// 	)
-		// })
-
 		let term = input.parse::<Self>()?;
-		
+
 		let source = term.span().source().to_owned();
 		let file = term.span().file().to_owned();
 		let position = term.span().position();
@@ -50,13 +39,11 @@ impl<'inp> Term<'inp> {
 				source,
 				file,
 				position,
-				ParseErrorKind::Internal(errors::Internal(
-					format!(
-						"Conversion of `{}` to variant `{}` failed",
-						type_name::<Self>(),
-						type_name::<T>()
-					)
-				))
+				ParseErrorKind::Internal(errors::Internal(format!(
+					"Conversion of `{}` to variant `{}` failed",
+					std::any::type_name::<Self>(),
+					std::any::type_name::<T>()
+				)))
 			)
 		})
 	}
@@ -101,15 +88,14 @@ impl<'inp> Parse<'inp> for Term<'inp> {
 			T::LeftBrace => input.parse::<Obj>().map(Self::Obj)?,
 			T::Extern => input.parse::<Extern>().map(Self::Extern)?,
 
-			// TODO: proper error reporting
-			t => return Err(ParseError::new(
-				token.span().source().to_owned(),
-				token.span().file().to_owned(),
-				token.span().position(),
-				ParseErrorKind::Internal(errors::Internal(
-					format!("unsupported term `{t:?}`")
+			t => {
+				return Err(ParseError::new(
+					token.span().source().to_owned(),
+					token.span().file().to_owned(),
+					token.span().position(),
+					ParseErrorKind::Internal(errors::Internal(format!("unsupported term `{t:?}`")))
 				))
-			))
+			}
 		};
 
 		while let Some(token) = input.peek() {

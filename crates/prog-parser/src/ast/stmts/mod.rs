@@ -20,7 +20,10 @@ pub use while_loop::WhileLoop;
 
 use prog_lexer::TokenKind;
 
-use crate::{ast, errors, ParseResult, ParseError, ParseErrorKind, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{
+	ast, errors, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Position,
+	Span
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program<'inp> {
@@ -146,10 +149,8 @@ impl<'inp> Parse<'inp> for Statement<'inp> {
 			return Ok(Self::Call(stmt));
 		}
 
-		Err(ParseError::new_unspanned(
-			ParseErrorKind::Internal(errors::Internal(
-				String::from("no statement matched")
-			))
-		))
+		Err(ParseError::new_unspanned(ParseErrorKind::Internal(
+			errors::Internal(String::from("no statement matched"))
+		)))
 	}
 }

@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 use prog_lexer::{Token, TokenKind};
 
-use crate::{errors, ParseResult, ParseError, ParseErrorKind};
+use crate::{errors, ParseError, ParseErrorKind, ParseResult};
 
 #[derive(Debug)]
 pub struct ParseStream<'src> {
@@ -151,11 +151,9 @@ where
 	/// which indicates if a *valid* token is available.
 	pub fn expect_peek(&'_ self) -> ParseResult<Token<'src>> {
 		self.peek()
-			.ok_or(ParseError::new_unspanned(
-				ParseErrorKind::Internal(errors::Internal(
-					String::from("unexpected end of input")
-				))
-			))
+			.ok_or(ParseError::new_unspanned(ParseErrorKind::Internal(
+				errors::Internal(String::from("unexpected end of input"))
+			)))
 	}
 
 	/// Peeks at the next token in the stream and returns it if its `TokenKind` matches the provided `kind`.
@@ -183,13 +181,11 @@ where
 				span.source().to_owned(),
 				span.file().to_owned(),
 				span.position(),
-				ParseErrorKind::Internal(errors::Internal(
-					format!(
-						"Token kind mismatch (got={:?} != expected:{:?})",
-						token.kind(),
-						kind
-					)
-				))
+				ParseErrorKind::Internal(errors::Internal(format!(
+					"Token kind mismatch (got={:?} != expected:{:?})",
+					token.kind(),
+					kind
+				)))
 			));
 		}
 

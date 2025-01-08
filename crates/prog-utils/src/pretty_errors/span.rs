@@ -14,7 +14,11 @@ impl<'inp> Span<'inp> {
 	}
 
 	pub fn new_unchecked(source: &'inp str, file: &'inp str, position: Position) -> Self {
-		Self { source, file, position }
+		Self {
+			source,
+			file,
+			position
+		}
 	}
 
 	pub fn source(&self) -> &'inp str { self.source }

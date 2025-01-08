@@ -1,4 +1,4 @@
-use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Span};
+use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Break<'inp> {

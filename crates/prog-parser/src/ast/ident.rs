@@ -1,6 +1,6 @@
-use std::fmt::{self, Debug};
+use std::fmt::{self, Debug, Display};
 
-use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Span};
+use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Span};
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Ident<'inp> {
@@ -19,8 +19,10 @@ impl<'inp> Parse<'inp> for Ident<'inp> {
 	}
 }
 
-impl ToString for Ident<'_> {
-	fn to_string(&self) -> String { self._ident.value_owned() }
+impl Display for Ident<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "{}", self._ident.value())
+	}
 }
 
 impl Debug for Ident<'_> {

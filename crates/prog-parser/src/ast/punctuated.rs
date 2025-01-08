@@ -1,7 +1,9 @@
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 
-use crate::{errors, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Position, Span, Token};
+use crate::{
+	errors, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Position, Span
+};
 
 #[derive(Clone, PartialEq)]
 pub struct Punctuated<'inp, T, P> {
@@ -228,18 +230,9 @@ where
 		}
 
 		if list.is_empty() {
-			// TODO: refine this
-			let token = input.peek().unwrap();
-			let span = token.sp();
-
-			return Err(ParseError::new(
-				span.source().to_owned(),
-				span.file().to_owned(),
-				span.position(),
-				ParseErrorKind::Internal(errors::Internal(
-					String::from("Punctuated list did not parse any items")
-				))
-			));
+			return Err(ParseError::new_unspanned(ParseErrorKind::Internal(
+				errors::Internal(String::from("Punctuated list did not parse any items"))
+			)));
 		}
 
 		Ok(list)

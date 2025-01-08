@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::{token, ParseResult, ASTNode, Parse, ParseStream, Position, Span};
+use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Func<'inp> {
