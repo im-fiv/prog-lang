@@ -36,6 +36,7 @@ impl Default for TokenStream<'_> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Token<'src> {
 	kind: TokenKind,
 	span: Span<'src>
@@ -64,6 +65,7 @@ impl Display for Token<'_> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum TokenKind {
 	// Keywords
 	/// `true`

@@ -4,6 +4,7 @@ use crate::ast::*;
 use crate::{error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span};
 
 #[derive(Debug, Clone, PartialEq, prog_macros::VariantUnwrap)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum Term<'src> {
 	// Wrapping terms
 	Expr(Box<Expr<'src>>),

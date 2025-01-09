@@ -2,6 +2,7 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Return<'src> {
 	pub _return: token::Return<'src>,
 	pub value: Expr<'src>

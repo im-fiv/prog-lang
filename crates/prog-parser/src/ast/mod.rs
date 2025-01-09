@@ -60,6 +60,7 @@ macro_rules! op_to_token {
 pub(crate) use op_to_token;
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Program<'src> {
 	pub stmts: Vec<Stmt<'src>>
 }

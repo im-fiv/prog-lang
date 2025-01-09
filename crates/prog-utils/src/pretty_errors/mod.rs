@@ -52,12 +52,7 @@ impl<Kind: PrettyErrorKind> PrettyError<Kind> {
 	}
 
 	pub fn new_unspanned(kind: Kind) -> Self {
-		Self {
-			source: "".into(),
-			file: "".into(),
-			position: Position::new(0, 0),
-			kind
-		}
+		Self::new("", "", Position::new(0, 0), kind)
 	}
 
 	fn create_report(&self) -> Report<Span> {

@@ -2,6 +2,7 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct If<'src> {
 	pub _if: token::If<'src>,
 	pub cond: Expr<'src>,
@@ -13,6 +14,7 @@ pub struct If<'src> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ElseIf<'src> {
 	pub _elseif: token::ElseIf<'src>,
 	pub cond: Expr<'src>,
@@ -21,6 +23,7 @@ pub struct ElseIf<'src> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Else<'src> {
 	pub _else: token::Else<'src>,
 	pub stmts: Vec<Stmt<'src>>

@@ -2,6 +2,7 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct List<'src> {
 	pub _lb: token::LeftBracket<'src>,
 	pub items: Option<Box<Punctuated<'src, Expr<'src>, token::Comma<'src>>>>,

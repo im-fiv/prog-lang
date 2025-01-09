@@ -25,6 +25,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum Stmt<'src> {
 	VarDefine(VarDefine<'src>),
 	VarAssign(VarAssign<'src>),

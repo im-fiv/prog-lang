@@ -4,6 +4,7 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParsePrecedence, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum Expr<'src> {
 	Binary(BinaryExpr<'src>),
 	Unary(UnaryExpr<'src>),
@@ -77,6 +78,7 @@ impl<'src> ParsePrecedence<'src> for Expr<'src> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ParenExpr<'src> {
 	pub _lp: token::LeftParen<'src>,
 	pub expr: Box<Expr<'src>>,

@@ -10,18 +10,21 @@ use crate::{
 use super::op_to_token;
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct UnaryExpr<'src> {
 	pub op: UnaryOp<'src>,
 	pub operand: Term<'src>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct UnaryOp<'src> {
 	pub kind: UnaryOpKind,
 	pub span: Span<'src>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum UnaryOpKind {
 	Minus,
 	Not

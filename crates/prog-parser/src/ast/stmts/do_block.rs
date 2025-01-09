@@ -2,6 +2,7 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct DoBlock<'src> {
 	pub _do: token::Do<'src>,
 	pub stmts: Vec<Stmt<'src>>,

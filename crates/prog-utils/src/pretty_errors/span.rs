@@ -1,6 +1,7 @@
 use std::fmt::{self, Debug};
 
 #[derive(Clone, Copy, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Span<'src> {
 	source: &'src str,
 	file: &'src str,
@@ -55,6 +56,7 @@ impl Debug for Span<'_> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Position {
 	start: usize,
 	end: usize
@@ -87,18 +89,5 @@ impl From<std::ops::Range<usize>> for Position {
 			start: value.start,
 			end: value.end
 		}
-	}
-}
-
-#[cfg(feature = "serde")]
-impl serde::Serialize for Position {
-	fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-		use serde::ser::SerializeStruct;
-
-		let mut s = serializer.serialize_struct("Position", 2)?;
-		s.serialize_field("start", &self.start)?;
-		s.serialize_field("end", &self.end)?;
-
-		s.end()
 	}
 }

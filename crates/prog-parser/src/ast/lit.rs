@@ -5,12 +5,14 @@ use prog_lexer::TokenKind;
 use crate::{error, ASTNode, Parse, ParseError, ParseErrorKind, ParseResult, ParseStream, Span};
 
 #[derive(Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Lit<'src> {
 	pub kind: LitKind,
 	pub span: Span<'src>
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum LitKind {
 	Number(f64),
 	Boolean(bool),

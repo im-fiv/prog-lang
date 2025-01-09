@@ -2,6 +2,7 @@ use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Obj<'src> {
 	pub _lb: token::LeftBrace<'src>,
 	pub fields: Option<Box<Punctuated<'src, ObjField<'src>, token::Comma<'src>>>>,
@@ -9,6 +10,7 @@ pub struct Obj<'src> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjField<'src> {
 	pub name: Ident<'src>,
 	pub _eq: token::Eq<'src>,

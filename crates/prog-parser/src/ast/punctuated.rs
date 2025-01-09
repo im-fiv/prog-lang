@@ -6,6 +6,7 @@ use crate::{
 };
 
 #[derive(Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Punctuated<'src, T, P> {
 	pairs: Vec<(T, P)>,
 	tail: Option<T>,

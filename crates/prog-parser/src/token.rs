@@ -6,6 +6,7 @@ pub trait Token<'src> {
 macro_rules! def_token {
 	($vis:vis $name:ident) => {
 		#[derive(Debug, Clone, Copy, PartialEq, Hash)]
+		#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 		$vis struct $name<'src> {
 			span: ::prog_utils::pretty_errors::Span<'src>
 		}

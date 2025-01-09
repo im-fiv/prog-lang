@@ -3,6 +3,7 @@ use std::fmt::{self, Debug, Display};
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Span};
 
 #[derive(Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Ident<'src> {
 	_ident: token::Ident<'src>
 }

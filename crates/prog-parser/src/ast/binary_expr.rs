@@ -9,6 +9,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct BinaryExpr<'src> {
 	pub lhs: Term<'src>,
 	pub op: BinaryOp<'src>,
@@ -16,12 +17,14 @@ pub struct BinaryExpr<'src> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct BinaryOp<'src> {
 	pub kind: BinaryOpKind,
 	pub span: Span<'src>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum BinaryOpKind {
 	Plus,
 	Minus,
