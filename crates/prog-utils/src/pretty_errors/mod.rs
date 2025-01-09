@@ -43,6 +43,14 @@ impl<Kind: PrettyErrorKind> PrettyError<Kind> {
 		}
 	}
 
+	pub fn with_span(span: Span, kind: Kind) -> Self {
+		let source = span.source();
+		let file = span.file();
+		let position = span.position();
+
+		Self::new(source, file, position, kind)
+	}
+
 	pub fn new_unspanned(kind: Kind) -> Self {
 		Self {
 			source: "".into(),

@@ -109,10 +109,8 @@ impl<'src> Parse<'src> for Stmt<'src> {
 			return Ok(Self::Call(stmt));
 		}
 
-		Err(ParseError::new(
-			span.source(),
-			span.file(),
-			span.position(),
+		Err(ParseError::with_span(
+			span,
 			ParseErrorKind::Internal(error::Internal(String::from("no statement matched")))
 		))
 	}

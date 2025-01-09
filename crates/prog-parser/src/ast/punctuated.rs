@@ -231,7 +231,7 @@ where
 
 		if list.is_empty() {
 			return Err(ParseError::new_unspanned(ParseErrorKind::Internal(
-				error::Internal(String::from("Punctuated list did not parse any items"))
+				error::Internal(String::from("punctuated list did not parse any items"))
 			)));
 		}
 

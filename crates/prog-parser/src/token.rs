@@ -52,14 +52,10 @@ macro_rules! def_token {
 				let self_kind = ::prog_lexer::TokenKind::$name;
 
 				if token_kind != self_kind {
-					let span = token.sp();
-
-					Err($crate::ParseError::new(
-						span.source(),
-						span.file(),
-						span.position(),
+					Err($crate::ParseError::with_span(
+						token.sp(),
 						$crate::ParseErrorKind::Internal($crate::error::Internal(
-							format!("Token of type `{token_kind:?}` cannot be converted to that of `{self_kind:?}`")
+							format!("token of type `{token_kind}` cannot be converted to that of `{self_kind}`")
 						))
 					))
 				} else {

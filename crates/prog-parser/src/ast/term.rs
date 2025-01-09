@@ -30,16 +30,10 @@ impl<'src> Term<'src> {
 	{
 		let term = input.parse::<Self>()?;
 
-		let source = term.span().source();
-		let file = term.span().file();
-		let position = term.span().position();
-
-		let err = ParseError::new(
-			source,
-			file,
-			position,
+		let err = ParseError::with_span(
+			term.span(),
 			ParseErrorKind::Internal(error::Internal(format!(
-				"Conversion of `{}` to variant `{}` failed",
+				"conversion of `{}` to variant `{}` failed",
 				std::any::type_name::<Self>(),
 				std::any::type_name::<T>()
 			)))
@@ -89,10 +83,8 @@ impl<'src> Parse<'src> for Term<'src> {
 			T::Extern => input.parse::<Extern>().map(Self::Extern)?,
 
 			t => {
-				return Err(ParseError::new(
-					token.span().source(),
-					token.span().file(),
-					token.span().position(),
+				return Err(ParseError::with_span(
+					token.span(),
 					ParseErrorKind::Internal(error::Internal(format!("unsupported term `{t:?}`")))
 				))
 			}
