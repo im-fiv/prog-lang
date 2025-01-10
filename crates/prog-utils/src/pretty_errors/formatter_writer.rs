@@ -14,7 +14,7 @@ impl<'fmtref, 'fmt> FormatterWriter<'fmtref, 'fmt> {
 	}
 }
 
-impl<'fmtref, 'fmt> io::Write for FormatterWriter<'fmtref, 'fmt> {
+impl io::Write for FormatterWriter<'_, '_> {
 	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
 		self.buffer.extend_from_slice(buf);
 		Ok(buf.len())

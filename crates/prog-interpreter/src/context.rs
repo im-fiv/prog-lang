@@ -120,7 +120,7 @@ pub struct ContextInner<'ast> {
 	parent: Option<Context<'ast>>
 }
 
-impl<'ast> ContextInner<'ast> {
+impl ContextInner<'_> {
 	pub fn new() -> Self {
 		Self {
 			flags: ContextFlags::default(),

@@ -16,11 +16,11 @@ impl AriadneCompatible for UnexpectedToken {
 		let mut colors = ColorGenerator::new();
 
 		let mut label = Label::new(span)
-			.with_message(&format!("unexpected `{}`", self.got))
+			.with_message(format!("unexpected `{}`", self.got))
 			.with_color(colors.next());
 
 		if let Some(expected) = self.expected {
-			label = label.with_message(&format!("expected `{}`, got `{}`", expected, self.got));
+			label = label.with_message(format!("expected `{}`, got `{}`", expected, self.got));
 		}
 
 		vec![label]

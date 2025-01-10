@@ -31,7 +31,7 @@ impl<'src> LexStream<'src> {
 	where
 		F: FnOnce(&char) -> bool
 	{
-		let matches = self.peek().map_or(false, |(_, c)| pred(c));
+		let matches = self.peek().is_some_and(|(_, c)| pred(c));
 
 		if matches && consume {
 			self.next();

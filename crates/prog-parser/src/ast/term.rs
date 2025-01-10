@@ -13,7 +13,7 @@ pub enum Term<'src> {
 	// Regular terms
 	Lit(Lit<'src>),
 	Ident(Ident<'src>),
-	Func(Func<'src>),
+	Func(Box<Func<'src>>),
 	List(List<'src>),
 	Obj(Obj<'src>),
 	Extern(Extern<'src>),
@@ -47,11 +47,11 @@ impl<'src> Term<'src> {
 impl<'src> ASTNode<'src> for Term<'src> {
 	fn span<'a>(&'a self) -> Span<'src> {
 		match self {
-			Self::Expr(t) => &**t as &dyn ASTNode,
+			Self::Expr(t) => t.as_ref() as &dyn ASTNode,
 			Self::ParenExpr(t) => t as &dyn ASTNode,
 			Self::Lit(t) => t as &dyn ASTNode,
 			Self::Ident(t) => t as &dyn ASTNode,
-			Self::Func(t) => t as &dyn ASTNode,
+			Self::Func(t) => t.as_ref() as &dyn ASTNode,
 			Self::List(t) => t as &dyn ASTNode,
 			Self::Obj(t) => t as &dyn ASTNode,
 			Self::Extern(t) => t as &dyn ASTNode,
@@ -78,7 +78,7 @@ impl<'src> Parse<'src> for Term<'src> {
 
 			T::Ident => input.parse::<Ident>().map(Self::Ident)?,
 
-			T::Func => input.parse::<Func>().map(Self::Func)?,
+			T::Func => input.parse::<Func>().map(|f| Self::Func(Box::new(f)))?,
 			T::LeftBracket => input.parse::<List>().map(Self::List)?,
 			T::LeftBrace => input.parse::<Obj>().map(Self::Obj)?,
 			T::Extern => input.parse::<Extern>().map(Self::Extern)?,
