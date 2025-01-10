@@ -29,8 +29,8 @@ pub struct Else<'src> {
 	pub stmts: Vec<Stmt<'src>>
 }
 
-impl ASTNode for If<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for If<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self._if.start();
 		let end = self._end.end();
 
@@ -42,8 +42,8 @@ impl ASTNode for If<'_> {
 	}
 }
 
-impl ASTNode for ElseIf<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for ElseIf<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self._elseif.start();
 		let end = match self.stmts.last() {
 			Some(stmt) => stmt.end(),
@@ -58,8 +58,8 @@ impl ASTNode for ElseIf<'_> {
 	}
 }
 
-impl ASTNode for Else<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for Else<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self._else.start();
 		let end = match self.stmts.last() {
 			Some(stmt) => stmt.end(),

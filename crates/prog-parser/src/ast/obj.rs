@@ -17,8 +17,8 @@ pub struct ObjField<'src> {
 	pub value: Expr<'src>
 }
 
-impl ASTNode for Obj<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for Obj<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self._lb.start();
 		let end = self._rb.end();
 
@@ -30,8 +30,8 @@ impl ASTNode for Obj<'_> {
 	}
 }
 
-impl ASTNode for ObjField<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for ObjField<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self.name.start();
 		let end = self.value.end();
 

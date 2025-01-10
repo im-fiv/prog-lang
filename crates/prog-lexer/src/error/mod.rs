@@ -1,8 +1,8 @@
-mod unexpected_token;
 mod malformed_number;
+mod unexpected_token;
 
-pub use malformed_number::*;
-pub use unexpected_token::*;
+pub use malformed_number::MalformedNumber;
+pub use unexpected_token::UnexpectedToken;
 
 use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 

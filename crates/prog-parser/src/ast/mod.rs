@@ -42,7 +42,7 @@ macro_rules! op_to_token {
 					$kind::$token => Ok($crate::token::$token::new(self.span)),
 
 					v => {
-						Err($crate::ParseError::with_span(
+						Err($crate::ParseError::new(
 							self.span,
 							$crate::ParseErrorKind::Internal($crate::error::Internal(format!(
 								"token of type `{}` cannot be converted to that of `{}`",
@@ -65,8 +65,8 @@ pub struct Program<'src> {
 	pub stmts: Vec<Stmt<'src>>
 }
 
-impl ASTNode for Program<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for Program<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		assert!(
 			!self.stmts.is_empty(),
 			"Could not get program's span as it is empty"

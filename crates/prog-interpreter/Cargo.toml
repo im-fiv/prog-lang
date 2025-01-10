@@ -10,6 +10,7 @@ serde = ["dep:serde", "prog-parser/serde"]
 [dependencies]
 ariadne = { workspace = true }
 
+prog-lexer = { workspace = true }
 prog-parser = { workspace = true }
 prog-utils = { workspace = true }
 prog-macros = { workspace = true }

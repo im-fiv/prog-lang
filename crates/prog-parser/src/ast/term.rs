@@ -31,7 +31,7 @@ impl<'src> Term<'src> {
 	{
 		let term = input.parse::<Self>()?;
 
-		let err = ParseError::with_span(
+		let err = ParseError::new(
 			term.span(),
 			ParseErrorKind::Internal(error::Internal(format!(
 				"conversion of `{}` to variant `{}` failed",
@@ -44,8 +44,8 @@ impl<'src> Term<'src> {
 	}
 }
 
-impl ASTNode for Term<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for Term<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		match self {
 			Self::Expr(t) => &**t as &dyn ASTNode,
 			Self::ParenExpr(t) => t as &dyn ASTNode,
@@ -84,7 +84,7 @@ impl<'src> Parse<'src> for Term<'src> {
 			T::Extern => input.parse::<Extern>().map(Self::Extern)?,
 
 			t => {
-				return Err(ParseError::with_span(
+				return Err(ParseError::new(
 					token.span(),
 					ParseErrorKind::Internal(error::Internal(format!("unsupported term `{t:?}`")))
 				))

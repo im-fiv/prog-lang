@@ -27,7 +27,19 @@ pub struct PrettyError<Kind: PrettyErrorKind> {
 }
 
 impl<Kind: PrettyErrorKind> PrettyError<Kind> {
-	pub fn new<S, F>(source: S, file: F, position: Position, kind: Kind) -> Self
+	pub fn new(span: Span, kind: Kind) -> Self {
+		let source = span.source();
+		let file = span.file();
+		let position = span.position();
+
+		Self::from_raw_parts(source, file, position, kind)
+	}
+
+	pub fn new_unspanned(kind: Kind) -> Self {
+		Self::from_raw_parts("", "", Position::new(0, 0), kind)
+	}
+
+	pub fn from_raw_parts<S, F>(source: S, file: F, position: Position, kind: Kind) -> Self
 	where
 		S: Into<Box<str>>,
 		F: Into<Box<str>>
@@ -41,18 +53,6 @@ impl<Kind: PrettyErrorKind> PrettyError<Kind> {
 			position,
 			kind
 		}
-	}
-
-	pub fn with_span(span: Span, kind: Kind) -> Self {
-		let source = span.source();
-		let file = span.file();
-		let position = span.position();
-
-		Self::new(source, file, position, kind)
-	}
-
-	pub fn new_unspanned(kind: Kind) -> Self {
-		Self::new("", "", Position::new(0, 0), kind)
 	}
 
 	fn create_report(&self) -> Report<Span> {

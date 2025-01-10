@@ -8,8 +8,8 @@ pub struct Extern<'src> {
 	pub value: Box<Expr<'src>>
 }
 
-impl ASTNode for Extern<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for Extern<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self._extern.start();
 		let end = self.value.end();
 

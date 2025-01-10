@@ -170,7 +170,7 @@ where
 			)))?;
 		let span = token.span();
 
-		self.peek().ok_or(ParseError::with_span(
+		self.peek().ok_or(ParseError::new(
 			span,
 			ParseErrorKind::UnexpectedToken(error::UnexpectedToken {
 				got: TokenKind::Eof,
@@ -200,7 +200,7 @@ where
 		if token.kind() != kind {
 			let span = token.span();
 
-			return Err(ParseError::with_span(
+			return Err(ParseError::new(
 				span,
 				ParseErrorKind::UnexpectedToken(error::UnexpectedToken {
 					got: token.kind(),

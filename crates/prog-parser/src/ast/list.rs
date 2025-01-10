@@ -9,8 +9,8 @@ pub struct List<'src> {
 	pub _rb: token::RightBracket<'src>
 }
 
-impl ASTNode for List<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for List<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self._lb.start();
 		let end = self._rb.end();
 

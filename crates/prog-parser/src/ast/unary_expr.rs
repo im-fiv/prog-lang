@@ -30,8 +30,8 @@ pub enum UnaryOpKind {
 	Not
 }
 
-impl ASTNode for UnaryExpr<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for UnaryExpr<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self.op.start();
 		let end = self.operand.end();
 
@@ -43,8 +43,8 @@ impl ASTNode for UnaryExpr<'_> {
 	}
 }
 
-impl ASTNode for UnaryOp<'_> {
-	fn span(&self) -> Span { self.span }
+impl<'src> ASTNode<'src> for UnaryOp<'src> {
+	fn span<'a>(&'a self) -> Span<'src> { self.span }
 }
 
 impl<'src> Parse<'src> for UnaryOp<'src> {
@@ -59,9 +59,8 @@ impl<'src> TryFrom<&dyn crate::Token<'src>> for UnaryOp<'src> {
 
 	fn try_from(token: &dyn crate::Token<'src>) -> std::result::Result<Self, Self::Error> {
 		let span = token.sp();
-		let kind = UnaryOpKind::try_from(token.tk()).map_err(|e| {
-			ParseError::with_span(span, ParseErrorKind::Internal(error::Internal(e)))
-		})?;
+		let kind = UnaryOpKind::try_from(token.tk())
+			.map_err(|e| ParseError::new(span, ParseErrorKind::Internal(error::Internal(e))))?;
 
 		Ok(Self { kind, span })
 	}

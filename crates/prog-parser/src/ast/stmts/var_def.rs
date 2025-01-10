@@ -47,8 +47,8 @@ impl<'src> VarDefine<'src> {
 	}
 }
 
-impl ASTNode for VarDefine<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for VarDefine<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		match self {
 			Self::WithValue {
 				_def,

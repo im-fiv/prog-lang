@@ -8,8 +8,8 @@ pub struct Ident<'src> {
 	_ident: token::Ident<'src>
 }
 
-impl ASTNode for Ident<'_> {
-	fn span(&self) -> Span { self._ident.span() }
+impl<'src> ASTNode<'src> for Ident<'src> {
+	fn span<'a>(&'a self) -> Span<'src> { self._ident.span() }
 }
 
 impl<'src> Parse<'src> for Ident<'src> {

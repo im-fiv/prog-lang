@@ -9,8 +9,8 @@ pub struct DoBlock<'src> {
 	pub _end: token::End<'src>
 }
 
-impl ASTNode for DoBlock<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for DoBlock<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self._do.start();
 		let end = self._end.end();
 

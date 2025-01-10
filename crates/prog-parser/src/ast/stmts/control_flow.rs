@@ -12,12 +12,12 @@ pub struct Continue<'src> {
 	_continue: token::Continue<'src>
 }
 
-impl ASTNode for Break<'_> {
-	fn span(&self) -> Span { self._break.span() }
+impl<'src> ASTNode<'src> for Break<'src> {
+	fn span<'a>(&'a self) -> Span<'src> { self._break.span() }
 }
 
-impl ASTNode for Continue<'_> {
-	fn span(&self) -> Span { self._continue.span() }
+impl<'src> ASTNode<'src> for Continue<'src> {
+	fn span<'a>(&'a self) -> Span<'src> { self._continue.span() }
 }
 
 impl<'src> Parse<'src> for Break<'src> {

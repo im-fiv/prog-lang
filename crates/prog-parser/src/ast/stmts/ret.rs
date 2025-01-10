@@ -8,8 +8,8 @@ pub struct Return<'src> {
 	pub value: Expr<'src>
 }
 
-impl ASTNode for Return<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for Return<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self._return.start();
 		let end = self.value.end();
 

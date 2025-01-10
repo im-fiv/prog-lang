@@ -25,8 +25,8 @@ impl<'src> FieldAcc<'src> {
 	}
 }
 
-impl ASTNode for FieldAcc<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for FieldAcc<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self.object.start();
 		let end = self.field.end();
 

@@ -9,8 +9,8 @@ pub struct ExprAssign<'src> {
 	pub value: Expr<'src>
 }
 
-impl ASTNode for ExprAssign<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for ExprAssign<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self.expr.start();
 		let end = self.value.end();
 

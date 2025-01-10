@@ -14,19 +14,19 @@ pub use prog_utils::pretty_errors::{Position, Span};
 
 pub type ParseResult<T> = Result<T, ParseError>;
 
-pub trait ASTNode {
-	fn span(&self) -> Span;
+pub trait ASTNode<'src> {
+	fn span<'a>(&'a self) -> Span<'src>;
 
-	fn source(&self) -> &str { self.span().source() }
-	fn file(&self) -> &str { self.span().file() }
+	fn source<'a>(&'a self) -> &'src str { self.span().source() }
+	fn file<'a>(&'a self) -> &'src str { self.span().file() }
 	fn position(&self) -> Position { self.span().position() }
 	fn start(&self) -> usize { self.position().start() }
 	fn end(&self) -> usize { self.position().end() }
-	fn value(&self) -> &str { self.span().value() }
+	fn value<'a>(&'a self) -> &'src str { self.span().value() }
 	fn value_owned(&self) -> String { self.value().to_owned() }
 }
 
-pub trait Parse<'src>: Sized + ASTNode {
+pub trait Parse<'src>: Sized + ASTNode<'src> {
 	fn parse(input: &ParseStream<'src>) -> ParseResult<Self>;
 }
 

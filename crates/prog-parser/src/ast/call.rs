@@ -28,8 +28,8 @@ impl<'src> Call<'src> {
 	}
 }
 
-impl ASTNode for Call<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for Call<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self.func.start();
 		let end = self._rp.end();
 

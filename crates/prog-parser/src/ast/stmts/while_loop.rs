@@ -9,8 +9,8 @@ pub struct WhileLoop<'src> {
 	pub block: DoBlock<'src>
 }
 
-impl ASTNode for WhileLoop<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for WhileLoop<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self._while.start();
 		let end = self.block.end();
 

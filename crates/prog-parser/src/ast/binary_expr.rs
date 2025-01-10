@@ -43,8 +43,8 @@ pub enum BinaryOpKind {
 	Dot
 }
 
-impl ASTNode for BinaryExpr<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for BinaryExpr<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self.lhs.start();
 		let end = self.rhs.end();
 
@@ -56,8 +56,8 @@ impl ASTNode for BinaryExpr<'_> {
 	}
 }
 
-impl ASTNode for BinaryOp<'_> {
-	fn span(&self) -> Span { self.span }
+impl<'src> ASTNode<'src> for BinaryOp<'src> {
+	fn span<'a>(&'a self) -> Span<'src> { self.span }
 }
 
 impl<'src> Parse<'src> for BinaryOp<'src> {
@@ -72,9 +72,8 @@ impl<'src> TryFrom<&dyn crate::Token<'src>> for BinaryOp<'src> {
 
 	fn try_from(token: &dyn crate::Token<'src>) -> std::result::Result<Self, Self::Error> {
 		let span = token.sp();
-		let kind = BinaryOpKind::try_from(token.tk()).map_err(|e| {
-			ParseError::with_span(span, ParseErrorKind::Internal(error::Internal(e)))
-		})?;
+		let kind = BinaryOpKind::try_from(token.tk())
+			.map_err(|e| ParseError::new(span, ParseErrorKind::Internal(error::Internal(e))))?;
 
 		Ok(Self { kind, span })
 	}

@@ -40,8 +40,8 @@ pub enum Stmt<'src> {
 	ClassDef(ClassDef<'src>)
 }
 
-impl ASTNode for Stmt<'_> {
-	fn span(&self) -> Span {
+impl<'src> ASTNode<'src> for Stmt<'src> {
+	fn span<'a>(&'a self) -> Span<'src> {
 		match self {
 			Self::VarDefine(s) => s as &dyn ASTNode,
 			Self::VarAssign(s) => s as &dyn ASTNode,
@@ -104,13 +104,27 @@ impl<'src> Parse<'src> for Stmt<'src> {
 			return input.parse::<ClassDef>().map(Self::ClassDef);
 		}
 
-		if let Ok(stmt) = input.try_parse::<ExprAssign>() {
-			return Ok(Self::ExprAssign(stmt));
-		} else if let Ok(stmt) = input.try_parse::<ast::Call>() {
-			return Ok(Self::Call(stmt));
+		// `<expr>(...)`
+		if let Ok(stmt) = input.try_parse::<ast::Call>().map(Self::Call) {
+			return Ok(stmt);
 		}
 
-		Err(ParseError::with_span(
+		// `<ident> = ...`
+		if input.peek_matches(TokenKind::Ident).is_some() {
+			let fork = input.fork();
+			fork.next();
+
+			if fork.peek_matches(TokenKind::Eq).is_some() {
+				return input.parse::<VarAssign>().map(Self::VarAssign);
+			}
+		}
+
+		// `<expr> = <expr>`
+		if let Ok(stmt) = input.try_parse::<ExprAssign>().map(Self::ExprAssign) {
+			return Ok(stmt);
+		}
+
+		Err(ParseError::new(
 			span,
 			ParseErrorKind::Internal(error::Internal(String::from("no statement matched")))
 		))

@@ -18,7 +18,7 @@ fn unexpected_token(
 ) -> LexError {
 	let position = Position::new(start.unwrap_or(ls.position()), ls.position() + 1);
 
-	LexError::new(
+	LexError::from_raw_parts(
 		ls.source(),
 		ls.file(),
 		position,
@@ -60,7 +60,7 @@ pub fn lex<'src>(source: &'src str, file: &'src str) -> LexResult<TokenStream<'s
 			c if c.is_ascii_digit() => number(&mut ls, c)?,
 
 			c => {
-				return Err(LexError::new(
+				return Err(LexError::from_raw_parts(
 					source,
 					file,
 					Position::new(start_index, start_index + 1),
@@ -107,7 +107,7 @@ fn slash_or_comment(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 	} else if ls.peek_matches_exact('*', true) {
 		// Multiline comment
 		if !ls.next_while_exact('*', true) {
-			return Err(LexError::new(
+			return Err(LexError::from_raw_parts(
 				ls.source(),
 				ls.file(),
 				Position::new(start_index, ls.position()),
@@ -119,7 +119,7 @@ fn slash_or_comment(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 		}
 
 		if !ls.peek_matches_exact('/', true) {
-			return Err(LexError::new(
+			return Err(LexError::from_raw_parts(
 				ls.source(),
 				ls.file(),
 				Position::new(start_index, ls.position()),
@@ -187,7 +187,7 @@ fn string(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 	}
 
 	if !closed {
-		return Err(LexError::new(
+		return Err(LexError::from_raw_parts(
 			ls.source(),
 			ls.file(),
 			Position::new(last_char.0, last_char.0 + 1),
@@ -248,7 +248,7 @@ fn number(ls: &mut LexStream<'_>, c: char) -> LexResult<TokenKind> {
 	}
 
 	if number.parse::<f64>().is_err() {
-		return Err(LexError::new(
+		return Err(LexError::from_raw_parts(
 			ls.source(),
 			ls.file(),
 			Position::new(start_index, ls.position()),

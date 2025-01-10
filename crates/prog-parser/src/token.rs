@@ -27,8 +27,8 @@ macro_rules! def_token {
 			}
 		}
 
-		impl $crate::ASTNode for $name<'_> {
-			fn span(&self) -> ::prog_utils::pretty_errors::Span {
+		impl<'src> $crate::ASTNode<'src> for $name<'src> {
+			fn span<'a>(&'a self) -> ::prog_utils::pretty_errors::Span<'src> {
 				self.span
 			}
 		}
@@ -53,7 +53,7 @@ macro_rules! def_token {
 				let self_kind = ::prog_lexer::TokenKind::$name;
 
 				if token_kind != self_kind {
-					Err($crate::ParseError::with_span(
+					Err($crate::ParseError::new(
 						token.sp(),
 						$crate::ParseErrorKind::Internal($crate::error::Internal(
 							format!("token of type `{token_kind}` cannot be converted to that of `{self_kind}`")

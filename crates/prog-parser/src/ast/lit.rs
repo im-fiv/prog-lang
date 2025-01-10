@@ -14,9 +14,9 @@ pub struct Lit<'src> {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum LitKind {
-	Number(f64),
-	Boolean(bool),
-	String(String),
+	Num(f64),
+	Bool(bool),
+	Str(String),
 	None
 }
 
@@ -24,8 +24,8 @@ impl Lit<'_> {
 	pub fn strip_quotes(str: &str) -> &str { str.trim_start_matches('\"').trim_end_matches('\"') }
 }
 
-impl ASTNode for Lit<'_> {
-	fn span(&self) -> Span { self.span }
+impl<'src> ASTNode<'src> for Lit<'src> {
+	fn span<'a>(&'a self) -> Span<'src> { self.span }
 }
 
 impl<'src> Parse<'src> for Lit<'src> {
@@ -38,21 +38,21 @@ impl<'src> Parse<'src> for Lit<'src> {
 				let num = token.value().parse::<f64>().unwrap();
 
 				Ok(Self {
-					kind: LitKind::Number(num),
+					kind: LitKind::Num(num),
 					span
 				})
 			}
 
 			TokenKind::True => {
 				Ok(Self {
-					kind: LitKind::Boolean(true),
+					kind: LitKind::Bool(true),
 					span
 				})
 			}
 
 			TokenKind::False => {
 				Ok(Self {
-					kind: LitKind::Boolean(false),
+					kind: LitKind::Bool(false),
 					span
 				})
 			}
@@ -61,7 +61,7 @@ impl<'src> Parse<'src> for Lit<'src> {
 				let str = Self::strip_quotes(token.value()).to_owned();
 
 				Ok(Self {
-					kind: LitKind::String(str),
+					kind: LitKind::Str(str),
 					span
 				})
 			}
@@ -74,7 +74,7 @@ impl<'src> Parse<'src> for Lit<'src> {
 			}
 
 			kind => {
-				Err(ParseError::with_span(
+				Err(ParseError::new(
 					span,
 					ParseErrorKind::Internal(error::Internal(format!(
 						"unknown literal `{token}` of type `{kind:?}`"
@@ -90,9 +90,9 @@ impl Debug for Lit<'_> {
 		let mut s = f.debug_tuple("Lit");
 
 		let value = match &self.kind {
-			LitKind::Number(lit) => lit as &dyn Debug,
-			LitKind::Boolean(lit) => lit as &dyn Debug,
-			LitKind::String(lit) => lit as &dyn Debug,
+			LitKind::Num(lit) => lit as &dyn Debug,
+			LitKind::Bool(lit) => lit as &dyn Debug,
+			LitKind::Str(lit) => lit as &dyn Debug,
 			LitKind::None => &"none" as &dyn Debug
 		};
 

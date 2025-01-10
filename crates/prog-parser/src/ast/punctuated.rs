@@ -184,12 +184,12 @@ impl Punctuated<'_, Position, Position> {
 	pub fn position(&self) -> Position { Position::new(self.start(), self.end()) }
 }
 
-impl<T, P> ASTNode for Punctuated<'_, T, P>
+impl<'src, T, P> ASTNode<'src> for Punctuated<'src, T, P>
 where
-	T: ASTNode,
-	P: ASTNode
+	T: ASTNode<'src>,
+	P: ASTNode<'src>
 {
-	fn span(&self) -> Span {
+	fn span<'a>(&'a self) -> Span<'src> {
 		self.assert_non_empty();
 
 		let pos_list = self.map_ref(T::position, P::position);

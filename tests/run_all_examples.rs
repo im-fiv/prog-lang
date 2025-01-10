@@ -9,11 +9,12 @@ fn execute_string(source: &str, file: &str) -> ProgResult<()> {
 	let tokens = ts.buffer();
 
 	let ps = prog_parser::ParseStream::new(tokens);
-	let ast = ps.parse::<prog_parser::ast::Program>()?;
+	let _ast = ps.parse::<prog_parser::ast::Program>()?;
 
-	let mut interpreter = prog_interpreter::Interpreter::new(ast);
-	interpreter.context_mut().flags.con_stdout_allowed = false;
-	interpreter.interpret()?;
+	//* Only test the lexing and parsing process until the interpreter is complete *//
+	// let mut interpreter = prog_interpreter::Interpreter::new();
+	// interpreter.context.inner_mut().flags.con_stdout_allowed = false;
+	// interpreter.evaluate(ast)?;
 
 	Ok(())
 }

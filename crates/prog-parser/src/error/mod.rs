@@ -1,8 +1,8 @@
 mod internal;
 mod unexpected_token;
 
-pub use internal::*;
-pub use unexpected_token::*;
+pub use internal::Internal;
+pub use unexpected_token::UnexpectedToken;
 
 use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 
