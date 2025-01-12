@@ -5,13 +5,13 @@ use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Obj<'src> {
 	pub _lb: token::LeftBrace<'src>,
-	pub fields: Option<Box<Punctuated<'src, ObjField<'src>, token::Comma<'src>>>>,
+	pub fields: Option<Box<Punctuated<'src, ObjEntry<'src>, token::Comma<'src>>>>,
 	pub _rb: token::RightBrace<'src>
 }
 
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct ObjField<'src> {
+pub struct ObjEntry<'src> {
 	pub name: Ident<'src>,
 	pub _eq: token::Eq<'src>,
 	pub value: Expr<'src>
@@ -30,7 +30,7 @@ impl<'src> ASTNode<'src> for Obj<'src> {
 	}
 }
 
-impl<'src> ASTNode<'src> for ObjField<'src> {
+impl<'src> ASTNode<'src> for ObjEntry<'src> {
 	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self.name.start();
 		let end = self.value.end();
@@ -47,7 +47,7 @@ impl<'src> Parse<'src> for Obj<'src> {
 	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let _lb = input.parse::<token::LeftBrace>()?;
 		let fields = input
-			.try_parse::<Punctuated<'src, ObjField, token::Comma>>()
+			.try_parse::<Punctuated<'src, ObjEntry, token::Comma>>()
 			.map(Box::new)
 			.ok();
 		let _rb = input.parse::<token::RightBrace>()?;
@@ -56,7 +56,7 @@ impl<'src> Parse<'src> for Obj<'src> {
 	}
 }
 
-impl<'src> Parse<'src> for ObjField<'src> {
+impl<'src> Parse<'src> for ObjEntry<'src> {
 	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
 		let name = input.parse::<Ident>()?;
 		let _eq = input.parse::<token::Eq>()?;

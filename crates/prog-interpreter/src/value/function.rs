@@ -29,7 +29,7 @@ impl<'ast> Func<'ast> {
 		self,
 		args: Option<ast::Punctuated<'ast, ast::Expr<'ast>, token::Comma<'ast>>>,
 		i: &mut Interpreter<'ast>
-	) -> InterpretResult<Value<'ast>> {
+	) -> InterpretResult<'ast, Value<'ast>> {
 		let args_expected = self.ast.args.unwrap_or_default().unwrap_items();
 
 		let args_got = args
@@ -76,7 +76,7 @@ impl serde::Serialize for Func<'_> {
 	{
 		use serde::ser::SerializeStruct;
 
-		let mut s = serializer.serialize_struct("Function", 1)?;
+		let mut s = serializer.serialize_struct("Func", 1)?;
 		s.serialize_field("ast", &self.ast)?;
 		s.end()
 	}
@@ -84,8 +84,11 @@ impl serde::Serialize for Func<'_> {
 
 impl Display for Func<'_> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let func = prog_lexer::TokenKind::Func;
+		let func = &self.ast._func;
+		let lp = &self.ast._lp;
 		let args = self.args().join(", ");
-		write!(f, "{func}({args})")
+		let rp = &self.ast._rp;
+
+		write!(f, "{func}{lp}{args}{rp}")
 	}
 }

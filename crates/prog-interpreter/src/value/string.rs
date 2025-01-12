@@ -2,7 +2,7 @@ use std::fmt::{self, Display};
 
 use crate::Primitive;
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Str(String);
 

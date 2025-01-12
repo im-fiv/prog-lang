@@ -35,12 +35,13 @@ pub(crate) fn expand_match_arms(
 
 pub(crate) fn expand_impl(item: ItemEnum) -> syn::Result<pm2::TokenStream> {
 	let enum_name = item.ident;
+	let (impl_generics, type_generics, where_clause) = item.generics.split_for_impl();
 
 	let message_match_arms = expand_match_arms(&item.variants, "message", vec![])?;
 	let labels_match_arms = expand_match_arms(&item.variants, "labels", vec!["span"])?;
 
 	let expanded = quote! {
-		impl ::prog_utils::pretty_errors::AriadneCompatible for #enum_name {
+		impl #impl_generics ::prog_utils::pretty_errors::AriadneCompatible for #enum_name #type_generics #where_clause {
 			fn message(&self) -> ::std::string::String {
 				match self {
 					#( #message_match_arms ),*

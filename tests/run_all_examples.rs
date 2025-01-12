@@ -4,7 +4,7 @@ use std::path::Path;
 
 use prog_lang::ProgResult;
 
-fn execute_string(source: &str, file: &str) -> ProgResult<()> {
+fn execute_string<'src>(source: &'src str, file: &'src str) -> ProgResult<'src, ()> {
 	let ts = prog_lexer::lex(source, file)?;
 	let tokens = ts.buffer();
 

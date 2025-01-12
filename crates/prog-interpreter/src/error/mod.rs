@@ -1,21 +1,24 @@
-mod expression_not_callable;
+mod duplicate_obj_entry;
+mod expr_not_callable;
 mod unimplemented;
-mod variable_doesnt_exist;
+mod var_doesnt_exist;
 
-pub use expression_not_callable::ExpressionNotCallable;
+pub use duplicate_obj_entry::DuplicateObjEntry;
+pub use expr_not_callable::ExprNotCallable;
 pub use unimplemented::Unimplemented;
-pub use variable_doesnt_exist::VariableDoesntExist;
+pub use var_doesnt_exist::VarDoesntExist;
 
 use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 
-pub type InterpretError = PrettyError<InterpretErrorKind>;
+pub type InterpretError<'kind> = PrettyError<InterpretErrorKind<'kind>>;
 
 #[derive(Debug, Clone, prog_macros::AriadneCompatible)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub enum InterpretErrorKind {
-	ExpressionNotCallable(ExpressionNotCallable),
+pub enum InterpretErrorKind<'ast> {
+	DuplicateObjEntry(DuplicateObjEntry<'ast>),
+	ExprNotCallable(ExprNotCallable),
 	Unimplemented(Unimplemented),
-	VariableDoesntExist(VariableDoesntExist)
+	VarDoesntExist(VarDoesntExist)
 }
 
-impl PrettyErrorKind for InterpretErrorKind {}
+impl PrettyErrorKind for InterpretErrorKind<'_> {}

@@ -3,10 +3,10 @@ use prog_utils::pretty_errors::{AriadneCompatible, Span};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct VariableDoesntExist(pub String);
+pub struct VarDoesntExist(pub String);
 
-impl AriadneCompatible for VariableDoesntExist {
-	fn message(&self) -> String { String::from("value doesn't exist") }
+impl AriadneCompatible for VarDoesntExist {
+	fn message(&self) -> String { String::from("variable doesn't exist") }
 
 	fn labels(self, span: Span) -> Vec<Label<Span>> {
 		let mut colors = ColorGenerator::new();

@@ -5,9 +5,9 @@ use crate::ValueKind;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct ExpressionNotCallable(pub ValueKind);
+pub struct ExprNotCallable(pub ValueKind);
 
-impl AriadneCompatible for ExpressionNotCallable {
+impl AriadneCompatible for ExprNotCallable {
 	fn message(&self) -> String { String::from("expression is not callable") }
 
 	fn labels(self, span: Span) -> Vec<Label<Span>> {

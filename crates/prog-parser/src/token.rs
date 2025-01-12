@@ -75,6 +75,12 @@ macro_rules! def_token {
 				)
 			}
 		}
+
+		impl ::std::fmt::Display for $name<'_> {
+			fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+				write!(f, "{}", self.tk())
+			}
+		}
 	};
 }
 
