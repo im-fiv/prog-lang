@@ -13,7 +13,7 @@ impl<'src> FieldAcc<'src> {
 	pub fn parse_with_object(
 		input: &ParseStream<'src>,
 		object: Box<Term<'src>>
-	) -> ParseResult<Self> {
+	) -> ParseResult<'src, Self> {
 		let _dot = input.parse::<token::Dot>()?;
 		let field = input.parse::<Ident>()?;
 
@@ -39,7 +39,7 @@ impl<'src> ASTNode<'src> for FieldAcc<'src> {
 }
 
 impl<'src> Parse<'src> for FieldAcc<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		// To support chained operations or complex field access expressions
 		// we have to rely on `Term`'s implementation
 		Term::parse_variant::<Self>(input)

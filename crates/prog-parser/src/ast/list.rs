@@ -23,7 +23,7 @@ impl<'src> ASTNode<'src> for List<'src> {
 }
 
 impl<'src> Parse<'src> for List<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _lb = input.parse::<token::LeftBracket>()?;
 		let items = input
 			.try_parse::<Punctuated<'src, Expr, token::Comma>>()

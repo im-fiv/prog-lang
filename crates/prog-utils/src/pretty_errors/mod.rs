@@ -9,63 +9,50 @@ use std::{fmt, io};
 use ariadne::{Label, Report, ReportKind, Source};
 
 #[cfg(feature = "serde")]
-pub trait PrettyErrorKind: Clone + fmt::Debug + AriadneCompatible + serde::Serialize {}
+pub trait PrettyErrorKind<'s>: Clone + fmt::Debug + AriadneCompatible<'s> + serde::Serialize {}
 #[cfg(not(feature = "serde"))]
-pub trait PrettyErrorKind: Clone + fmt::Debug + AriadneCompatible {}
+pub trait PrettyErrorKind<'s>: Clone + fmt::Debug + AriadneCompatible<'s> {}
 
-pub trait AriadneCompatible {
+pub trait AriadneCompatible<'s> {
 	fn message(&self) -> String;
-	fn labels(self, span: Span) -> Vec<Label<Span>>;
+
+	fn labels(&self, span: Span<'s>) -> Vec<Label<Span<'s>>>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PrettyError<Kind: PrettyErrorKind> {
-	pub source: Box<str>,
-	pub file: Box<str>,
-	pub position: Position,
+pub struct PrettyError<'s, Kind: PrettyErrorKind<'s>> {
+	pub span: Span<'s>,
 	pub kind: Kind
 }
 
-impl<Kind: PrettyErrorKind> PrettyError<Kind> {
-	pub fn new(span: Span, kind: Kind) -> Self {
-		let source = span.source();
-		let file = span.file();
-		let position = span.position();
-
-		Self::from_raw_parts(source, file, position, kind)
+impl<'s, Kind: PrettyErrorKind<'s>> PrettyError<'s, Kind> {
+	pub fn new(span: Span<'s>, kind: Kind) -> Self {
+		Self { span, kind }
 	}
 
 	pub fn new_unspanned(kind: Kind) -> Self {
-		Self::from_raw_parts("", "", Position::new(0, 0), kind)
+		let position = Position::new(0, 0);
+		let span = Span::new_unchecked("", "", position);
+
+		Self::new(span, kind)
 	}
 
-	pub fn from_raw_parts<S, F>(source: S, file: F, position: Position, kind: Kind) -> Self
-	where
-		S: Into<Box<str>>,
-		F: Into<Box<str>>
-	{
-		let source = source.into();
-		let file = file.into();
-
-		Self {
-			source,
-			file,
-			position,
-			kind
-		}
+	pub fn from_raw_parts(source: &'s str, file: &'s str, position: Position, kind: Kind) -> Self {
+		let span = Span::new(source, file, position);
+		Self::new(span, kind)
 	}
 
-	fn create_report(&self) -> Report<Span> {
-		let span = Span::new(&self.source, &self.file, self.position);
+	fn create_report(&self) -> Report<Span<'s>> {
 		let message = self.kind.message();
 
-		let mut report = Report::build(ReportKind::Error, span).with_message(message);
-
-		report.add_labels(self.kind.clone().labels(span));
+		let mut report = Report::build(ReportKind::Error, self.span).with_message(message);
+		report.add_labels(self.kind.labels(self.span));
 		report.finish()
 	}
 
-	fn get_cache(&self) -> (&str, Source<&str>) { (&self.file[..], Source::from(&self.source[..])) }
+	fn get_cache(&self) -> (&str, Source<&str>) {
+		(self.span.file(), Source::from(self.span.source()))
+	}
 
 	pub fn eprint(&self) {
 		let report = self.create_report();
@@ -77,7 +64,7 @@ impl<Kind: PrettyErrorKind> PrettyError<Kind> {
 	}
 }
 
-impl<Kind: PrettyErrorKind> fmt::Display for PrettyError<Kind> {
+impl<'s, Kind: PrettyErrorKind<'s>> fmt::Display for PrettyError<'s, Kind> {
 	fn fmt<'fmtref>(&self, f: &'fmtref mut fmt::Formatter<'_>) -> fmt::Result {
 		use io::Write;
 
@@ -92,19 +79,17 @@ impl<Kind: PrettyErrorKind> fmt::Display for PrettyError<Kind> {
 }
 
 #[cfg(feature = "serde")]
-impl<Kind: PrettyErrorKind> serde::Serialize for PrettyError<Kind> {
+impl<'s, Kind: PrettyErrorKind<'s>> serde::Serialize for PrettyError<'s, Kind> {
 	fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
 		use serde::ser::SerializeStruct;
 
-		let mut s = serializer.serialize_struct("PrettyError", 5)?;
+		let mut s = serializer.serialize_struct("PrettyError", 3)?;
 		s.serialize_field("message", &self.kind.message())?;
-		s.serialize_field("source", &self.source)?;
-		s.serialize_field("file", &self.file)?;
-		s.serialize_field("position", &self.position)?;
+		s.serialize_field("span", &self.span)?;
 		s.serialize_field("kind", &self.kind)?;
 
 		s.end()
 	}
 }
 
-impl<Kind: PrettyErrorKind> std::error::Error for PrettyError<Kind> {}
+impl<'s, Kind: PrettyErrorKind<'s>> std::error::Error for PrettyError<'s, Kind> {}

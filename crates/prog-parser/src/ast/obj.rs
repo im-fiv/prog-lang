@@ -44,7 +44,7 @@ impl<'src> ASTNode<'src> for ObjEntry<'src> {
 }
 
 impl<'src> Parse<'src> for Obj<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _lb = input.parse::<token::LeftBrace>()?;
 		let fields = input
 			.try_parse::<Punctuated<'src, ObjEntry, token::Comma>>()
@@ -57,7 +57,7 @@ impl<'src> Parse<'src> for Obj<'src> {
 }
 
 impl<'src> Parse<'src> for ObjEntry<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let name = input.parse::<Ident>()?;
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;

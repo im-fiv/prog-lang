@@ -35,7 +35,7 @@ use crate::{ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 macro_rules! op_to_token {
 	($op:ident : $kind:ident => $token:ident) => {
 		impl<'src> TryInto<$crate::token::$token<'src>> for $op<'src> {
-			type Error = $crate::ParseError;
+			type Error = $crate::ParseError<'src>;
 
 			fn try_into(self) -> ::std::result::Result<$crate::token::$token<'src>, Self::Error> {
 				match self.kind {
@@ -86,7 +86,7 @@ impl<'src> ASTNode<'src> for Program<'src> {
 }
 
 impl<'src> Parse<'src> for Program<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let mut stmts = vec![];
 
 		while input.peek().is_some() {

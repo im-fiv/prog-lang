@@ -60,7 +60,7 @@ impl<'src> ASTNode<'src> for Stmt<'src> {
 }
 
 impl<'src> Parse<'src> for Stmt<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let token = input.expect_peek()?;
 		let span = token.span();
 

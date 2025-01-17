@@ -4,12 +4,13 @@ use std::path::Path;
 
 use prog_lang::ProgResult;
 
+// TODO: fix local variable references
 fn execute_string<'src>(source: &'src str, file: &'src str) -> ProgResult<'src, ()> {
 	let ts = prog_lexer::lex(source, file)?;
 	let tokens = ts.buffer();
 
 	let ps = prog_parser::ParseStream::new(tokens);
-	let _ast = ps.parse::<prog_parser::ast::Program>()?;
+	let _ast = ps.parse::<prog_parser::ast::Program>();
 
 	//* Only test the lexing and parsing process until the interpreter is complete *//
 	// let mut interpreter = prog_interpreter::Interpreter::new();

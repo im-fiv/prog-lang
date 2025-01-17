@@ -27,7 +27,7 @@ impl<'src> ASTNode<'src> for Func<'src> {
 }
 
 impl<'src> Parse<'src> for Func<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _func = input.parse::<token::Func>()?;
 		let _lp = input.parse::<token::LeftParen>()?;
 		let args = input

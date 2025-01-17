@@ -11,7 +11,7 @@ pub struct Call<'src> {
 }
 
 impl<'src> Call<'src> {
-	pub fn parse_with_func(input: &ParseStream<'src>, func: Box<Term<'src>>) -> ParseResult<Self> {
+	pub fn parse_with_func(input: &ParseStream<'src>, func: Box<Term<'src>>) -> ParseResult<'src, Self> {
 		let _lp = input.parse::<token::LeftParen>()?;
 		let args = input
 			.try_parse::<Punctuated<'src, Expr, token::Comma>>()
@@ -42,7 +42,7 @@ impl<'src> ASTNode<'src> for Call<'src> {
 }
 
 impl<'src> Parse<'src> for Call<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		// To support chained operations or complex call expressions
 		// we have to rely on `Term`'s implementation
 		Term::parse_variant::<Self>(input)

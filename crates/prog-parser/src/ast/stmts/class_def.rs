@@ -24,7 +24,7 @@ impl<'src> ASTNode<'src> for ClassDef<'src> {
 }
 
 impl<'src> Parse<'src> for ClassDef<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _class = input.parse::<token::Class>()?;
 		let name = input.parse::<Ident>()?;
 		let mut fields = vec![];

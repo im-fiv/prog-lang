@@ -10,15 +10,15 @@ pub use var_doesnt_exist::VarDoesntExist;
 
 use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 
-pub type InterpretError<'kind> = PrettyError<InterpretErrorKind<'kind>>;
+pub type InterpretError<'s> = PrettyError<'s, InterpretErrorKind<'s>>;
 
 #[derive(Debug, Clone, prog_macros::AriadneCompatible)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub enum InterpretErrorKind<'ast> {
-	DuplicateObjEntry(DuplicateObjEntry<'ast>),
+pub enum InterpretErrorKind<'s> {
+	DuplicateObjEntry(DuplicateObjEntry<'s>),
 	ExprNotCallable(ExprNotCallable),
 	Unimplemented(Unimplemented),
 	VarDoesntExist(VarDoesntExist)
 }
 
-impl PrettyErrorKind for InterpretErrorKind<'_> {}
+impl<'s> PrettyErrorKind<'s> for InterpretErrorKind<'s> {}

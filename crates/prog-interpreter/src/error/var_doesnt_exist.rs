@@ -5,15 +5,15 @@ use prog_utils::pretty_errors::{AriadneCompatible, Span};
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct VarDoesntExist(pub String);
 
-impl AriadneCompatible for VarDoesntExist {
+impl<'s> AriadneCompatible<'s> for VarDoesntExist {
 	fn message(&self) -> String { String::from("variable doesn't exist") }
 
-	fn labels(self, span: Span) -> Vec<Label<Span>> {
+	fn labels(&self, span: Span<'s>) -> Vec<Label<Span<'s>>> {
 		let mut colors = ColorGenerator::new();
 		let color = colors.next();
 
 		vec![Label::new(span)
-			.with_message(format!("`{}` hasn't yet been defined", self.0.fg(color)))
+			.with_message(format!("`{}` hasn't yet been defined", (&self.0).fg(color)))
 			.with_color(color)]
 	}
 }

@@ -6,7 +6,7 @@ pub trait Token<'src> {
 macro_rules! def_token {
 	($vis:vis $name:ident) => {
 		#[derive(Debug, Clone, Copy, PartialEq, Hash)]
-		#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+		#[cfg_attr(feature = "serde", derive(::serde::Serialize))]
 		$vis struct $name<'src> {
 			span: ::prog_utils::pretty_errors::Span<'src>
 		}
@@ -34,7 +34,7 @@ macro_rules! def_token {
 		}
 
 		impl<'src> $crate::Parse<'src> for $name<'src> {
-			fn parse(input: &$crate::ParseStream<'src>) -> $crate::ParseResult<Self> {
+			fn parse(input: &$crate::ParseStream<'src>) -> $crate::ParseResult<'src, Self> {
 				let token = input.expect(::prog_lexer::TokenKind::$name)?;
 
 				Ok(Self {
@@ -44,7 +44,7 @@ macro_rules! def_token {
 		}
 
 		impl<'src> TryFrom<::prog_lexer::Token<'src>> for $name<'src> {
-			type Error = $crate::ParseError;
+			type Error = $crate::ParseError<'src>;
 
 			fn try_from(token: ::prog_lexer::Token<'src>) -> Result<Self, Self::Error> {
 				let token = &token as &dyn $crate::Token;

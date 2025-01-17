@@ -1,4 +1,4 @@
 mod error;
 pub use error::ProgError;
 
-pub type ProgResult<'kind, T> = Result<T, ProgError<'kind>>;
+pub type ProgResult<'s, T> = Result<T, ProgError<'s>>;

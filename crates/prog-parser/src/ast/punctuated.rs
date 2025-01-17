@@ -214,7 +214,7 @@ where
 	T: Parse<'src>,
 	P: Parse<'src>
 {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let mut list = Self::new();
 
 		loop {

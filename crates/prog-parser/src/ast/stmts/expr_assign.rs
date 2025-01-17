@@ -23,7 +23,7 @@ impl<'src> ASTNode<'src> for ExprAssign<'src> {
 }
 
 impl<'src> Parse<'src> for ExprAssign<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let expr = input.parse::<Expr>()?;
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;

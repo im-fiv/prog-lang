@@ -6,7 +6,7 @@ pub use unexpected_token::UnexpectedToken;
 
 use prog_utils::pretty_errors::{PrettyError, PrettyErrorKind};
 
-pub type ParseError = PrettyError<ParseErrorKind>;
+pub type ParseError<'s> = PrettyError<'s, ParseErrorKind>;
 
 #[derive(Debug, Clone, prog_macros::AriadneCompatible)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -15,4 +15,4 @@ pub enum ParseErrorKind {
 	UnexpectedToken(UnexpectedToken)
 }
 
-impl PrettyErrorKind for ParseErrorKind {}
+impl PrettyErrorKind<'_> for ParseErrorKind {}

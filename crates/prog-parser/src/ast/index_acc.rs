@@ -11,7 +11,7 @@ pub struct IndexAcc<'src> {
 }
 
 impl<'src> IndexAcc<'src> {
-	pub fn parse_with_list(input: &ParseStream<'src>, list: Box<Term<'src>>) -> ParseResult<Self> {
+	pub fn parse_with_list(input: &ParseStream<'src>, list: Box<Term<'src>>) -> ParseResult<'src, Self> {
 		let _lb = input.parse::<token::LeftBracket>()?;
 		let index = Box::new(input.parse::<Expr>()?);
 		let _rb = input.parse::<token::RightBracket>()?;
@@ -39,7 +39,7 @@ impl<'src> ASTNode<'src> for IndexAcc<'src> {
 }
 
 impl<'src> Parse<'src> for IndexAcc<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		// To support chained operations or complex index access expressions
 		// we have to rely on `Term`'s implementation
 		Term::parse_variant::<Self>(input)

@@ -7,10 +7,10 @@ use crate::ValueKind;
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ExprNotCallable(pub ValueKind);
 
-impl AriadneCompatible for ExprNotCallable {
+impl<'s> AriadneCompatible<'s> for ExprNotCallable {
 	fn message(&self) -> String { String::from("expression is not callable") }
 
-	fn labels(self, span: Span) -> Vec<Label<Span>> {
+	fn labels(&self, span: Span<'s>) -> Vec<Label<Span<'s>>> {
 		let mut colors = ColorGenerator::new();
 
 		let color_expected = colors.next();

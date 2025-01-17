@@ -1,21 +1,21 @@
 use std::fmt::{self, Debug, Display};
 
-pub enum ProgError<'kind> {
-	Lex(prog_lexer::LexError),
-	Parse(prog_parser::ParseError),
-	Interpret(prog_interpreter::InterpretError<'kind>)
+pub enum ProgError<'s> {
+	Lex(prog_lexer::LexError<'s>),
+	Parse(prog_parser::ParseError<'s>),
+	Interpret(prog_interpreter::InterpretError<'s>)
 }
 
-impl From<prog_lexer::LexError> for ProgError<'_> {
-	fn from(err: prog_lexer::LexError) -> Self { Self::Lex(err) }
+impl<'s> From<prog_lexer::LexError<'s>> for ProgError<'s> {
+	fn from(err: prog_lexer::LexError<'s>) -> Self { Self::Lex(err) }
 }
 
-impl From<prog_parser::ParseError> for ProgError<'_> {
-	fn from(err: prog_parser::ParseError) -> Self { Self::Parse(err) }
+impl<'s> From<prog_parser::ParseError<'s>> for ProgError<'s> {
+	fn from(err: prog_parser::ParseError<'s>) -> Self { Self::Parse(err) }
 }
 
-impl<'kind> From<prog_interpreter::InterpretError<'kind>> for ProgError<'kind> {
-	fn from(err: prog_interpreter::InterpretError<'kind>) -> Self { Self::Interpret(err) }
+impl<'s> From<prog_interpreter::InterpretError<'s>> for ProgError<'s> {
+	fn from(err: prog_interpreter::InterpretError<'s>) -> Self { Self::Interpret(err) }
 }
 
 impl Display for ProgError<'_> {

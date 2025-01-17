@@ -4,15 +4,15 @@ use prog_utils::pretty_errors::{AriadneCompatible, Span};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct DuplicateObjEntry<'ast> {
+pub struct DuplicateObjEntry<'s> {
 	/// Span of the originally defined entry.
-	pub def: prog_parser::ast::ObjEntry<'ast>
+	pub def: prog_parser::ast::ObjEntry<'s>
 }
 
-impl AriadneCompatible for DuplicateObjEntry<'_> {
+impl<'s> AriadneCompatible<'s> for DuplicateObjEntry<'s> {
 	fn message(&self) -> String { String::from("duplicate object entry") }
 
-	fn labels(self, span: Span) -> Vec<ariadne::Label<Span>> {
+	fn labels(&self, span: Span<'s>) -> Vec<ariadne::Label<Span<'s>>> {
 		let mut colors = ColorGenerator::new();
 
 		let color_redef = colors.next();

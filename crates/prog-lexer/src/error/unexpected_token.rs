@@ -8,10 +8,10 @@ pub struct UnexpectedToken {
 	pub expected: Option<char>
 }
 
-impl AriadneCompatible for UnexpectedToken {
+impl<'s> AriadneCompatible<'s> for UnexpectedToken {
 	fn message(&self) -> String { String::from("unexpected token") }
 
-	fn labels(self, span: Span) -> Vec<ariadne::Label<Span>> {
+	fn labels(&self, span: Span<'s>) -> Vec<ariadne::Label<Span<'s>>> {
 		let mut colors = ColorGenerator::new();
 
 		let mut label = Label::new(span)

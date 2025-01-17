@@ -23,11 +23,13 @@ impl<'src> ASTNode<'src> for Expr<'src> {
 }
 
 impl<'src> Parse<'src> for Expr<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> { Self::parse_precedence(input, 0) }
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+		Self::parse_precedence(input, 0)
+	}
 }
 
 impl<'src> ParsePrecedence<'src> for Expr<'src> {
-	fn parse_precedence(input: &ParseStream<'src>, precedence: u8) -> ParseResult<Self> {
+	fn parse_precedence(input: &ParseStream<'src>, precedence: u8) -> ParseResult<'src, Self> {
 		use TokenKind as T;
 
 		let mut left = Self::Term(input.parse::<Term>()?);
@@ -99,7 +101,7 @@ impl<'src> ASTNode<'src> for ParenExpr<'src> {
 }
 
 impl<'src> Parse<'src> for ParenExpr<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _lp = input.parse::<token::LeftParen>()?;
 		let expr = Box::new(Expr::parse_precedence(input, 0)?);
 		let _rp = input.parse::<token::RightParen>()?;

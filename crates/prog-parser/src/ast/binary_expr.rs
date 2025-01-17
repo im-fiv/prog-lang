@@ -61,14 +61,14 @@ impl<'src> ASTNode<'src> for BinaryOp<'src> {
 }
 
 impl<'src> Parse<'src> for BinaryOp<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let token = input.expect_next()?;
 		Self::try_from(&token as &dyn crate::Token)
 	}
 }
 
 impl<'src> TryFrom<&dyn crate::Token<'src>> for BinaryOp<'src> {
-	type Error = ParseError;
+	type Error = ParseError<'src>;
 
 	fn try_from(token: &dyn crate::Token<'src>) -> std::result::Result<Self, Self::Error> {
 		let span = token.sp();

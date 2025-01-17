@@ -25,7 +25,7 @@ pub enum Term<'src> {
 }
 
 impl<'src> Term<'src> {
-	pub fn parse_variant<T>(input: &ParseStream<'src>) -> ParseResult<T>
+	pub fn parse_variant<T>(input: &ParseStream<'src>) -> ParseResult<'src, T>
 	where
 		Self: TryInto<T>
 	{
@@ -64,7 +64,7 @@ impl<'src> ASTNode<'src> for Term<'src> {
 }
 
 impl<'src> Parse<'src> for Term<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		use TokenKind as T;
 
 		let token = input.expect_peek()?;

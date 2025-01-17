@@ -21,7 +21,7 @@ impl<'src> ASTNode<'src> for Continue<'src> {
 }
 
 impl<'src> Parse<'src> for Break<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _break = input.parse::<token::Break>()?;
 
 		Ok(Self { _break })
@@ -29,7 +29,7 @@ impl<'src> Parse<'src> for Break<'src> {
 }
 
 impl<'src> Parse<'src> for Continue<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _continue = input.parse::<token::Continue>()?;
 
 		Ok(Self { _continue })

@@ -12,7 +12,7 @@ pub use token::Token;
 
 pub use prog_utils::pretty_errors::{Position, Span};
 
-pub type ParseResult<T> = Result<T, ParseError>;
+pub type ParseResult<'s, T> = Result<T, ParseError<'s>>;
 
 pub trait ASTNode<'src> {
 	fn span<'a>(&'a self) -> Span<'src>;
@@ -27,9 +27,9 @@ pub trait ASTNode<'src> {
 }
 
 pub trait Parse<'src>: Sized + ASTNode<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self>;
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self>;
 }
 
 pub trait ParsePrecedence<'src>: Parse<'src> {
-	fn parse_precedence(input: &ParseStream<'src>, precedence: u8) -> ParseResult<Self>;
+	fn parse_precedence(input: &ParseStream<'src>, precedence: u8) -> ParseResult<'src, Self>;
 }

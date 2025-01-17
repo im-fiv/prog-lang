@@ -22,7 +22,7 @@ impl<'src> ASTNode<'src> for Extern<'src> {
 }
 
 impl<'src> Parse<'src> for Extern<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _extern = input.parse::<token::Extern>()?;
 		let value = Box::new(input.parse::<Expr>()?);
 

@@ -10,7 +10,7 @@ pub use value::{Primitive, Value, ValueKind};
 
 use prog_parser::{ast, ASTNode};
 
-pub type InterpretResult<'ast, T> = Result<T, InterpretError<'ast>>;
+pub type InterpretResult<'s, T> = Result<T, InterpretError<'s>>;
 
 pub trait Evaluatable<'ast> {
 	type Output;

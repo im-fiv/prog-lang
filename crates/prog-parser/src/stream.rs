@@ -50,7 +50,7 @@ where
 	/// Parses a value of type `T` from the current position in the stream.
 	///
 	/// This function directly delegates the parsing to `T`'s `Parse` implementation.
-	pub fn parse<T>(&'_ self) -> ParseResult<T>
+	pub fn parse<T>(&'_ self) -> ParseResult<'src, T>
 	where
 		T: crate::Parse<'src>
 	{
@@ -62,11 +62,11 @@ where
 	///
 	/// This is useful for lookahead parsing where you might try different options
 	/// without making *irreversible* progress in the stream.
-	pub fn try_parse<T>(&'_ self) -> ParseResult<T>
+	pub fn try_parse<T>(&'_ self) -> ParseResult<'src, T>
 	where
 		T: crate::Parse<'src>
 	{
-		self.try_parse_with(Self::parse::<T>)
+		self.try_parse_with(T::parse)
 	}
 
 	/// Attempts to parse a value of type `T` from the current position in the stream
@@ -75,10 +75,10 @@ where
 	/// The stream is forked before calling the `parse` function, and only if the
 	/// parse is successful, the main stream cursor will be advanced, thus *consuming*
 	/// the parsed tokens.
-	pub fn try_parse_with<T, F>(&'_ self, parse: F) -> ParseResult<T>
+	pub fn try_parse_with<T, F>(&'_ self, parse: F) -> ParseResult<'src, T>
 	where
 		T: crate::Parse<'src>,
-		F: FnOnce(&Self) -> ParseResult<T>
+		F: FnOnce(&Self) -> ParseResult<'src, T>
 	{
 		let fork = self.fork();
 		let result = parse(&fork);
@@ -125,7 +125,7 @@ where
 	/// This function combines the behavior of `next()` with the expectation
 	/// that a token *should* exist and *be valid*.
 	/// If there are no more tokens in the stream, it will return an `Err`, rather than just `None`.
-	pub fn expect_next(&'_ self) -> ParseResult<Token<'src>> {
+	pub fn expect_next(&'_ self) -> ParseResult<'src, Token<'src>> {
 		// Utilizing `expect_peek` to reduce code repetition with error reporting
 		let result = self.expect_peek();
 
@@ -162,7 +162,7 @@ where
 	///
 	/// This function combines the behavior of `peek()` with a `Result`,
 	/// which indicates if a *valid* token is available.
-	pub fn expect_peek(&'_ self) -> ParseResult<Token<'src>> {
+	pub fn expect_peek(&'_ self) -> ParseResult<'src, Token<'src>> {
 		let token = self
 			.current()
 			.ok_or(ParseError::new_unspanned(ParseErrorKind::Internal(
@@ -194,7 +194,7 @@ where
 	///
 	/// If the next token matches, it is returned wrapped in `Ok`.
 	/// If the end of the stream is reached or token kinds do not match, an `Err` variant is returned instead.
-	pub fn expect(&'_ self, kind: TokenKind) -> ParseResult<Token<'src>> {
+	pub fn expect(&'_ self, kind: TokenKind) -> ParseResult<'src, Token<'src>> {
 		let token = self.expect_next()?;
 
 		if token.kind() != kind {

@@ -8,14 +8,14 @@ pub use token::{Token, TokenKind, TokenStream};
 
 use prog_utils::pretty_errors::{Position, Span};
 
-pub type LexResult<T> = Result<T, LexError>;
+pub type LexResult<'s, T> = Result<T, LexError<'s>>;
 
-fn unexpected_token(
-	ls: &mut LexStream<'_>,
+fn unexpected_token<'src>(
+	ls: &mut LexStream<'src>,
 	got: char,
 	expected: Option<char>,
 	start: Option<usize>
-) -> LexError {
+) -> LexError<'src> {
 	let position = Position::new(start.unwrap_or(ls.position()), ls.position() + 1);
 
 	LexError::from_raw_parts(
@@ -26,7 +26,7 @@ fn unexpected_token(
 	)
 }
 
-pub fn lex<'src>(source: &'src str, file: &'src str) -> LexResult<TokenStream<'src>> {
+pub fn lex<'src>(source: &'src str, file: &'src str) -> LexResult<'src, TokenStream<'src>> {
 	let mut ls = LexStream::new(source, file);
 	let mut ts = TokenStream::new();
 
@@ -97,7 +97,7 @@ fn minus_or_arrow(ls: &mut LexStream<'_>) -> TokenKind {
 	}
 }
 
-fn slash_or_comment(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
+fn slash_or_comment<'src>(ls: &mut LexStream<'src>) -> LexResult<'src, TokenKind> {
 	let start_index = ls.position() - 1;
 
 	if ls.peek_matches_exact('/', true) {
@@ -146,7 +146,7 @@ fn eq_or_fat_arrow_or_eqeq(ls: &mut LexStream<'_>) -> TokenKind {
 	}
 }
 
-fn neq(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
+fn neq<'src>(ls: &mut LexStream<'src>) -> LexResult<'src, TokenKind> {
 	let start_index = ls.position() - 1;
 	let next = ls.next();
 
@@ -163,7 +163,7 @@ fn neq(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
 	Ok(TokenKind::Neq)
 }
 
-fn string(ls: &mut LexStream<'_>) -> LexResult<TokenKind> {
+fn string<'src>(ls: &mut LexStream<'src>) -> LexResult<'src, TokenKind> {
 	let start_index = ls.position() - 1;
 
 	let mut closed = false;
@@ -222,7 +222,7 @@ fn ident_or_keyword(ls: &mut LexStream<'_>, c: char) -> TokenKind {
 }
 
 // TODO: add exponents and hexadecimal/octal/binary formats
-fn number(ls: &mut LexStream<'_>, c: char) -> LexResult<TokenKind> {
+fn number<'src>(ls: &mut LexStream<'src>, c: char) -> LexResult<'src, TokenKind> {
 	let start_index = ls.position() - 1;
 
 	let mut number = String::new();

@@ -81,7 +81,7 @@ impl<'src> ASTNode<'src> for VarDefine<'src> {
 }
 
 impl<'src> Parse<'src> for VarDefine<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _def = input.parse::<token::Def>()?;
 		let name = input.parse::<Ident>()?;
 

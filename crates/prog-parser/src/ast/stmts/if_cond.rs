@@ -75,7 +75,7 @@ impl<'src> ASTNode<'src> for Else<'src> {
 }
 
 impl<'src> Parse<'src> for If<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _if = input.parse::<token::If>()?;
 		let cond = input.parse::<Expr>()?;
 		let _then = input.parse::<token::Then>()?;
@@ -123,7 +123,7 @@ impl<'src> Parse<'src> for If<'src> {
 }
 
 impl<'src> Parse<'src> for ElseIf<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _elseif = input.parse::<token::ElseIf>()?;
 		let cond = input.parse::<Expr>()?;
 		let _then = input.parse::<token::Then>()?;
@@ -143,7 +143,7 @@ impl<'src> Parse<'src> for ElseIf<'src> {
 }
 
 impl<'src> Parse<'src> for Else<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<Self> {
+	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
 		let _else = input.parse::<token::Else>()?;
 		let mut stmts = vec![];
 
