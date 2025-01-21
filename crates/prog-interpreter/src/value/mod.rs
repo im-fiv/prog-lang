@@ -42,7 +42,10 @@ pub trait Primitive {
 pub(crate) trait Callable<'intref, 'int: 'intref>: Primitive {
 	fn arg_list(&self) -> &crate::arg_parser::ArgList;
 
-	fn call(self: Box<Self>, data: CallableData<'intref, 'int>) -> crate::InterpretResult<'int, Value<'int>>;
+	fn call(
+		self: Box<Self>,
+		data: CallableData<'intref, 'int>
+	) -> crate::InterpretResult<'int, Value<'int>>;
 }
 
 #[derive(Debug, Clone, PartialEq, prog_macros::EnumKind)]

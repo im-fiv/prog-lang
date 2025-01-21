@@ -1,8 +1,8 @@
 use prog_macros::get_argument;
 
-use crate::{error, InterpretResult, Value, ValueKind, Primitive, InterpretError};
-use crate::value::{IntrinsicFn, CallableData};
-use crate::arg_parser::{ArgList, Arg};
+use crate::arg_parser::{Arg, ArgList};
+use crate::value::{CallableData, IntrinsicFn};
+use crate::{error, InterpretError, InterpretResult, Primitive, Value, ValueKind};
 
 #[derive(Debug)]
 pub(crate) struct Intrinsic<'i> {
@@ -24,9 +24,7 @@ impl<'i> IntrinsicTable<'i> {
 		this
 	}
 
-	pub fn new_empty() -> Self {
-		Self { entries: vec![] }
-	}
+	pub fn new_empty() -> Self { Self { entries: vec![] } }
 
 	fn fetch() -> Box<[Intrinsic<'i>]> {
 		Box::new([
@@ -34,20 +32,17 @@ impl<'i> IntrinsicTable<'i> {
 				name: "print",
 				value: Value::IntrinsicFn(IntrinsicFn::new(
 					i_print,
-					ArgList::new(vec![
-						Arg::Variadic("args".into())
-					])
+					ArgList::new(vec![Arg::Variadic("args".into())])
 				)),
 				auto_import: true
 			},
-
 			Intrinsic {
 				name: "assert",
 				value: Value::IntrinsicFn(IntrinsicFn::new(
 					i_assert,
 					ArgList::new(vec![
 						Arg::Required("expr".into(), ValueKind::Bool),
-						Arg::Optional("msg".into(), ValueKind::Str)
+						Arg::Optional("msg".into(), ValueKind::Str),
 					])
 				)),
 				auto_import: true
@@ -57,8 +52,8 @@ impl<'i> IntrinsicTable<'i> {
 }
 
 impl<'i> IntoIterator for IntrinsicTable<'i> {
-	type Item = Intrinsic<'i>;
 	type IntoIter = std::vec::IntoIter<Self::Item>;
+	type Item = Intrinsic<'i>;
 
 	fn into_iter(self) -> Self::IntoIter { self.entries.into_iter() }
 }
@@ -68,11 +63,7 @@ impl Default for IntrinsicTable<'_> {
 }
 
 fn i_print<'i>(
-	CallableData {
-		i,
-		mut args,
-		..
-	}: CallableData<'_, 'i>
+	CallableData { i, mut args, .. }: CallableData<'_, 'i>
 ) -> InterpretResult<'i, Value<'i>> {
 	let formatted = get_argument!(args => args: ...)
 		.into_iter()
@@ -104,9 +95,7 @@ fn i_assert<'i>(
 
 		return Err(InterpretError::new(
 			expr_span,
-			crate::InterpretErrorKind::AssertionFailed(error::AssertionFailed(
-				msg.map(Into::into)
-			))
+			crate::InterpretErrorKind::AssertionFailed(error::AssertionFailed(msg.map(Into::into)))
 		));
 	}
 

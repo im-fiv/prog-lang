@@ -11,7 +11,10 @@ pub struct IndexAcc<'src> {
 }
 
 impl<'src> IndexAcc<'src> {
-	pub fn parse_with_list(input: &ParseStream<'src, '_>, list: Box<Term<'src>>) -> ParseResult<'src, Self> {
+	pub fn parse_with_list(
+		input: &ParseStream<'src, '_>,
+		list: Box<Term<'src>>
+	) -> ParseResult<'src, Self> {
 		let _lb = input.parse::<token::LeftBracket>()?;
 		let index = Box::new(input.parse::<Expr>()?);
 		let _rb = input.parse::<token::RightBracket>()?;

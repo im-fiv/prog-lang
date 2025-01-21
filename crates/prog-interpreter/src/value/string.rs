@@ -15,9 +15,7 @@ impl From<String> for Str {
 }
 
 impl From<&'_ str> for Str {
-	fn from(value: &'_ str) -> Self {
-		Self::from(value.to_string())
-	}
+	fn from(value: &'_ str) -> Self { Self::from(value.to_string()) }
 }
 
 impl From<Str> for String {

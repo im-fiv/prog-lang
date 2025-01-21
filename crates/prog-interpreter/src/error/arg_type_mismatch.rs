@@ -1,5 +1,5 @@
-use ariadne::{Label, Fmt};
-use prog_utils::pretty_errors::{AriadneCompatible, Span, color_generator};
+use ariadne::{Fmt, Label};
+use prog_utils::pretty_errors::{color_generator, AriadneCompatible, Span};
 
 use crate::ValueKind;
 

@@ -6,7 +6,7 @@ pub use span::{Position, Span};
 
 use std::{fmt, io};
 
-use ariadne::{Label, Report, ReportKind, Source, ColorGenerator};
+use ariadne::{ColorGenerator, Label, Report, ReportKind, Source};
 
 /// Initializes a color generator with a specific initial state.
 pub fn color_generator() -> ColorGenerator {
@@ -20,7 +20,10 @@ pub fn color_generator() -> ColorGenerator {
 }
 
 #[cfg(feature = "serde")]
-pub trait PrettyErrorKind<'s>: Clone + fmt::Debug + AriadneCompatible<'s> + serde::Serialize {}
+pub trait PrettyErrorKind<'s>:
+	Clone + fmt::Debug + AriadneCompatible<'s> + serde::Serialize
+{
+}
 #[cfg(not(feature = "serde"))]
 pub trait PrettyErrorKind<'s>: Clone + fmt::Debug + AriadneCompatible<'s> {}
 
@@ -37,9 +40,7 @@ pub struct PrettyError<'s, Kind: PrettyErrorKind<'s>> {
 }
 
 impl<'s, Kind: PrettyErrorKind<'s>> PrettyError<'s, Kind> {
-	pub fn new(span: Span<'s>, kind: Kind) -> Self {
-		Self { span, kind }
-	}
+	pub fn new(span: Span<'s>, kind: Kind) -> Self { Self { span, kind } }
 
 	pub fn new_unspanned(kind: Kind) -> Self {
 		let position = Position::new(0, 0);

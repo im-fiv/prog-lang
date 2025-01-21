@@ -49,10 +49,7 @@ impl<'i> ArgList {
 	pub fn new_empty() -> Self { Self { args: None } }
 
 	/// Verifies the provided arguments according to the inner argument types list
-	pub fn verify(
-		&self,
-		arguments: &[Value<'i>]
-	) -> Result<ParsedArgList<'i>, ArgumentParseError> {
+	pub fn verify(&self, arguments: &[Value<'i>]) -> Result<ParsedArgList<'i>, ArgumentParseError> {
 		use core::iter::zip;
 
 		if let Some(result) = self.check_args_length(arguments)? {
@@ -92,7 +89,9 @@ impl<'i> ArgList {
 
 			match expected_arg {
 				Arg::Required(name, kind) => check_args(*kind, found_arg.kind(), name, false)?,
-				Arg::RequiredUntyped(name) => check_args(found_arg.kind(), found_arg.kind(), name, false)?,
+				Arg::RequiredUntyped(name) => {
+					check_args(found_arg.kind(), found_arg.kind(), name, false)?
+				}
 				Arg::Optional(name, kind) => check_args(*kind, found_arg.kind(), name, true)?,
 				Arg::Variadic(name) => {
 					result.insert(

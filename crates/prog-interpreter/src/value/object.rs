@@ -1,5 +1,5 @@
-use std::fmt::{self, Display};
 use std::collections::HashMap;
+use std::fmt::{self, Display};
 
 use prog_lexer::TokenKind;
 
@@ -7,14 +7,10 @@ use crate::{Primitive, Shared, Value};
 
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct Obj<'ast>(
-	Shared<HashMap<String, Value<'ast>>>
-);
+pub struct Obj<'ast>(Shared<HashMap<String, Value<'ast>>>);
 
 impl Primitive for Obj<'_> {
-	fn is_truthy(&self) -> bool {
-		self.0.borrow().is_empty()
-	}
+	fn is_truthy(&self) -> bool { self.0.borrow().is_empty() }
 }
 
 impl<'ast> From<HashMap<String, Value<'ast>>> for Obj<'ast> {
@@ -25,9 +21,7 @@ impl<'ast> From<HashMap<String, Value<'ast>>> for Obj<'ast> {
 }
 
 impl<'ast> From<Shared<HashMap<String, Value<'ast>>>> for Obj<'ast> {
-	fn from(container: Shared<HashMap<String, Value<'ast>>>) -> Self {
-		Self(container)
-	}
+	fn from(container: Shared<HashMap<String, Value<'ast>>>) -> Self { Self(container) }
 }
 
 // TODO: support for `f.alternate()`

@@ -2,8 +2,8 @@ use std::fmt::{self, Display};
 
 use prog_parser::{ast, ASTNode};
 
-use crate::{Context, Evaluatable, InterpretResult, Primitive, Callable, CallableData, Value};
 use crate::arg_parser::{ArgList, ParsedArg};
+use crate::{Callable, CallableData, Context, Evaluatable, InterpretResult, Primitive, Value};
 
 #[derive(Debug, Clone)]
 pub struct Func<'ast> {
@@ -32,11 +32,7 @@ impl<'intref, 'int: 'intref> Callable<'intref, 'int> for Func<'int> {
 
 	fn call(
 		self: Box<Self>,
-		CallableData {
-			i,
-			mut args,
-			..
-		}: CallableData<'intref, 'int>
+		CallableData { i, mut args, .. }: CallableData<'intref, 'int>
 	) -> InterpretResult<'int, Value<'int>> {
 		for (name, value) in args.drain() {
 			let ParsedArg::Regular(value) = value else {
@@ -48,7 +44,9 @@ impl<'intref, 'int: 'intref> Callable<'intref, 'int> for Func<'int> {
 
 		let original_ctx = i.context.swap(self.ctx);
 		// Unlike a vector of statements, a function must produce a final value
-		let stmts = ast::Program { stmts: self.ast.stmts };
+		let stmts = ast::Program {
+			stmts: self.ast.stmts
+		};
 		let result = stmts.evaluate(i);
 		i.context.swap(original_ctx);
 

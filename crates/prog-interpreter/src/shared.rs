@@ -39,9 +39,7 @@ impl<T: ?Sized> Clone for Shared<T> {
 }
 
 impl<T: ?Sized> PartialEq for Shared<T> {
-	fn eq(&self, other: &Self) -> bool {
-		Rc::ptr_eq(&self.value, &other.value)
-	}
+	fn eq(&self, other: &Self) -> bool { Rc::ptr_eq(&self.value, &other.value) }
 }
 
 impl<T: ?Sized + Debug> Debug for Shared<T> {

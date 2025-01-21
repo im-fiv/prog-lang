@@ -1,5 +1,5 @@
-use ariadne::{Label, Fmt};
-use prog_utils::pretty_errors::{AriadneCompatible, Span, color_generator};
+use ariadne::{Fmt, Label};
+use prog_utils::pretty_errors::{color_generator, AriadneCompatible, Span};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -19,18 +19,11 @@ impl<'s> AriadneCompatible<'s> for DuplicateObjEntry<'s> {
 
 		vec![
 			Label::new(self.def_name)
-				.with_message(format!(
-					"redefinition of {} field...",
-					"this".fg(color_def)
-				))
+				.with_message(format!("redefinition of {} field...", "this".fg(color_def)))
 				.with_color(color_def),
-
 			Label::new(span)
-				.with_message(format!(
-					"...occurs {}",
-					"here".fg(color_redef)
-				))
-				.with_color(color_redef)
+				.with_message(format!("...occurs {}", "here".fg(color_redef)))
+				.with_color(color_redef),
 		]
 	}
 }

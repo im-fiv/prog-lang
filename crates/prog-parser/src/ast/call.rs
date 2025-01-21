@@ -11,7 +11,10 @@ pub struct Call<'src> {
 }
 
 impl<'src> Call<'src> {
-	pub fn parse_with_callee(input: &ParseStream<'src, '_>, callee: Box<Term<'src>>) -> ParseResult<'src, Self> {
+	pub fn parse_with_callee(
+		input: &ParseStream<'src, '_>,
+		callee: Box<Term<'src>>
+	) -> ParseResult<'src, Self> {
 		let _lp = input.parse::<token::LeftParen>()?;
 		let args = input
 			.try_parse::<Punctuated<Expr, token::Comma>>()

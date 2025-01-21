@@ -8,8 +8,8 @@ pub mod value;
 pub use context::{Context, ContextFlags};
 pub use error::{InterpretError, InterpretErrorKind};
 pub use shared::Shared;
-pub use value::{Primitive, Value, ValueKind};
 pub(crate) use value::{Callable, CallableData};
+pub use value::{Primitive, Value, ValueKind};
 
 use prog_parser::{ast, ASTNode};
 
@@ -288,12 +288,13 @@ impl<'ast> Evaluatable<'ast> for ast::Func<'ast> {
 	type Output = value::Func<'ast>;
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
-		use arg_parser::{ArgList, Arg};
+		use arg_parser::{Arg, ArgList};
 
 		let ctx = i.context.child();
 
 		let args = if !self.args.is_empty() {
-			let args = self.args
+			let args = self
+				.args
 				.items()
 				.into_iter()
 				.map(|a| Arg::RequiredUntyped(Box::from(a.value())))
@@ -331,7 +332,7 @@ impl<'ast> Evaluatable<'ast> for ast::Obj<'ast> {
 	type Output = value::Obj<'ast>;
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
-		use std::collections::hash_map::{HashMap, Entry};
+		use std::collections::hash_map::{Entry, HashMap};
 
 		let mut entry_map = HashMap::new();
 
@@ -375,21 +376,21 @@ impl<'ast> Evaluatable<'ast> for ast::Extern<'ast> {
 		let value = match self.value.evaluate(i)? {
 			Value::Str(s) => <value::Str as Into<String>>::into(s),
 
-			v => return Err(InterpretError::new(
-				span_value,
-				InterpretErrorKind::ArgTypeMismatch(error::ArgTypeMismatch {
-					expected: ValueKind::Str,
-					found: v.kind()
-				})
-			))
+			v => {
+				return Err(InterpretError::new(
+					span_value,
+					InterpretErrorKind::ArgTypeMismatch(error::ArgTypeMismatch {
+						expected: ValueKind::Str,
+						found: v.kind()
+					})
+				))
+			}
 		};
 
-		i.context
-			.get_extern(&value)
-			.ok_or(InterpretError::new(
-				span_value,
-				InterpretErrorKind::InvalidExtern(error::InvalidExtern(value))
-			))
+		i.context.get_extern(&value).ok_or(InterpretError::new(
+			span_value,
+			InterpretErrorKind::InvalidExtern(error::InvalidExtern(value))
+		))
 	}
 }
 
@@ -425,9 +426,7 @@ impl<'ast> Evaluatable<'ast> for ast::Call<'ast> {
 			v => {
 				return Err(InterpretError::new(
 					span_callee,
-					InterpretErrorKind::ExprNotCallable(error::ExprNotCallable(
-						v.kind()
-					))
+					InterpretErrorKind::ExprNotCallable(error::ExprNotCallable(v.kind()))
 				));
 			}
 		};
@@ -443,10 +442,8 @@ impl<'ast> Evaluatable<'ast> for ast::Call<'ast> {
 			.into_iter()
 			.collect::<InterpretResult<Vec<_>>>()?;
 
-		let parsed_args = func
-			.arg_list()
-			.verify(&arg_values)
-			.map_err(|e| match e {
+		let parsed_args = func.arg_list().verify(&arg_values).map_err(|e| {
+			match e {
 				ArgumentParseError::CountMismatch {
 					expected,
 					end_boundary,
@@ -477,8 +474,9 @@ impl<'ast> Evaluatable<'ast> for ast::Call<'ast> {
 						})
 					)
 				}
-			})?;
-		
+			}
+		})?;
+
 		func.call(CallableData {
 			i,
 			args: parsed_args,

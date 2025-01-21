@@ -1,5 +1,5 @@
 use ariadne::{Fmt, Label};
-use prog_utils::pretty_errors::{AriadneCompatible, Span, color_generator};
+use prog_utils::pretty_errors::{color_generator, AriadneCompatible, Span};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]

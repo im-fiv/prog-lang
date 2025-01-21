@@ -134,7 +134,7 @@ impl<'ast> Context<'ast> {
 			None => None
 		}
 	}
-	
+
 	pub(crate) fn insert_extern<N>(&self, name: N, value: Value<'ast>) -> Option<Value<'ast>>
 	where
 		N: Into<String>
