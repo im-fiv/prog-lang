@@ -1,4 +1,4 @@
-use ariadne::Label;
+use ariadne::{Fmt, Label};
 use prog_utils::pretty_errors::{color_generator, AriadneCompatible, Span};
 
 #[derive(Debug, Clone)]
@@ -11,8 +11,13 @@ impl<'s> AriadneCompatible<'s> for InvalidExtern {
 	fn labels(&self, span: Span<'s>) -> Vec<ariadne::Label<Span<'s>>> {
 		let mut colors = color_generator();
 
+		let color_item = colors.next();
+
 		vec![Label::new(span)
-			.with_message("extern item with that name was not found")
-			.with_color(colors.next())]
+			.with_message(format!(
+				"extern item with name `{}` was not found",
+				(&self.0).fg(color_item)
+			))
+			.with_color(color_item)]
 	}
 }
