@@ -1,4 +1,7 @@
+mod join_with_or;
 pub mod pretty_errors;
+
+pub use join_with_or::JoinWithOr;
 
 use std::fs::File;
 use std::io::prelude::*;

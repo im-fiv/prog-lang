@@ -12,7 +12,7 @@ pub struct Func<'ast> {
 	pub(crate) ctx: Context<'ast>
 }
 
-impl<'ast> Func<'ast> {
+impl Func<'_> {
 	pub(crate) fn args_str(&self) -> Vec<&str> {
 		self.ast
 			.args

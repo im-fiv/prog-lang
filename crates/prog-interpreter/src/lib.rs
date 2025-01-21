@@ -13,6 +13,18 @@ pub use value::{Primitive, Value, ValueKind};
 
 use prog_parser::{ast, ASTNode};
 
+fn f64_to_usize(num: f64) -> Option<usize> {
+	let is_normal = num.is_normal() || num == 0.0;
+	let is_whole = num.fract() == 0.0;
+	let is_in_range = num <= (usize::MAX as f64);
+
+	if !is_normal || !is_whole || !is_in_range {
+		return None;
+	}
+
+	Some(num as usize)
+}
+
 pub type InterpretResult<'s, T> = Result<T, InterpretError<'s>>;
 
 pub trait Evaluatable<'ast> {
@@ -135,11 +147,16 @@ impl<'ast> Evaluatable<'ast> for ast::Stmt<'ast> {
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		match self {
-			Self::VarDefine(stmt) => stmt.evaluate(i),
-			Self::VarAssign(stmt) => stmt.evaluate(i),
+			Self::VarDefine(stmt) => stmt.evaluate(i).map(|_| Value::None),
+			Self::VarAssign(stmt) => stmt.evaluate(i).map(|_| Value::None),
 			Self::DoBlock(stmt) => stmt.evaluate(i),
 			Self::Return(stmt) => stmt.evaluate(i),
 			Self::Call(stmt) => stmt.evaluate(i),
+			// TODO: WhileLoop
+			// TODO: Break
+			// TODO: Continue
+			// TODO: If
+			Self::ExprAssign(stmt) => stmt.evaluate(i).map(|_| Value::None),
 
 			// TODO
 			stmt => {
@@ -184,6 +201,8 @@ impl<'ast> Evaluatable<'ast> for ast::BinaryExpr<'ast> {
 			(Op::Asterisk, V::Num(lhs), V::Num(rhs)) => V::Num(lhs * rhs),
 			(Op::Slash, V::Num(lhs), V::Num(rhs)) => V::Num(lhs / rhs),
 			(Op::Sign, V::Num(lhs), V::Num(rhs)) => V::Num(lhs % rhs),
+
+			(Op::Plus, V::Str(lhs), rhs) => V::Str(value::Str::from(format!("{lhs}{rhs}"))),
 
 			(Op::EqEq, lhs, rhs) => V::Bool(value::Bool::from(lhs == rhs)),
 			(Op::Neq, lhs, rhs) => V::Bool(value::Bool::from(lhs != rhs)),
@@ -230,8 +249,6 @@ impl<'ast> Evaluatable<'ast> for ast::Term<'ast> {
 	type Output = Value<'ast>;
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
-		let span_term = self.span();
-
 		match self {
 			Self::Expr(expr) => expr.evaluate(i),
 			Self::ParenExpr(expr) => expr.expr.evaluate(i),
@@ -242,15 +259,10 @@ impl<'ast> Evaluatable<'ast> for ast::Term<'ast> {
 			Self::List(list) => list.evaluate(i).map(Value::List),
 			Self::Obj(obj) => obj.evaluate(i).map(Value::Obj),
 			Self::Extern(ext) => ext.evaluate(i),
-			Self::Call(call) => call.evaluate(i),
 
-			// TODO
-			_ => {
-				Err(InterpretError::new(
-					span_term,
-					InterpretErrorKind::Unimplemented(error::Unimplemented)
-				))
-			}
+			Self::Call(call) => call.evaluate(i),
+			Self::IndexAcc(acc) => acc.evaluate(i),
+			Self::FieldAcc(acc) => acc.evaluate(i)
 		}
 	}
 }
@@ -324,7 +336,7 @@ impl<'ast> Evaluatable<'ast> for ast::List<'ast> {
 			.map(|item| item.evaluate(i))
 			.collect::<InterpretResult<Vec<_>>>()?;
 
-		Ok(value::List::new(items))
+		Ok(value::List::from(items))
 	}
 }
 
@@ -485,10 +497,73 @@ impl<'ast> Evaluatable<'ast> for ast::Call<'ast> {
 	}
 }
 
+impl<'ast> Evaluatable<'ast> for ast::IndexAcc<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let span_list = self.list.span();
+		let span_index = self.index.span();
+
+		let list = match self.list.evaluate(i)? {
+			Value::List(l) => l,
+			v => {
+				return Err(InterpretError::new(
+					span_list,
+					InterpretErrorKind::CannotIndexExpr(error::CannotIndexExpr {
+						expected: vec![ValueKind::List, ValueKind::Obj],
+						found: v.kind()
+					})
+				))
+			}
+		};
+
+		let index = match self.index.evaluate(i)? {
+			Value::Num(n) => {
+				f64_to_usize(Into::<f64>::into(n)).ok_or(InterpretError::new(
+					span_index,
+					InterpretErrorKind::InvalidIndex(error::InvalidIndex(Value::Num(n)))
+				))?
+			}
+
+			v => {
+				return Err(InterpretError::new(
+					span_index,
+					InterpretErrorKind::InvalidIndex(error::InvalidIndex(v))
+				));
+			}
+		};
+
+		Ok(list.get(index).unwrap_or(Value::None))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::FieldAcc<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let span_obj = self.object.span();
+
+		let obj = match self.object.evaluate(i)? {
+			Value::Obj(o) => o,
+			v => {
+				return Err(InterpretError::new(
+					span_obj,
+					InterpretErrorKind::CannotIndexExpr(error::CannotIndexExpr {
+						expected: vec![ValueKind::List, ValueKind::Obj],
+						found: v.kind()
+					})
+				));
+			}
+		};
+
+		Ok(obj.get(self.field.value()).unwrap_or(Value::None))
+	}
+}
+
 //* Statements *//
 
 impl<'ast> Evaluatable<'ast> for ast::VarDefine<'ast> {
-	type Output = Value<'ast>;
+	type Output = ();
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let name = self.name().value();
@@ -498,12 +573,12 @@ impl<'ast> Evaluatable<'ast> for ast::VarDefine<'ast> {
 		};
 
 		i.context.insert(name, value);
-		Ok(Value::None)
+		Ok(())
 	}
 }
 
 impl<'ast> Evaluatable<'ast> for ast::VarAssign<'ast> {
-	type Output = Value<'ast>;
+	type Output = ();
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let span_name = self.name.span();
@@ -518,7 +593,7 @@ impl<'ast> Evaluatable<'ast> for ast::VarAssign<'ast> {
 			));
 		}
 
-		Ok(Value::None)
+		Ok(())
 	}
 }
 
@@ -540,5 +615,81 @@ impl<'ast> Evaluatable<'ast> for ast::Return<'ast> {
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let value = self.value.evaluate(i).map(Box::new)?;
 		Ok(Value::CtrlFlow(value::CtrlFlow::Return(value)))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::ExprAssign<'ast> {
+	type Output = ();
+
+	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		match self {
+			Self::IndexAssign(stmt) => stmt.evaluate(i),
+			Self::FieldAssign(stmt) => stmt.evaluate(i)
+		}
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::IndexAssign<'ast> {
+	type Output = ();
+
+	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let span_list = self.acc.list.span();
+		let span_index = self.acc.index.span();
+
+		let list = match self.acc.list.evaluate(i)? {
+			Value::List(l) => l,
+			v => {
+				return Err(InterpretError::new(
+					span_list,
+					InterpretErrorKind::ExprNotAssignable(error::ExprNotAssignable {
+						expected: vec![ValueKind::List, ValueKind::Obj],
+						found: v.kind()
+					})
+				));
+			}
+		};
+
+		let index = match self.acc.index.evaluate(i)? {
+			Value::Num(n) => {
+				f64_to_usize(Into::<f64>::into(n)).ok_or(InterpretError::new(
+					span_index,
+					InterpretErrorKind::InvalidIndex(error::InvalidIndex(Value::Num(n)))
+				))?
+			}
+
+			v => {
+				return Err(InterpretError::new(
+					span_index,
+					InterpretErrorKind::InvalidIndex(error::InvalidIndex(v))
+				));
+			}
+		};
+
+		list.insert(index, self.value.evaluate(i)?);
+		Ok(())
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::FieldAssign<'ast> {
+	type Output = ();
+
+	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let span_obj = self.acc.object.span();
+
+		let obj = match self.acc.object.evaluate(i)? {
+			Value::Obj(o) => o,
+			v => {
+				return Err(InterpretError::new(
+					span_obj,
+					InterpretErrorKind::ExprNotAssignable(error::ExprNotAssignable {
+						expected: vec![ValueKind::List, ValueKind::Obj],
+						found: v.kind()
+					})
+				));
+			}
+		};
+
+		obj.insert(self.acc.field.value(), self.value.evaluate(i)?);
+		Ok(())
 	}
 }

@@ -1,0 +1,23 @@
+def should_panic = extern "should_panic"
+
+def invalid_index = func(value) do
+	should_panic(func() do
+		// Arbitrary index
+		return value[0]
+	end)
+
+	should_panic(func() do
+		// Arbitrary field
+		return value.field
+	end)
+end
+
+invalid_index(5)
+invalid_index(true)
+invalid_index("hello, world!")
+invalid_index(func() do end)
+invalid_index(print)
+invalid_index(none)
+
+assert([1, 2, 3][0] == 1)
+assert({ hello = "world!" }.hello == "world!")

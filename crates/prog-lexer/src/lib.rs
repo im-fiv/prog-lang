@@ -163,6 +163,7 @@ fn neq<'src>(ls: &mut LexStream<'src>) -> LexResult<'src, TokenKind> {
 	Ok(TokenKind::Neq)
 }
 
+// TODO: escape sequences
 fn string<'src>(ls: &mut LexStream<'src>) -> LexResult<'src, TokenKind> {
 	let start_index = ls.position() - 1;
 

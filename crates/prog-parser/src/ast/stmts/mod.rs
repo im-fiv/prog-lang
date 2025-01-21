@@ -11,7 +11,7 @@ mod class_def;
 pub use class_def::ClassDef;
 pub use control_flow::{Break, Continue};
 pub use do_block::DoBlock;
-pub use expr_assign::ExprAssign;
+pub use expr_assign::{ExprAssign, FieldAssign, IndexAssign};
 pub use if_cond::{Else, ElseIf, If};
 pub use ret::Return;
 pub use var_assign::VarAssign;

@@ -46,6 +46,18 @@ pub(crate) fn expand_optional(input: GetArgumentInput) -> pm2::TokenStream {
 	let list_name = input.list_name;
 	let inner_type = input.inner_type.unwrap();
 
+	let unwrap_pattern = match inner_type {
+		Type::Infer(_) => quote! { inner_arg },
+		_ => {
+			quote! {
+				match inner_arg {
+					crate::Value::#inner_type(val) => val,
+					_ => ::std::panic!("Argument `{arg_name}` is not a regular argument")
+				}
+			}
+		}
+	};
+
 	quote! {
 		{
 			let arg_name = ::std::stringify!(#arg_name);
@@ -53,10 +65,7 @@ pub(crate) fn expand_optional(input: GetArgumentInput) -> pm2::TokenStream {
 
 			parsed_arg.map(|parsed_arg| {
 				if let crate::arg_parser::ParsedArg::Regular(inner_arg) = parsed_arg {
-					match inner_arg {
-						crate::Value::#inner_type(val) => val,
-						_ => ::std::panic!("Argument `{arg_name}` is not a regular argument")
-					}
+					#unwrap_pattern
 				} else {
 					::std::panic!("Argument `{}` is not a regular argument", arg_name)
 				}

@@ -26,7 +26,7 @@ impl<'src, 'buf> ParseStream<'src, 'buf> {
 	}
 }
 
-impl<'src, 'buf> ParseStream<'src, 'buf>
+impl<'src> ParseStream<'src, '_>
 where
 	Token<'src>: Copy
 {

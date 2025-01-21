@@ -23,5 +23,11 @@ impl From<Str> for String {
 }
 
 impl Display for Str {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		if f.alternate() {
+			write!(f, "\"{}\"", self.0)
+		} else {
+			write!(f, "{}", self.0)
+		}
+	}
 }

@@ -27,12 +27,24 @@ pub(crate) struct CallableData<'intref, 'int: 'intref> {
 	pub(crate) call_site: CallSite<'int>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct CallSite<'s> {
 	pub(crate) callee: Span<'s>,
 	pub(crate) _lp: Span<'s>,
 	pub(crate) args: ast::Punctuated<'s, Span<'s>, Span<'s>>,
 	pub(crate) _rp: Span<'s>
+}
+
+impl<'s> prog_parser::ASTNode<'s> for CallSite<'s> {
+	fn span<'a>(&'a self) -> Span<'s> {
+		let source = self.callee.source();
+		let file = self.callee.file();
+
+		let start = self.callee.position().start();
+		let end = self._rp.position().end();
+
+		Span::new(source, file, prog_parser::Position::new(start, end))
+	}
 }
 
 pub trait Primitive {
@@ -93,7 +105,13 @@ impl Display for Value<'_> {
 			Self::Obj(obj) => obj as &dyn Display,
 
 			Self::CtrlFlow(ctrl) => ctrl as &dyn Display,
-			Self::None => return write!(f, "")
+			Self::None => {
+				if f.alternate() {
+					return write!(f, "{}", prog_lexer::TokenKind::None);
+				} else {
+					return write!(f, "");
+				}
+			}
 		}
 		.fmt(f)
 	}

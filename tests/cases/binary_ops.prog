@@ -1,0 +1,53 @@
+// Number operations
+assert_eq(1 + 1, 2)
+assert_eq(1 - 1, 0)
+assert_eq(2 * 2, 4)
+assert_eq(8 / 2, 4)
+assert_eq(5 % 2, 1)
+
+// String operations
+assert_eq("a" + 1, "a1")
+assert_eq("a" + true, "atrue")
+assert_eq("a" + "b", "ab")
+assert_eq("a" + func(b) do end, "afunc(b)")
+// IntrinsicFn is skipped due to having an arbitrary representation
+assert_eq("a" + [1, 2, 3], "a[1, 2, 3]")
+// TODO: not yet possible to represent
+// assert_eq("a" + { hello = "world!" }, "a{ hello = \"world!\" }")
+
+// Boolean operations
+assert_eq(1, 1)
+assert_neq(1, 0)
+
+assert_eq(true, true)
+assert_neq(true, false)
+
+assert_eq("hello", "hello")
+assert_neq("hello", "world")
+
+do
+	def dummy_func = func() do end
+
+	assert_eq(dummy_func, dummy_func)
+	assert_neq(dummy_func, func() do end)
+	assert_neq(func() do end, dummy_func)
+end
+
+assert_eq(print, print)
+assert_neq(print, assert)
+
+do
+	def dummy_list = [1, 2, 3]
+
+	assert_eq(dummy_list, dummy_list)
+	assert_neq(dummy_list, [1, 2, 3])
+	assert_neq([1, 2, 3], dummy_list)
+end
+
+do
+	def dummy_obj = { hello = "world!" }
+
+	assert_eq(dummy_obj, dummy_obj)
+	assert_neq(dummy_obj, { hello = "world!" })
+	assert_neq({ hello = "world!" }, dummy_obj)
+end

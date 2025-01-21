@@ -9,16 +9,16 @@ def obj_b = {
 def obj_alias_a = obj_a
 def obj_alias_b = obj_b
 
-assert(obj_a == obj_a)
-assert(obj_b == obj_b)
+assert_eq(obj_a, obj_a)
+assert_eq(obj_b, obj_b)
 
-assert(obj_a != obj_b)
-assert(obj_alias_a != obj_alias_b)
+assert_neq(obj_a, obj_b)
+assert_neq(obj_alias_a, obj_alias_b)
 
-assert(obj_alias_a == obj_alias_a)
-assert(obj_alias_a == obj_a)
-assert(obj_alias_a != obj_b)
+assert_eq(obj_alias_a, obj_alias_a)
+assert_eq(obj_alias_a, obj_a)
+assert_neq(obj_alias_a, obj_b)
 
-assert(obj_alias_b == obj_alias_b)
-assert(obj_alias_b == obj_b)
-assert(obj_alias_b != obj_a)
+assert_eq(obj_alias_b, obj_alias_b)
+assert_eq(obj_alias_b, obj_b)
+assert_neq(obj_alias_b, obj_a)

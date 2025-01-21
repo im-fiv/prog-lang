@@ -39,21 +39,29 @@ pub(crate) fn expand_impl(item: ItemEnum) -> syn::Result<pm2::TokenStream> {
 
 	let mut impl_generics = item.generics.clone();
 
-	// Adding the `: AriadneCompatibleLifetime` bound to all other lifetimes
-	for lt_param in impl_generics.lifetimes_mut() {
-		lt_param.bounds.push(trait_lifetime.clone());
-	}
+	{
+		// Adding the `: AriadneCompatibleLifetime` bound to all other lifetimes
+		for lt_param in impl_generics.lifetimes_mut() {
+			lt_param.bounds.push(trait_lifetime.clone());
+		}
 
-	// Adding `AriadneCompatible`'s lifetime to the `impl` params
-	impl_generics.params.insert(
-		0,
-		syn::GenericParam::Lifetime(syn::LifetimeParam {
-			attrs: vec![],
-			lifetime: trait_lifetime.clone(),
-			colon_token: None,
-			bounds: Punctuated::new()
-		})
-	);
+		// Bounding `'AriadneCompatibleLifetime` to all other lifetimes??
+		let mut bounds = Punctuated::new();
+		for lt_param in impl_generics.lifetimes() {
+			bounds.push(lt_param.lifetime.clone());
+		}
+
+		// Adding `AriadneCompatible`'s lifetime to the `impl` params
+		impl_generics.params.insert(
+			0,
+			syn::GenericParam::Lifetime(syn::LifetimeParam {
+				attrs: vec![],
+				lifetime: trait_lifetime.clone(),
+				colon_token: None,
+				bounds
+			})
+		);
+	}
 
 	let enum_name = item.ident;
 	let (impl_generics, _, _) = impl_generics.split_for_impl();

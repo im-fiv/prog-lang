@@ -38,7 +38,7 @@ impl<'src> ParsePrecedence<'src> for Expr<'src> {
 			let infix_binding_power = match token.kind() {
 				T::Plus | T::Minus => (1, 2),
 
-				T::Asterisk | T::Slash => (3, 4),
+				T::Asterisk | T::Slash | T::Sign => (3, 4),
 
 				T::Dot | T::LeftBracket => (5, 6),
 
