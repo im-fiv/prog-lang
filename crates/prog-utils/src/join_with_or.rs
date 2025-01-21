@@ -70,9 +70,9 @@ impl<T: Display> JoinWithOr for [T] {
 	}
 }
 
-impl<'a, T: Display + 'a, const N: usize> JoinWithOr for [T; N]
+impl<T: Display, const N: usize> JoinWithOr for [T; N]
 where
-	&'a [T]: JoinWithOr
+	[T]: JoinWithOr
 {
 	type Item = <[T] as JoinWithOr>::Item;
 
