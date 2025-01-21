@@ -29,7 +29,7 @@ impl<'src> ASTNode<'src> for Lit<'src> {
 }
 
 impl<'src> Parse<'src> for Lit<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let token = input.expect_next()?;
 		let span = token.span();
 

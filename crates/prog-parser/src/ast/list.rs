@@ -5,7 +5,7 @@ use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct List<'src> {
 	pub _lb: token::LeftBracket<'src>,
-	pub items: Option<Box<Punctuated<'src, Expr<'src>, token::Comma<'src>>>>,
+	pub items: Box<Punctuated<'src, Expr<'src>, token::Comma<'src>>>,
 	pub _rb: token::RightBracket<'src>
 }
 
@@ -23,12 +23,12 @@ impl<'src> ASTNode<'src> for List<'src> {
 }
 
 impl<'src> Parse<'src> for List<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let _lb = input.parse::<token::LeftBracket>()?;
 		let items = input
-			.try_parse::<Punctuated<'src, Expr, token::Comma>>()
+			.try_parse::<Punctuated<Expr, token::Comma>>()
 			.map(Box::new)
-			.ok();
+			.unwrap_or_default();
 		let _rb = input.parse::<token::RightBracket>()?;
 
 		Ok(Self { _lb, items, _rb })

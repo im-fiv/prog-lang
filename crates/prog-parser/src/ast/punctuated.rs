@@ -77,7 +77,7 @@ impl<'src, T, P> Punctuated<'src, T, P> {
 		}
 	}
 
-	pub fn map_ref<F, G, H, I>(&self, f: F, g: G) -> Punctuated<'_, H, I>
+	pub fn map_ref<F, G, H, I>(&self, f: F, g: G) -> Punctuated<'src, H, I>
 	where
 		F: Fn(&T) -> H,
 		G: Fn(&P) -> I
@@ -97,7 +97,7 @@ impl<'src, T, P> Punctuated<'src, T, P> {
 		}
 	}
 
-	pub fn map_mut<F, G, H, I>(&mut self, f: F, g: G) -> Punctuated<'_, H, I>
+	pub fn map_mut<F, G, H, I>(&mut self, f: F, g: G) -> Punctuated<'src, H, I>
 	where
 		F: Fn(&mut T) -> H,
 		G: Fn(&mut P) -> I
@@ -157,6 +157,18 @@ impl<'src, T, P> Punctuated<'src, T, P> {
 			.collect::<Vec<_>>()
 	}
 
+	pub fn nth_item(&self, index: usize) -> Option<&T> {
+		if index >= self.len() {
+			return None;
+		}
+
+		if index >= self.pairs.len() {
+			return self.tail.as_ref();
+		}
+
+		self.pairs.get(index).map(|(i, _)| i)
+	}
+
 	fn assert_non_empty(&self) { assert!(!self.is_empty(), "Punctuated list must not be empty") }
 }
 
@@ -184,15 +196,11 @@ impl Punctuated<'_, Position, Position> {
 	pub fn position(&self) -> Position { Position::new(self.start(), self.end()) }
 }
 
-impl<'src, T, P> ASTNode<'src> for Punctuated<'src, T, P>
-where
-	T: ASTNode<'src>,
-	P: ASTNode<'src>
-{
+impl<'src> ASTNode<'src> for Punctuated<'src, Span<'src>, Span<'src>> {
 	fn span<'a>(&'a self) -> Span<'src> {
 		self.assert_non_empty();
 
-		let pos_list = self.map_ref(T::position, P::position);
+		let pos_list = self.map_ref(Span::position, Span::position);
 
 		let start = pos_list.start();
 		let end = pos_list.end();
@@ -209,12 +217,23 @@ where
 	}
 }
 
+impl<'src, T, P> ASTNode<'src> for Punctuated<'src, T, P>
+where
+	T: ASTNode<'src>,
+	P: ASTNode<'src>
+{
+	fn span<'a>(&'a self) -> Span<'src> {
+		self.assert_non_empty();
+		self.map_ref(ASTNode::span, ASTNode::span).span()
+	}
+}
+
 impl<'src, T, P> Parse<'src> for Punctuated<'src, T, P>
 where
 	T: Parse<'src>,
 	P: Parse<'src>
 {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let mut list = Self::new();
 
 		loop {

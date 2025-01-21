@@ -48,7 +48,7 @@ impl<'src> ASTNode<'src> for UnaryOp<'src> {
 }
 
 impl<'src> Parse<'src> for UnaryOp<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let token = input.expect_next()?;
 		Self::try_from(&token as &dyn crate::Token)
 	}

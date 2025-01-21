@@ -6,7 +6,7 @@ use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 pub struct Func<'src> {
 	pub _func: token::Func<'src>,
 	pub _lp: token::LeftParen<'src>,
-	pub args: Option<Punctuated<'src, Ident<'src>, token::Comma<'src>>>,
+	pub args: Punctuated<'src, Ident<'src>, token::Comma<'src>>,
 	pub _rp: token::RightParen<'src>,
 	pub _do: token::Do<'src>,
 	pub stmts: Vec<Stmt<'src>>,
@@ -27,12 +27,12 @@ impl<'src> ASTNode<'src> for Func<'src> {
 }
 
 impl<'src> Parse<'src> for Func<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let _func = input.parse::<token::Func>()?;
 		let _lp = input.parse::<token::LeftParen>()?;
 		let args = input
-			.try_parse::<Punctuated<'src, Ident, token::Comma>>()
-			.ok();
+			.try_parse::<Punctuated<Ident, token::Comma>>()
+			.unwrap_or_default();
 		let _rp = input.parse::<token::RightParen>()?;
 		let _do = input.parse::<token::Do>()?;
 		let mut stmts = vec![];

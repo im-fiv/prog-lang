@@ -10,7 +10,7 @@ pub struct TokenStream<'src> {
 impl<'src> TokenStream<'src> {
 	pub fn new() -> Self { Self { buffer: vec![] } }
 
-	pub fn buffer(&'src self) -> &'src [Token<'src>] { &self.buffer }
+	pub fn buffer<'buf>(&'buf self) -> &'buf [Token<'src>] { &self.buffer }
 
 	pub fn unwrap(self) -> Vec<Token<'src>> { self.buffer }
 

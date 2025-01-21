@@ -10,19 +10,19 @@ use prog_utils::pretty_errors::{Position, Span};
 
 pub type LexResult<'s, T> = Result<T, LexError<'s>>;
 
-fn unexpected_token<'src>(
+fn unexpected_char<'src>(
 	ls: &mut LexStream<'src>,
-	got: char,
+	found: char,
 	expected: Option<char>,
 	start: Option<usize>
 ) -> LexError<'src> {
-	let position = Position::new(start.unwrap_or(ls.position()), ls.position() + 1);
+	let position = Position::new(start.unwrap_or(ls.position() - 1), ls.position());
 
 	LexError::from_raw_parts(
 		ls.source(),
 		ls.file(),
 		position,
-		LexErrorKind::UnexpectedToken(error::UnexpectedToken { got, expected })
+		LexErrorKind::UnexpectedChar(error::UnexpectedChar { found, expected })
 	)
 }
 
@@ -64,8 +64,8 @@ pub fn lex<'src>(source: &'src str, file: &'src str) -> LexResult<'src, TokenStr
 					source,
 					file,
 					Position::new(start_index, start_index + 1),
-					LexErrorKind::UnexpectedToken(error::UnexpectedToken {
-						got: c,
+					LexErrorKind::UnexpectedChar(error::UnexpectedChar {
+						found: c,
 						expected: None
 					})
 				));
@@ -111,8 +111,8 @@ fn slash_or_comment<'src>(ls: &mut LexStream<'src>) -> LexResult<'src, TokenKind
 				ls.source(),
 				ls.file(),
 				Position::new(start_index, ls.position()),
-				LexErrorKind::UnexpectedToken(error::UnexpectedToken {
-					got: ' ',
+				LexErrorKind::UnexpectedChar(error::UnexpectedChar {
+					found: ' ',
 					expected: Some('*')
 				})
 			));
@@ -123,8 +123,8 @@ fn slash_or_comment<'src>(ls: &mut LexStream<'src>) -> LexResult<'src, TokenKind
 				ls.source(),
 				ls.file(),
 				Position::new(start_index, ls.position()),
-				LexErrorKind::UnexpectedToken(error::UnexpectedToken {
-					got: ' ',
+				LexErrorKind::UnexpectedChar(error::UnexpectedChar {
+					found: ' ',
 					expected: Some('/')
 				})
 			));
@@ -151,13 +151,13 @@ fn neq<'src>(ls: &mut LexStream<'src>) -> LexResult<'src, TokenKind> {
 	let next = ls.next();
 
 	if next.is_none() {
-		return Err(unexpected_token(ls, ' ', Some('='), Some(start_index)));
+		return Err(unexpected_char(ls, ' ', Some('='), Some(start_index)));
 	}
 
 	let next = next.unwrap();
 
 	if next.1 != '=' {
-		return Err(unexpected_token(ls, next.1, Some('='), Some(start_index)));
+		return Err(unexpected_char(ls, next.1, Some('='), Some(start_index)));
 	}
 
 	Ok(TokenKind::Neq)
@@ -191,8 +191,8 @@ fn string<'src>(ls: &mut LexStream<'src>) -> LexResult<'src, TokenKind> {
 			ls.source(),
 			ls.file(),
 			Position::new(last_char.0, last_char.0 + 1),
-			LexErrorKind::UnexpectedToken(error::UnexpectedToken {
-				got: last_char.1,
+			LexErrorKind::UnexpectedChar(error::UnexpectedChar {
+				found: last_char.1,
 				expected: Some('"')
 			})
 		));

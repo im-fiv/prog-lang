@@ -22,7 +22,7 @@ impl<'src> ASTNode<'src> for Return<'src> {
 }
 
 impl<'src> Parse<'src> for Return<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let _return = input.parse::<token::Return>()?;
 		let value = input.parse::<Expr>()?;
 

@@ -5,7 +5,7 @@ use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Obj<'src> {
 	pub _lb: token::LeftBrace<'src>,
-	pub fields: Option<Box<Punctuated<'src, ObjEntry<'src>, token::Comma<'src>>>>,
+	pub fields: Box<Punctuated<'src, ObjEntry<'src>, token::Comma<'src>>>,
 	pub _rb: token::RightBrace<'src>
 }
 
@@ -44,12 +44,12 @@ impl<'src> ASTNode<'src> for ObjEntry<'src> {
 }
 
 impl<'src> Parse<'src> for Obj<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let _lb = input.parse::<token::LeftBrace>()?;
 		let fields = input
-			.try_parse::<Punctuated<'src, ObjEntry, token::Comma>>()
+			.try_parse::<Punctuated<ObjEntry, token::Comma>>()
 			.map(Box::new)
-			.ok();
+			.unwrap_or_default();
 		let _rb = input.parse::<token::RightBrace>()?;
 
 		Ok(Self { _lb, fields, _rb })
@@ -57,7 +57,7 @@ impl<'src> Parse<'src> for Obj<'src> {
 }
 
 impl<'src> Parse<'src> for ObjEntry<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let name = input.parse::<Ident>()?;
 		let _eq = input.parse::<token::Eq>()?;
 		let value = input.parse::<Expr>()?;

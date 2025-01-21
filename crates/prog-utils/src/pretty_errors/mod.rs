@@ -6,7 +6,18 @@ pub use span::{Position, Span};
 
 use std::{fmt, io};
 
-use ariadne::{Label, Report, ReportKind, Source};
+use ariadne::{Label, Report, ReportKind, Source, ColorGenerator};
+
+/// Initializes a color generator with a specific initial state.
+pub fn color_generator() -> ColorGenerator {
+	// List of alternative cherry-picked states:
+	// [3689, 1234, 283]
+
+	const STATE: [u16; 3] = [25595, 293, 9239];
+	const MIN_BRIGHTNESS: f32 = 0.5;
+
+	ColorGenerator::from_state(STATE, MIN_BRIGHTNESS)
+}
 
 #[cfg(feature = "serde")]
 pub trait PrettyErrorKind<'s>: Clone + fmt::Debug + AriadneCompatible<'s> + serde::Serialize {}
@@ -14,7 +25,7 @@ pub trait PrettyErrorKind<'s>: Clone + fmt::Debug + AriadneCompatible<'s> + serd
 pub trait PrettyErrorKind<'s>: Clone + fmt::Debug + AriadneCompatible<'s> {}
 
 pub trait AriadneCompatible<'s> {
-	fn message(&self) -> String;
+	fn message(&self) -> &'static str;
 
 	fn labels(&self, span: Span<'s>) -> Vec<Label<Span<'s>>>;
 }

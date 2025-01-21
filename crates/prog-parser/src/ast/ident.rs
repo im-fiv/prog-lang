@@ -13,7 +13,7 @@ impl<'src> ASTNode<'src> for Ident<'src> {
 }
 
 impl<'src> Parse<'src> for Ident<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		Ok(Self {
 			_ident: input.parse::<token::Ident>()?
 		})

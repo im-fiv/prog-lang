@@ -5,15 +5,20 @@ use prog_lexer::{Token, TokenKind};
 use crate::{error, ParseError, ParseErrorKind, ParseResult};
 
 #[derive(Debug)]
-pub struct ParseStream<'src> {
-	buffer: &'src [Token<'src>],
+pub struct ParseStream<'src, 'buf> {
+	buffer: &'buf [Token<'src>],
 	/// Current buffer index position.
 	cursor: Cell<usize>
 }
 
-impl<'src> ParseStream<'src> {
+impl<'src, 'buf> ParseStream<'src, 'buf> {
+	/// Creates a new `ParseStream` from a `TokenStream`.
+	pub fn new(stream: &'buf prog_lexer::TokenStream<'src>) -> Self {
+		Self::from_buffer(stream.buffer())
+	}
+
 	/// Creates a new `ParseStream` from a slice of tokens.
-	pub fn new(buffer: &'src [Token<'src>]) -> Self {
+	pub fn from_buffer(buffer: &'buf [Token<'src>]) -> Self {
 		Self {
 			buffer,
 			cursor: Cell::new(0)
@@ -21,7 +26,7 @@ impl<'src> ParseStream<'src> {
 	}
 }
 
-impl<'src> ParseStream<'src>
+impl<'src, 'buf> ParseStream<'src, 'buf>
 where
 	Token<'src>: Copy
 {
@@ -173,7 +178,7 @@ where
 		self.peek().ok_or(ParseError::new(
 			span,
 			ParseErrorKind::UnexpectedToken(error::UnexpectedToken {
-				got: TokenKind::Eof,
+				found: TokenKind::Eof,
 				expected: None
 			})
 		))
@@ -203,7 +208,7 @@ where
 			return Err(ParseError::new(
 				span,
 				ParseErrorKind::UnexpectedToken(error::UnexpectedToken {
-					got: token.kind(),
+					found: token.kind(),
 					expected: Some(kind)
 				})
 			));

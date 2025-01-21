@@ -1,16 +1,14 @@
 use ariadne::{Label, Fmt};
-
-use prog_lexer::TokenKind;
 use prog_utils::pretty_errors::{AriadneCompatible, Span, color_generator};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct UnexpectedToken {
-	pub(crate) found: TokenKind,
-	pub(crate) expected: Option<TokenKind>
+pub struct UnexpectedChar {
+	pub(crate) found: char,
+	pub(crate) expected: Option<char>
 }
 
-impl<'s> AriadneCompatible<'s> for UnexpectedToken {
+impl<'s> AriadneCompatible<'s> for UnexpectedChar {
 	fn message(&self) -> &'static str { "unexpected token" }
 
 	fn labels(&self, span: Span<'s>) -> Vec<ariadne::Label<Span<'s>>> {

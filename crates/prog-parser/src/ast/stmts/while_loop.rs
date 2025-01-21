@@ -23,7 +23,7 @@ impl<'src> ASTNode<'src> for WhileLoop<'src> {
 }
 
 impl<'src> Parse<'src> for WhileLoop<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let _while = input.parse::<token::While>()?;
 		let cond = input.parse::<Expr>()?;
 		let block = input.parse::<DoBlock>()?;

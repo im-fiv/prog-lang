@@ -6,12 +6,22 @@ use crate::Primitive;
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Str(String);
 
-impl Str {
-	pub fn new(value: String) -> Self { Self(value) }
-}
-
 impl Primitive for Str {
 	fn is_truthy(&self) -> bool { !self.0.is_empty() }
+}
+
+impl From<String> for Str {
+	fn from(value: String) -> Self { Self(value) }
+}
+
+impl From<&'_ str> for Str {
+	fn from(value: &'_ str) -> Self {
+		Self::from(value.to_string())
+	}
+}
+
+impl From<Str> for String {
+	fn from(value: Str) -> Self { value.0 }
 }
 
 impl Display for Str {

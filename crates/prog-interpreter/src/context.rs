@@ -62,8 +62,11 @@ impl<'ast> Context<'ast> {
 
 	pub fn swap(&mut self, other: Self) -> Self { std::mem::replace(self, other) }
 
-	pub fn exists(&self, name: &str) -> bool {
-		if self.inner().vars.contains_key(name) {
+	pub fn exists<N>(&self, name: N) -> bool
+	where
+		N: AsRef<str>
+	{
+		if self.inner().vars.contains_key(name.as_ref()) {
 			return true;
 		}
 
@@ -73,10 +76,13 @@ impl<'ast> Context<'ast> {
 		}
 	}
 
-	pub fn get(&self, name: &str) -> Option<Value<'ast>>
+	pub fn get<N>(&self, name: N) -> Option<Value<'ast>>
 	where
-		Value<'ast>: Clone
+		Value<'ast>: Clone,
+		N: AsRef<str>
 	{
+		let name = name.as_ref();
+
 		if let Some(value) = self.inner().vars.get(name).cloned() {
 			return Some(value);
 		}
@@ -87,16 +93,22 @@ impl<'ast> Context<'ast> {
 		}
 	}
 
-	pub fn insert(&self, name: String, value: Value<'ast>) -> Option<Value<'ast>> {
-		self.inner_mut().vars.insert(name, value)
+	pub fn insert<N>(&self, name: N, value: Value<'ast>) -> Option<Value<'ast>>
+	where
+		N: Into<String>
+	{
+		self.inner_mut().vars.insert(name.into(), value)
 	}
 
-	pub fn update(&self, name: String, value: Value<'ast>) -> Option<Value<'ast>> {
+	pub fn update<N>(&self, name: &N, value: Value<'ast>) -> Option<Value<'ast>>
+	where
+		N: ToOwned<Owned = String>
+	{
 		use std::collections::hash_map::Entry;
 
 		let mut inner = self.inner_mut();
 
-		match inner.vars.entry(name.clone()) {
+		match inner.vars.entry(name.to_owned()) {
 			Entry::Occupied(mut e) => Some(e.insert(value)),
 			Entry::Vacant(_) => {
 				match inner.parent {
@@ -105,6 +117,29 @@ impl<'ast> Context<'ast> {
 				}
 			}
 		}
+	}
+
+	pub(crate) fn get_extern<N>(&self, name: N) -> Option<Value<'ast>>
+	where
+		N: AsRef<str>
+	{
+		let name = name.as_ref();
+
+		if let Some(value) = self.inner().externs.get(name).cloned() {
+			return Some(value);
+		}
+
+		match self.inner().parent {
+			Some(ref p) => p.get_extern(name),
+			None => None
+		}
+	}
+	
+	pub(crate) fn insert_extern<N>(&self, name: N, value: Value<'ast>) -> Option<Value<'ast>>
+	where
+		N: Into<String>
+	{
+		self.inner_mut().externs.insert(name.into(), value)
 	}
 }
 
@@ -117,6 +152,8 @@ pub struct ContextInner<'ast> {
 	pub flags: ContextFlags,
 
 	vars: HashMap<String, Value<'ast>>,
+	externs: HashMap<String, Value<'ast>>,
+
 	parent: Option<Context<'ast>>
 }
 
@@ -126,6 +163,8 @@ impl ContextInner<'_> {
 			flags: ContextFlags::default(),
 
 			vars: HashMap::new(),
+			externs: HashMap::new(),
+
 			parent: None
 		}
 	}

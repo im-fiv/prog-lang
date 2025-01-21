@@ -7,10 +7,6 @@ use crate::Primitive;
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Num(f64);
 
-impl Num {
-	pub fn new(value: f64) -> Self { Self(value) }
-}
-
 impl Primitive for Num {
 	fn is_truthy(&self) -> bool { self.0 != 0.0 }
 }
@@ -53,6 +49,14 @@ impl Neg for Num {
 	type Output = Self;
 
 	fn neg(self) -> Self::Output { Self(-self.0) }
+}
+
+impl From<f64> for Num {
+	fn from(value: f64) -> Self { Self(value) }
+}
+
+impl From<Num> for f64 {
+	fn from(value: Num) -> Self { value.0 }
 }
 
 impl Display for Num {

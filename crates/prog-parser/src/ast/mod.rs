@@ -86,7 +86,7 @@ impl<'src> ASTNode<'src> for Program<'src> {
 }
 
 impl<'src> Parse<'src> for Program<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let mut stmts = vec![];
 
 		while input.peek().is_some() {

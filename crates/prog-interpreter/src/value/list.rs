@@ -9,7 +9,7 @@ use crate::{Primitive, Value};
 pub struct List<'ast>(Vec<Value<'ast>>);
 
 impl<'ast> List<'ast> {
-	pub fn new(value: Vec<Value<'ast>>) -> Self { Self(value) }
+	pub fn new(values: Vec<Value<'ast>>) -> Self { Self(values) }
 }
 
 impl Primitive for List<'_> {

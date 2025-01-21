@@ -23,7 +23,7 @@ impl<'src> ASTNode<'src> for DoBlock<'src> {
 }
 
 impl<'src> Parse<'src> for DoBlock<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let _do = input.parse::<token::Do>()?;
 
 		let mut stmts = vec![];

@@ -4,13 +4,12 @@ use std::path::Path;
 
 use prog_lang::ProgResult;
 
-// TODO: fix local variable references
+#[allow(unused_variables)]
 fn execute_string<'src>(source: &'src str, file: &'src str) -> ProgResult<'src, ()> {
 	let ts = prog_lexer::lex(source, file)?;
-	let tokens = ts.buffer();
 
-	let ps = prog_parser::ParseStream::new(tokens);
-	let _ast = ps.parse::<prog_parser::ast::Program>();
+	let ps = prog_parser::ParseStream::new(&ts);
+	let ast = ps.parse::<prog_parser::ast::Program>()?;
 
 	//* Only test the lexing and parsing process until the interpreter is complete *//
 	// let mut interpreter = prog_interpreter::Interpreter::new();
@@ -20,7 +19,7 @@ fn execute_string<'src>(source: &'src str, file: &'src str) -> ProgResult<'src, 
 	Ok(())
 }
 
-fn iterate_dir(paths: ReadDir, exclusions: &[String]) {
+fn iterate_dir(paths: ReadDir, exclusions: &[&str]) {
 	let file_extension = OsStr::new("prog");
 
 	for path in paths {
@@ -63,7 +62,13 @@ fn iterate_dir(paths: ReadDir, exclusions: &[String]) {
 #[test]
 fn run_all_examples() {
 	let paths = std::fs::read_dir("./examples").expect("Failed to read directory");
-	let exclusions = vec![String::from("mandelbrot_set.prog")];
+	let exclusions = vec!["mandelbrot_set.prog"];
 
 	iterate_dir(paths, exclusions.as_slice());
+}
+
+#[test]
+fn run_all_cases() {
+	let paths = std::fs::read_dir("./tests/cases").expect("Failed to read directory");
+	iterate_dir(paths, &[]);
 }

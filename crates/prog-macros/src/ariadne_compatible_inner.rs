@@ -67,7 +67,7 @@ pub(crate) fn expand_impl(item: ItemEnum) -> syn::Result<pm2::TokenStream> {
 	let expanded = quote! {
 		#[allow(non_snake_case)]
 		impl #impl_generics ::prog_utils::pretty_errors::AriadneCompatible<#trait_lifetime> for #enum_name #type_generics #where_clause {
-			fn message(&self) -> ::std::string::String {
+			fn message(&self) -> &'static str {
 				match self {
 					#( #message_match_arms ),*
 				}

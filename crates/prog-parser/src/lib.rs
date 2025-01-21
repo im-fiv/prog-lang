@@ -27,9 +27,9 @@ pub trait ASTNode<'src> {
 }
 
 pub trait Parse<'src>: Sized + ASTNode<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self>;
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self>;
 }
 
 pub trait ParsePrecedence<'src>: Parse<'src> {
-	fn parse_precedence(input: &ParseStream<'src>, precedence: u8) -> ParseResult<'src, Self>;
+	fn parse_precedence(input: &ParseStream<'src, '_>, precedence: u8) -> ParseResult<'src, Self>;
 }

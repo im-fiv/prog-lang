@@ -23,13 +23,13 @@ impl<'src> ASTNode<'src> for Expr<'src> {
 }
 
 impl<'src> Parse<'src> for Expr<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		Self::parse_precedence(input, 0)
 	}
 }
 
 impl<'src> ParsePrecedence<'src> for Expr<'src> {
-	fn parse_precedence(input: &ParseStream<'src>, precedence: u8) -> ParseResult<'src, Self> {
+	fn parse_precedence(input: &ParseStream<'src, '_>, precedence: u8) -> ParseResult<'src, Self> {
 		use TokenKind as T;
 
 		let mut left = Self::Term(input.parse::<Term>()?);
@@ -42,7 +42,7 @@ impl<'src> ParsePrecedence<'src> for Expr<'src> {
 
 				T::Dot | T::LeftBracket => (5, 6),
 
-				T::EqEq | T::Gt | T::Lt | T::Gte | T::Lte => (1, 2),
+				T::EqEq | T::Neq | T::Gt | T::Lt | T::Gte | T::Lte => (1, 2),
 
 				T::And => (3, 2),
 				T::Or => (1, 1),
@@ -101,7 +101,7 @@ impl<'src> ASTNode<'src> for ParenExpr<'src> {
 }
 
 impl<'src> Parse<'src> for ParenExpr<'src> {
-	fn parse(input: &ParseStream<'src>) -> ParseResult<'src, Self> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let _lp = input.parse::<token::LeftParen>()?;
 		let expr = Box::new(Expr::parse_precedence(input, 0)?);
 		let _rp = input.parse::<token::RightParen>()?;

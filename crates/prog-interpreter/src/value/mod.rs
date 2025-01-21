@@ -1,14 +1,16 @@
-mod boolean;
-mod control_flow;
-mod function;
-mod list;
-mod number;
-mod object;
-mod string;
+pub(crate) mod boolean;
+pub(crate) mod control_flow;
+pub(crate) mod function;
+pub(crate) mod intrinsic_func;
+pub(crate) mod list;
+pub(crate) mod number;
+pub(crate) mod object;
+pub(crate) mod string;
 
 pub use boolean::Bool;
 pub use control_flow::CtrlFlow;
 pub use function::Func;
+pub use intrinsic_func::IntrinsicFn;
 pub use list::List;
 pub use number::Num;
 pub use object::Obj;
@@ -16,21 +18,45 @@ pub use string::Str;
 
 use std::fmt::{self, Display};
 
+use prog_parser::{ast, Span};
+
+#[derive(Debug)]
+pub(crate) struct CallableData<'intref, 'int: 'intref> {
+	pub(crate) i: &'intref mut crate::Interpreter<'int>,
+	pub(crate) args: crate::arg_parser::ParsedArgList<'int>,
+	pub(crate) call_site: CallSite<'int>
+}
+
+#[derive(Debug)]
+pub(crate) struct CallSite<'s> {
+	pub(crate) callee: Span<'s>,
+	pub(crate) _lp: Span<'s>,
+	pub(crate) args: ast::Punctuated<'s, Span<'s>, Span<'s>>,
+	pub(crate) _rp: Span<'s>
+}
+
 pub trait Primitive {
 	fn is_truthy(&self) -> bool;
 }
 
+pub(crate) trait Callable<'intref, 'int: 'intref>: Primitive {
+	fn arg_list(&self) -> &crate::arg_parser::ArgList;
+
+	fn call(self: Box<Self>, data: CallableData<'intref, 'int>) -> crate::InterpretResult<'int, Value<'int>>;
+}
+
 #[derive(Debug, Clone, PartialEq, prog_macros::EnumKind)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub enum Value<'ast> {
+pub enum Value<'i> {
 	Num(Num),
 	Bool(Bool),
 	Str(Str),
-	Func(Func<'ast>),
-	List(List<'ast>),
-	Obj(Obj<'ast>),
+	Func(Func<'i>),
+	IntrinsicFn(IntrinsicFn<'i>),
+	List(List<'i>),
+	Obj(Obj<'i>),
 
-	CtrlFlow(CtrlFlow<'ast>),
+	CtrlFlow(CtrlFlow<'i>),
 	None
 }
 
@@ -41,6 +67,7 @@ impl Value<'_> {
 			Self::Bool(bool) => bool as &dyn Primitive,
 			Self::Str(str) => str as &dyn Primitive,
 			Self::Func(func) => func as &dyn Primitive,
+			Self::IntrinsicFn(_) => return true,
 			Self::List(list) => list as &dyn Primitive,
 			Self::Obj(obj) => obj as &dyn Primitive,
 
@@ -58,6 +85,7 @@ impl Display for Value<'_> {
 			Self::Bool(bool) => bool as &dyn Display,
 			Self::Str(str) => str as &dyn Display,
 			Self::Func(func) => func as &dyn Display,
+			Self::IntrinsicFn(func) => func as &dyn Display,
 			Self::List(list) => list as &dyn Display,
 			Self::Obj(obj) => obj as &dyn Display,
 
