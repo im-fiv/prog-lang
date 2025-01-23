@@ -334,7 +334,7 @@ impl<'ast> Evaluatable<'ast> for ast::Func<'ast> {
 		};
 
 		Ok(value::Func {
-			ast: Box::new(self),
+			ast: std::rc::Rc::new(self),
 			args,
 			ctx
 		})

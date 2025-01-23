@@ -1,4 +1,5 @@
 use std::fmt::{self, Display};
+use std::rc::Rc;
 
 use prog_parser::{ast, ASTNode};
 
@@ -7,7 +8,7 @@ use crate::{Callable, CallableData, Context, Evaluatable, InterpretResult, Primi
 
 #[derive(Debug, Clone)]
 pub struct Func<'ast> {
-	pub(crate) ast: Box<ast::Func<'ast>>,
+	pub(crate) ast: Rc<ast::Func<'ast>>,
 	pub(crate) args: ArgList,
 	pub(crate) ctx: Context<'ast>
 }
@@ -45,7 +46,7 @@ impl<'intref, 'int: 'intref> Callable<'intref, 'int> for Func<'int> {
 		let original_ctx = i.context.swap(self.ctx);
 		// Unlike a vector of statements, a function must produce a final value
 		let stmts = ast::Program {
-			stmts: self.ast.block.stmts
+			stmts: Rc::unwrap_or_clone(self.ast).block.stmts
 		};
 		let result = stmts.evaluate(i);
 		i.context.swap(original_ctx);
