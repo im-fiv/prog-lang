@@ -13,15 +13,17 @@ impl<T> Shared<T> {
 		}
 	}
 
-	pub fn unwrap_or_clone(self) -> T
+	pub fn unwrap_or_clone(this: Self) -> T
 	where
 		T: Clone
 	{
-		let cell = Rc::unwrap_or_clone(self.value);
+		let cell = Rc::unwrap_or_clone(this.value);
 		cell.into_inner()
 	}
 
-	pub fn swap(&mut self, other: Self) -> Self { std::mem::replace(self, other) }
+	pub fn swap(this: &mut Self, other: Self) -> Self { std::mem::replace(this, other) }
+
+	pub fn ptr_eq(this: &Self, other: &Self) -> bool { Rc::ptr_eq(&this.value, &other.value) }
 }
 
 impl<T: ?Sized> Shared<T> {
@@ -38,8 +40,8 @@ impl<T: ?Sized> Clone for Shared<T> {
 	}
 }
 
-impl<T: ?Sized> PartialEq for Shared<T> {
-	fn eq(&self, other: &Self) -> bool { Rc::ptr_eq(&self.value, &other.value) }
+impl<T: ?Sized + PartialEq> PartialEq for Shared<T> {
+	fn eq(&self, other: &Self) -> bool { *self.borrow() == *other.borrow() }
 }
 
 impl<T: ?Sized + Debug> Debug for Shared<T> {

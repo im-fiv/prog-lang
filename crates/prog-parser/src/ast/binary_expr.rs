@@ -28,8 +28,8 @@ pub struct BinaryOp<'src> {
 pub enum BinaryOpKind {
 	Plus,
 	Minus,
-	Slash,
 	Asterisk,
+	Slash,
 	Sign,
 	EqEq,
 	Neq,
@@ -88,8 +88,8 @@ impl TryFrom<TokenKind> for BinaryOpKind {
 		Ok(match kind {
 			T::Plus => Self::Plus,
 			T::Minus => Self::Minus,
-			T::Slash => Self::Slash,
 			T::Asterisk => Self::Asterisk,
+			T::Slash => Self::Slash,
 			T::Sign => Self::Sign,
 			T::EqEq => Self::EqEq,
 			T::Neq => Self::Neq,
@@ -107,32 +107,39 @@ impl TryFrom<TokenKind> for BinaryOpKind {
 	}
 }
 
-impl Display for BinaryOpKind {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		match self {
-			Self::Plus => write!(f, "+"),
-			Self::Minus => write!(f, "-"),
-			Self::Slash => write!(f, "/"),
-			Self::Asterisk => write!(f, "*"),
-			Self::Sign => write!(f, "%"),
-			Self::EqEq => write!(f, "=="),
-			Self::Neq => write!(f, "!="),
-			Self::And => write!(f, "and"),
-			Self::Or => write!(f, "or"),
-			Self::Gt => write!(f, ">"),
-			Self::Lt => write!(f, "<"),
-			Self::Gte => write!(f, ">="),
-			Self::Lte => write!(f, "<="),
-			Self::LeftBracket => write!(f, "["),
-			Self::Dot => write!(f, ".")
+impl From<BinaryOpKind> for TokenKind {
+	fn from(kind: BinaryOpKind) -> Self {
+		use BinaryOpKind as B;
+
+		match kind {
+			B::Plus => Self::Plus,
+			B::Minus => Self::Minus,
+			B::Asterisk => Self::Asterisk,
+			B::Slash => Self::Slash,
+			B::Sign => Self::Sign,
+			B::EqEq => Self::EqEq,
+			B::Neq => Self::Neq,
+			B::And => Self::And,
+			B::Or => Self::Or,
+			B::Gt => Self::Gt,
+			B::Lt => Self::Lt,
+			B::Gte => Self::Gte,
+			B::Lte => Self::Lte,
+			B::LeftBracket => Self::LeftBracket,
+			B::Dot => Self::Dot
 		}
 	}
 }
 
+// Formatting is directly delegated to `TokenKind`
+impl Display for BinaryOpKind {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { TokenKind::from(*self).fmt(f) }
+}
+
 op_to_token!(BinaryOp : BinaryOpKind => Plus);
 op_to_token!(BinaryOp : BinaryOpKind => Minus);
-op_to_token!(BinaryOp : BinaryOpKind => Slash);
 op_to_token!(BinaryOp : BinaryOpKind => Asterisk);
+op_to_token!(BinaryOp : BinaryOpKind => Slash);
 op_to_token!(BinaryOp : BinaryOpKind => Sign);
 op_to_token!(BinaryOp : BinaryOpKind => EqEq);
 op_to_token!(BinaryOp : BinaryOpKind => Neq);

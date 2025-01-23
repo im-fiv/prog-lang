@@ -86,7 +86,7 @@ impl<'src> Parse<'src> for Term<'src> {
 			t => {
 				return Err(ParseError::new(
 					token.span(),
-					ParseErrorKind::Internal(error::Internal(format!("unsupported term `{t:?}`")))
+					ParseErrorKind::Internal(error::Internal(format!("unsupported term `{t}`")))
 				))
 			}
 		};

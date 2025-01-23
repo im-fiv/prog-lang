@@ -32,7 +32,10 @@ impl<'src> ParsePrecedence<'src> for Expr<'src> {
 	fn parse_precedence(input: &ParseStream<'src, '_>, precedence: u8) -> ParseResult<'src, Self> {
 		use TokenKind as T;
 
-		let mut left = Self::Term(input.parse::<Term>()?);
+		let mut left = match input.fork().parse::<UnaryOp>() {
+			Ok(_) => Self::Unary(input.parse::<UnaryExpr>()?),
+			Err(_) => Self::Term(input.parse::<Term>()?)
+		};
 
 		while let Some(token) = input.peek() {
 			let infix_binding_power = match token.kind() {

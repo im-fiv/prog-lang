@@ -39,7 +39,7 @@ def print_mandelbrot = func(s) do
 			x = x + dx
 		end
 
-		raw_print("\n")
+		print()
 		y = y - dy
 	end
 end

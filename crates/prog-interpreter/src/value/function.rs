@@ -45,7 +45,7 @@ impl<'intref, 'int: 'intref> Callable<'intref, 'int> for Func<'int> {
 		let original_ctx = i.context.swap(self.ctx);
 		// Unlike a vector of statements, a function must produce a final value
 		let stmts = ast::Program {
-			stmts: self.ast.stmts
+			stmts: self.ast.block.stmts
 		};
 		let result = stmts.evaluate(i);
 		i.context.swap(original_ctx);

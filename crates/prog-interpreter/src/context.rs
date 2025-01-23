@@ -47,7 +47,7 @@ impl<'ast> Context<'ast> {
 	where
 		ContextInner<'ast>: Clone
 	{
-		self.inner.unwrap_or_clone()
+		Shared::unwrap_or_clone(self.inner)
 	}
 
 	pub fn child(&self) -> Self {

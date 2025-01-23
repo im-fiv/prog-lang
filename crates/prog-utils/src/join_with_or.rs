@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 /// A trait for formatting a list of items into a human-readable string.
 pub trait JoinWithOr {
-	/// The type of item in the list.
+	/// Type of items in the list.
 	type Item: Display;
 
 	/// Formats and joins the list into a human-readable string using the default formatting.

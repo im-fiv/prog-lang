@@ -47,6 +47,15 @@ impl<'src> ASTNode<'src> for UnaryOp<'src> {
 	fn span<'a>(&'a self) -> Span<'src> { self.span }
 }
 
+impl<'src> Parse<'src> for UnaryExpr<'src> {
+	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
+		let op = input.parse::<UnaryOp>()?;
+		let operand = input.parse::<Term>()?;
+
+		Ok(Self { op, operand })
+	}
+}
+
 impl<'src> Parse<'src> for UnaryOp<'src> {
 	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let token = input.expect_next()?;
@@ -81,13 +90,20 @@ impl TryFrom<TokenKind> for UnaryOpKind {
 	}
 }
 
-impl Display for UnaryOpKind {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		match self {
-			Self::Minus => write!(f, "-"),
-			Self::Not => write!(f, "not")
+impl From<UnaryOpKind> for TokenKind {
+	fn from(kind: UnaryOpKind) -> Self {
+		use UnaryOpKind as U;
+
+		match kind {
+			U::Minus => Self::Minus,
+			U::Not => Self::Not
 		}
 	}
+}
+
+// Formatting is directly delegated to `TokenKind`
+impl Display for UnaryOpKind {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { TokenKind::from(*self).fmt(f) }
 }
 
 op_to_token!(UnaryOp : UnaryOpKind => Minus);

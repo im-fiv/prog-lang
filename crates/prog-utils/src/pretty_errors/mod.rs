@@ -20,17 +20,28 @@ pub fn color_generator() -> ColorGenerator {
 }
 
 #[cfg(feature = "serde")]
-pub trait PrettyErrorKind<'s>:
-	Clone + fmt::Debug + AriadneCompatible<'s> + serde::Serialize
-{
-}
+pub trait PrettyErrorKind<'s>: AriadneCompatible<'s> + serde::Serialize + fmt::Debug {}
 #[cfg(not(feature = "serde"))]
-pub trait PrettyErrorKind<'s>: Clone + fmt::Debug + AriadneCompatible<'s> {}
+pub trait PrettyErrorKind<'s>: AriadneCompatible<'s> + fmt::Debug {}
 
 pub trait AriadneCompatible<'s> {
 	fn message(&self) -> &'static str;
 
+	fn note(&self) -> Option<&str> { None }
+
 	fn labels(&self, span: Span<'s>) -> Vec<Label<Span<'s>>>;
+
+	fn create_report(&self, span: Span<'s>) -> Report<Span<'s>> {
+		let mut report = Report::build(ReportKind::Error, span);
+		report.set_message(self.message());
+		report.add_labels(self.labels(span));
+
+		if let Some(note) = self.note() {
+			report.set_note(note);
+		}
+
+		report.finish()
+	}
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,13 +65,7 @@ impl<'s, Kind: PrettyErrorKind<'s>> PrettyError<'s, Kind> {
 		Self::new(span, kind)
 	}
 
-	fn create_report(&self) -> Report<Span<'s>> {
-		let message = self.kind.message();
-
-		let mut report = Report::build(ReportKind::Error, self.span).with_message(message);
-		report.add_labels(self.kind.labels(self.span));
-		report.finish()
-	}
+	fn create_report(&self) -> Report<Span<'s>> { self.kind.create_report(self.span) }
 
 	fn get_cache(&self) -> (&str, Source<&str>) {
 		(self.span.file(), Source::from(self.span.source()))
@@ -77,14 +82,15 @@ impl<'s, Kind: PrettyErrorKind<'s>> PrettyError<'s, Kind> {
 }
 
 impl<'s, Kind: PrettyErrorKind<'s>> fmt::Display for PrettyError<'s, Kind> {
-	fn fmt<'fmtref>(&self, f: &'fmtref mut fmt::Formatter<'_>) -> fmt::Result {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		use io::Write;
 
-		let report = self.create_report();
 		let cache = self.get_cache();
-		let mut writer = FormatterWriter::<'fmtref, '_>::new(f);
+		let mut writer = FormatterWriter::new(f);
 
-		report.write(cache, &mut writer).map_err(|_| fmt::Error)?;
+		self.create_report()
+			.write(cache, &mut writer)
+			.map_err(|_| fmt::Error)?;
 
 		writer.flush().map_err(|_| fmt::Error)
 	}

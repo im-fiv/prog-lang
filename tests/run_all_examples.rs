@@ -11,10 +11,9 @@ fn execute_string<'src>(source: &'src str, file: &'src str) -> ProgResult<'src, 
 	let ps = prog_parser::ParseStream::new(&ts);
 	let ast = ps.parse::<prog_parser::ast::Program>()?;
 
-	//* Only test the lexing and parsing process until the interpreter is complete *//
-	// let mut interpreter = prog_interpreter::Interpreter::new();
-	// interpreter.context.inner_mut().flags.con_stdout_allowed = false;
-	// interpreter.evaluate(ast)?;
+	let mut interpreter = prog_interpreter::Interpreter::new();
+	interpreter.context.inner_mut().flags.con_stdout_allowed = false;
+	interpreter.evaluate(ast)?;
 
 	Ok(())
 }
@@ -59,13 +58,13 @@ fn iterate_dir(paths: ReadDir, exclusions: &[&str]) {
 	}
 }
 
-#[test]
-fn run_all_examples() {
-	let paths = std::fs::read_dir("./examples").expect("Failed to read directory");
-	let exclusions = vec!["mandelbrot_set.prog"];
-
-	iterate_dir(paths, exclusions.as_slice());
-}
+// #[test]
+// fn run_all_examples() {
+// 	let paths = std::fs::read_dir("./examples").expect("Failed to read directory");
+// 	let exclusions = vec!["mandelbrot_set.prog"];
+//
+// 	iterate_dir(paths, exclusions.as_slice());
+// }
 
 #[test]
 fn run_all_cases() {

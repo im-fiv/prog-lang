@@ -20,6 +20,22 @@ use std::fmt::{self, Display};
 
 use prog_parser::{ast, Span};
 
+/// Represents valid runtime values.
+pub trait Primitive {
+	/// When required, the value will be coerced to a boolean based on the return value of this function.
+	fn is_truthy(&self) -> bool;
+}
+
+/// Represents runtime values which can be invoked.
+pub(crate) trait Callable<'intref, 'int: 'intref>: Primitive {
+	fn arg_list(&self) -> &crate::arg_parser::ArgList;
+
+	fn call(
+		self: Box<Self>,
+		data: CallableData<'intref, 'int>
+	) -> crate::InterpretResult<'int, Value<'int>>;
+}
+
 #[derive(Debug)]
 pub(crate) struct CallableData<'intref, 'int: 'intref> {
 	pub(crate) i: &'intref mut crate::Interpreter<'int>,
@@ -45,19 +61,6 @@ impl<'s> prog_parser::ASTNode<'s> for CallSite<'s> {
 
 		Span::new(source, file, prog_parser::Position::new(start, end))
 	}
-}
-
-pub trait Primitive {
-	fn is_truthy(&self) -> bool;
-}
-
-pub(crate) trait Callable<'intref, 'int: 'intref>: Primitive {
-	fn arg_list(&self) -> &crate::arg_parser::ArgList;
-
-	fn call(
-		self: Box<Self>,
-		data: CallableData<'intref, 'int>
-	) -> crate::InterpretResult<'int, Value<'int>>;
 }
 
 #[derive(Debug, Clone, PartialEq, prog_macros::EnumKind)]
@@ -86,7 +89,7 @@ impl Value<'_> {
 			Self::List(list) => list as &dyn Primitive,
 			Self::Obj(obj) => obj as &dyn Primitive,
 
-			Self::CtrlFlow(_) => return true,
+			Self::CtrlFlow(_) => return false,
 			Self::None => return false
 		}
 		.is_truthy()
@@ -115,4 +118,51 @@ impl Display for Value<'_> {
 		}
 		.fmt(f)
 	}
+}
+
+impl Default for Value<'_> {
+	fn default() -> Self { Self::None }
+}
+
+impl From<Num> for Value<'_> {
+	fn from(num: Num) -> Self { Self::Num(num) }
+}
+
+impl From<Bool> for Value<'_> {
+	fn from(bool: Bool) -> Self { Self::Bool(bool) }
+}
+
+impl From<Str> for Value<'_> {
+	fn from(str: Str) -> Self { Self::Str(str) }
+}
+
+impl<'i> From<Func<'i>> for Value<'i> {
+	fn from(func: Func<'i>) -> Self { Self::Func(func) }
+}
+
+impl<'i> From<IntrinsicFn<'i>> for Value<'i> {
+	fn from(func: IntrinsicFn<'i>) -> Self { Self::IntrinsicFn(func) }
+}
+
+impl<'i> From<List<'i>> for Value<'i> {
+	fn from(list: List<'i>) -> Self { Self::List(list) }
+}
+
+impl<'i> From<Obj<'i>> for Value<'i> {
+	fn from(obj: Obj<'i>) -> Self { Self::Obj(obj) }
+}
+
+impl<'i> From<CtrlFlow<'i>> for Value<'i> {
+	fn from(ctrl: CtrlFlow<'i>) -> Self { Self::CtrlFlow(ctrl) }
+}
+
+impl From<()> for Value<'_> {
+	fn from(_: ()) -> Self { Self::None }
+}
+
+impl<'i, T> From<Option<T>> for Value<'i>
+where
+	Value<'i>: From<T>
+{
+	fn from(opt: Option<T>) -> Self { opt.map_or(Self::None, Self::from) }
 }

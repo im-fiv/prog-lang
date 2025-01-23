@@ -3,6 +3,7 @@ mod arg_type_mismatch;
 mod assertion_eq_failed;
 mod assertion_failed;
 mod cannot_index_expr;
+mod ctx_disallowed;
 mod duplicate_obj_entry;
 mod expr_not_callable;
 mod expr_not_assignable;
@@ -16,6 +17,7 @@ pub use arg_type_mismatch::ArgTypeMismatch;
 pub use assertion_eq_failed::AssertionEqFailed;
 pub use assertion_failed::AssertionFailed;
 pub use cannot_index_expr::CannotIndexExpr;
+pub use ctx_disallowed::CtxDisallowed;
 pub use duplicate_obj_entry::DuplicateObjEntry;
 pub use expr_not_assignable::ExprNotAssignable;
 pub use expr_not_callable::ExprNotCallable;
@@ -36,6 +38,7 @@ pub enum InterpretErrorKind<'s> {
 	AssertionEqFailed(AssertionEqFailed<'s>),
 	AssertionFailed(AssertionFailed),
 	CannotIndexExpr(CannotIndexExpr),
+	CtxDisallowed(CtxDisallowed),
 	DuplicateObjEntry(DuplicateObjEntry<'s>),
 	ExprNotAssignable(ExprNotAssignable),
 	ExprNotCallable(ExprNotCallable),

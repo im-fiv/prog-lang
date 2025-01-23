@@ -8,15 +8,13 @@ pub struct Func<'src> {
 	pub _lp: token::LeftParen<'src>,
 	pub args: Punctuated<'src, Ident<'src>, token::Comma<'src>>,
 	pub _rp: token::RightParen<'src>,
-	pub _do: token::Do<'src>,
-	pub stmts: Vec<Stmt<'src>>,
-	pub _end: token::End<'src>
+	pub block: DoBlock<'src>
 }
 
 impl<'src> ASTNode<'src> for Func<'src> {
 	fn span<'a>(&'a self) -> Span<'src> {
 		let start = self._func.start();
-		let end = self._end.end();
+		let end = self.block.end();
 
 		let source = self._func.source();
 		let file = self._func.file();
@@ -34,23 +32,14 @@ impl<'src> Parse<'src> for Func<'src> {
 			.try_parse::<Punctuated<Ident, token::Comma>>()
 			.unwrap_or_default();
 		let _rp = input.parse::<token::RightParen>()?;
-		let _do = input.parse::<token::Do>()?;
-		let mut stmts = vec![];
-
-		while let Ok(stmt) = input.try_parse::<Stmt>() {
-			stmts.push(stmt);
-		}
-
-		let _end = input.parse::<token::End>()?;
+		let block = input.parse::<DoBlock>()?;
 
 		Ok(Self {
 			_func,
 			_lp,
 			args,
 			_rp,
-			_do,
-			stmts,
-			_end
+			block
 		})
 	}
 }

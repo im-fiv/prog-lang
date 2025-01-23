@@ -1,3 +1,5 @@
+// TODO: replace `Display` implementations with `Printable` when it's mature enough
+
 mod arg_parser;
 mod context;
 pub mod error;
@@ -28,7 +30,7 @@ fn f64_to_usize(num: f64) -> Option<usize> {
 pub type InterpretResult<'s, T> = Result<T, InterpretError<'s>>;
 
 pub trait Evaluatable<'ast> {
-	type Output;
+	type Output: Into<Value<'ast>>;
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output>;
 }
@@ -118,27 +120,37 @@ impl<'ast> Evaluatable<'ast> for ast::Program<'ast> {
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let value = self.stmts.evaluate(i)?;
 
-		if let Value::CtrlFlow(value::CtrlFlow::Return(ret)) = value {
-			return Ok(*ret);
+		if let Some(ctrl) = value {
+			return match ctrl {
+				value::CtrlFlow::Return(_, ret) => Ok(*ret),
+
+				_ => {
+					Err(InterpretError::new(
+						ctrl.span(),
+						InterpretErrorKind::CtxDisallowed(error::CtxDisallowed {
+							thing: ctrl.to_string(),
+							plural: false
+						})
+					))
+				}
+			};
 		}
 
-		Ok(value)
+		Ok(Value::None)
 	}
 }
 
 impl<'ast> Evaluatable<'ast> for Vec<ast::Stmt<'ast>> {
-	type Output = Value<'ast>;
+	type Output = Option<value::CtrlFlow<'ast>>;
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		for stmt in self {
-			let value = stmt.evaluate(i)?;
-
-			if value.kind() == ValueKind::CtrlFlow {
-				return Ok(value);
+			if let Value::CtrlFlow(ctrl) = stmt.evaluate(i)? {
+				return Ok(Some(ctrl));
 			}
 		}
 
-		Ok(Value::None)
+		Ok(None)
 	}
 }
 
@@ -147,18 +159,18 @@ impl<'ast> Evaluatable<'ast> for ast::Stmt<'ast> {
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		match self {
-			Self::VarDefine(stmt) => stmt.evaluate(i).map(|_| Value::None),
-			Self::VarAssign(stmt) => stmt.evaluate(i).map(|_| Value::None),
-			Self::DoBlock(stmt) => stmt.evaluate(i),
-			Self::Return(stmt) => stmt.evaluate(i),
+			Self::VarDefine(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::VarAssign(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::DoBlock(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::Return(stmt) => stmt.evaluate(i).map(Value::from),
 			Self::Call(stmt) => stmt.evaluate(i),
-			// TODO: WhileLoop
-			// TODO: Break
-			// TODO: Continue
-			// TODO: If
-			Self::ExprAssign(stmt) => stmt.evaluate(i).map(|_| Value::None),
+			Self::WhileLoop(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::Break(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::Continue(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::If(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::ExprAssign(stmt) => stmt.evaluate(i).map(Value::from),
 
-			// TODO
+			// TODO: ClassDef
 			stmt => {
 				Err(InterpretError::new(
 					stmt.span(),
@@ -201,6 +213,10 @@ impl<'ast> Evaluatable<'ast> for ast::BinaryExpr<'ast> {
 			(Op::Asterisk, V::Num(lhs), V::Num(rhs)) => V::Num(lhs * rhs),
 			(Op::Slash, V::Num(lhs), V::Num(rhs)) => V::Num(lhs / rhs),
 			(Op::Sign, V::Num(lhs), V::Num(rhs)) => V::Num(lhs % rhs),
+			(Op::Gt, V::Num(lhs), V::Num(rhs)) => V::Bool(value::Bool::from(lhs > rhs)),
+			(Op::Lt, V::Num(lhs), V::Num(rhs)) => V::Bool(value::Bool::from(lhs < rhs)),
+			(Op::Gte, V::Num(lhs), V::Num(rhs)) => V::Bool(value::Bool::from(lhs >= rhs)),
+			(Op::Lte, V::Num(lhs), V::Num(rhs)) => V::Bool(value::Bool::from(lhs <= rhs)),
 
 			(Op::Plus, V::Str(lhs), rhs) => V::Str(value::Str::from(format!("{lhs}{rhs}"))),
 
@@ -598,7 +614,7 @@ impl<'ast> Evaluatable<'ast> for ast::VarAssign<'ast> {
 }
 
 impl<'ast> Evaluatable<'ast> for ast::DoBlock<'ast> {
-	type Output = Value<'ast>;
+	type Output = Option<value::CtrlFlow<'ast>>;
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let original_ctx = i.context.swap(i.context.child());
@@ -610,11 +626,95 @@ impl<'ast> Evaluatable<'ast> for ast::DoBlock<'ast> {
 }
 
 impl<'ast> Evaluatable<'ast> for ast::Return<'ast> {
-	type Output = Value<'ast>;
+	type Output = value::CtrlFlow<'ast>;
 
 	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let span = self.span();
 		let value = self.value.evaluate(i).map(Box::new)?;
-		Ok(Value::CtrlFlow(value::CtrlFlow::Return(value)))
+
+		Ok(value::CtrlFlow::Return(span, value))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::WhileLoop<'ast> {
+	type Output = Option<value::CtrlFlow<'ast>>;
+
+	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let mut cond_result = self.cond.clone().evaluate(i)?;
+
+		while cond_result.is_truthy() {
+			if let Some(ctrl) = self.block.clone().evaluate(i)? {
+				match ctrl {
+					value::CtrlFlow::Return(..) => return Ok(Some(ctrl)),
+					value::CtrlFlow::Break(..) => break,
+					value::CtrlFlow::Continue(..) => continue
+				}
+			}
+
+			cond_result = self.cond.clone().evaluate(i)?;
+		}
+
+		Ok(None)
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Break<'ast> {
+	type Output = value::CtrlFlow<'ast>;
+
+	fn evaluate(self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		Ok(value::CtrlFlow::Break(self.span()))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Continue<'ast> {
+	type Output = value::CtrlFlow<'ast>;
+
+	fn evaluate(self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		Ok(value::CtrlFlow::Continue(self.span()))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::If<'ast> {
+	type Output = Option<value::CtrlFlow<'ast>>;
+
+	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		if self.cond.evaluate(i)?.is_truthy() {
+			return self.stmts.evaluate(i);
+		}
+
+		for branch in self.b_elifs {
+			if let Some(result) = branch.evaluate(i)? {
+				return Ok(result);
+			}
+		}
+
+		if let Some(branch) = self.b_else {
+			return branch.evaluate(i);
+		}
+
+		Ok(None)
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::ElseIf<'ast> {
+	// Outer option indicates whether the branch was executed or not,
+	// while the inner option contains the return value of the branch, if any
+	type Output = Option<Option<value::CtrlFlow<'ast>>>;
+
+	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		if self.cond.evaluate(i)?.is_truthy() {
+			return Ok(Some(self.stmts.evaluate(i)?));
+		}
+
+		Ok(None)
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Else<'ast> {
+	type Output = Option<value::CtrlFlow<'ast>>;
+
+	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		self.stmts.evaluate(i)
 	}
 }
 

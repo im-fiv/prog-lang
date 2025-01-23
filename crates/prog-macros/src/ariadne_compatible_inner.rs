@@ -68,22 +68,28 @@ pub(crate) fn expand_impl(item: ItemEnum) -> syn::Result<pm2::TokenStream> {
 	let (_, type_generics, where_clause) = item.generics.split_for_impl();
 
 	let message_match_arms = expand_match_arms(&item.variants, "message", vec![])?;
+	let note_match_arms = expand_match_arms(&item.variants, "note", vec![])?;
 	let labels_match_arms = expand_match_arms(&item.variants, "labels", vec!["span"])?;
 
 	let expanded = quote! {
 		#[allow(non_snake_case)]
 		impl #impl_generics ::prog_utils::pretty_errors::AriadneCompatible<#trait_lifetime> for #enum_name #type_generics #where_clause {
-			fn message(&self) -> &'static str {
+			fn message(&self) -> &'static ::std::primitive::str {
 				match self {
 					#( #message_match_arms ),*
 				}
 			}
 
-			fn labels(&self, span: ::prog_utils::pretty_errors::Span<#trait_lifetime>) -> ::std::vec::Vec<
-				::ariadne::Label<
-					::prog_utils::pretty_errors::Span<#trait_lifetime>
-				>
-			> {
+			fn note(&self) -> ::std::option::Option<&::std::primitive::str> {
+				match self {
+					#( #note_match_arms ),*
+				}
+			}
+
+			fn labels(
+				&self,
+				span: ::prog_utils::pretty_errors::Span<#trait_lifetime>
+			) -> ::std::vec::Vec<::ariadne::Label<::prog_utils::pretty_errors::Span<#trait_lifetime>>> {
 				match self {
 					#( #labels_match_arms ),*
 				}

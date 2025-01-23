@@ -29,7 +29,6 @@ impl<'i> IntrinsicTable<'i> {
 
 	fn fetch() -> Box<[Intrinsic<'i>]> {
 		Box::new([
-			#[cfg(debug_assertions)]
 			Intrinsic {
 				name: "should_panic",
 				value: Value::IntrinsicFn(IntrinsicFn::new(
@@ -45,6 +44,14 @@ impl<'i> IntrinsicTable<'i> {
 					ArgList::new(vec![Arg::Variadic("args".into())])
 				)),
 				auto_import: true
+			},
+			Intrinsic {
+				name: "raw_print",
+				value: Value::IntrinsicFn(IntrinsicFn::new(
+					i_raw_print,
+					ArgList::new(vec![Arg::Required("str".into(), ValueKind::Str)])
+				)),
+				auto_import: false
 			},
 			Intrinsic {
 				name: "debug",
@@ -102,7 +109,6 @@ impl Default for IntrinsicTable<'_> {
 	fn default() -> Self { Self::new_empty() }
 }
 
-#[cfg(debug_assertions)]
 fn i_should_panic<'i>(
 	CallableData {
 		i,
@@ -136,16 +142,29 @@ fn i_should_panic<'i>(
 fn i_print<'i>(
 	CallableData { i, mut args, .. }: CallableData<'_, 'i>
 ) -> InterpretResult<'i, Value<'i>> {
-	let formatted = get_argument!(args => args: ...)
+	let mut formatted = get_argument!(args => args: ...)
 		.into_iter()
 		.map(|v| format!("{v}"))
 		.collect::<Vec<_>>()
 		.join(" ");
+	formatted.push('\n');
 
 	i.stdout.extend(formatted.bytes());
-
 	if i.context.inner().flags.con_stdout_allowed {
-		println!("{formatted}\n");
+		print!("{formatted}");
+	}
+
+	Ok(Value::None)
+}
+
+fn i_raw_print<'i>(
+	CallableData { i, mut args, .. }: CallableData<'_, 'i>
+) -> InterpretResult<'i, Value<'i>> {
+	let str = String::from(get_argument!(args => str: Str));
+
+	i.stdout.extend(str.bytes());
+	if i.context.inner().flags.con_stdout_allowed {
+		print!("{str}");
 	}
 
 	Ok(Value::None)
