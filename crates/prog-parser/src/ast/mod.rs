@@ -62,7 +62,6 @@ macro_rules! op_to_token {
 pub(crate) use op_to_token;
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Program<'src> {
 	pub stmts: Rc<[Stmt<'src>]>
 }
@@ -99,5 +98,19 @@ impl<'src> Parse<'src> for Program<'src> {
 		Ok(Self {
 			stmts: stmts.into()
 		})
+	}
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Program<'_> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer
+	{
+		use serde::ser::SerializeStruct;
+
+		let mut s = serializer.serialize_struct("Program", 1)?;
+		s.serialize_field("stmts", self.stmts.as_ref())?;
+		s.end()
 	}
 }

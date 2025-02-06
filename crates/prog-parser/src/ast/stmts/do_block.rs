@@ -4,7 +4,6 @@ use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct DoBlock<'src> {
 	pub _do: token::Do<'src>,
 	pub stmts: Rc<[Stmt<'src>]>,
@@ -40,5 +39,21 @@ impl<'src> Parse<'src> for DoBlock<'src> {
 			stmts: stmts.into(),
 			_end
 		})
+	}
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for DoBlock<'_> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer
+	{
+		use serde::ser::SerializeStruct;
+
+		let mut s = serializer.serialize_struct("DoBlock", 3)?;
+		s.serialize_field("_do", &self._do)?;
+		s.serialize_field("ast", self.stmts.as_ref())?;
+		s.serialize_field("_end", &self._end)?;
+		s.end()
 	}
 }

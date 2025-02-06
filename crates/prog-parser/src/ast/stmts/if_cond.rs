@@ -4,7 +4,6 @@ use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct If<'src> {
 	pub _if: token::If<'src>,
 	pub cond: Expr<'src>,
@@ -16,7 +15,6 @@ pub struct If<'src> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ElseIf<'src> {
 	pub _elseif: token::ElseIf<'src>,
 	pub cond: Expr<'src>,
@@ -25,7 +23,6 @@ pub struct ElseIf<'src> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Else<'src> {
 	pub _else: token::Else<'src>,
 	pub stmts: Rc<[Stmt<'src>]>
@@ -157,5 +154,57 @@ impl<'src> Parse<'src> for Else<'src> {
 			_else,
 			stmts: stmts.into()
 		})
+	}
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for If<'_> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer
+	{
+		use serde::ser::SerializeStruct;
+
+		let mut s = serializer.serialize_struct("If", 1)?;
+		s.serialize_field("_if", &self._if)?;
+		s.serialize_field("cond", &self.cond)?;
+		s.serialize_field("_then", &self._then)?;
+		s.serialize_field("stmts", self.stmts.as_ref())?;
+		s.serialize_field("b_elifs", self.b_elifs.as_ref())?;
+		s.serialize_field("b_else", &self.b_else)?;
+		s.serialize_field("_end", &self._end)?;
+		s.end()
+	}
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for ElseIf<'_> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer
+	{
+		use serde::ser::SerializeStruct;
+
+		let mut s = serializer.serialize_struct("ElseIf", 4)?;
+		s.serialize_field("_elseif", &self._elseif)?;
+		s.serialize_field("cond", &self.cond)?;
+		s.serialize_field("_then", &self._then)?;
+		s.serialize_field("stmts", self.stmts.as_ref())?;
+		s.end()
+	}
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Else<'_> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer
+	{
+		use serde::ser::SerializeStruct;
+
+		let mut s = serializer.serialize_struct("Else", 2)?;
+		s.serialize_field("_else", &self._else)?;
+		s.serialize_field("stmts", self.stmts.as_ref())?;
+		s.end()
 	}
 }
