@@ -120,7 +120,7 @@ fn i_should_panic<'i>(
 
 	let span_callee = call_site.callee;
 
-	let func = Box::new(get_argument!(args => func: Func));
+	let mut func = get_argument!(args => func: Func);
 	let result = func.call(CallableData {
 		i,
 		args: std::collections::HashMap::new(),

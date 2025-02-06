@@ -32,7 +32,7 @@ impl<'intref, 'int: 'intref> Callable<'intref, 'int> for Func<'int> {
 	fn arg_list(&self) -> &ArgList { &self.args }
 
 	fn call(
-		self: Box<Self>,
+		&mut self,
 		CallableData { i, mut args, .. }: CallableData<'intref, 'int>
 	) -> InterpretResult<'int, Value<'int>> {
 		for (name, value) in args.drain() {
@@ -43,13 +43,14 @@ impl<'intref, 'int: 'intref> Callable<'intref, 'int> for Func<'int> {
 			self.ctx.insert(name, value);
 		}
 
-		let original_ctx = i.context.swap(self.ctx);
+		Context::swap_in_place(&mut i.context, &mut self.ctx);
 		// Unlike a vector of statements, a function must produce a final value
 		let stmts = ast::Program {
-			stmts: Rc::unwrap_or_clone(self.ast).block.stmts
+			stmts: Rc::clone(&self.ast.block.stmts)
 		};
+
 		let result = stmts.evaluate(i);
-		i.context.swap(original_ctx);
+		Context::swap_in_place(&mut i.context, &mut self.ctx);
 
 		result
 	}

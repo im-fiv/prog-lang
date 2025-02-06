@@ -1,11 +1,13 @@
 use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
+use std::rc::Rc;
+
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct DoBlock<'src> {
 	pub _do: token::Do<'src>,
-	pub stmts: Vec<Stmt<'src>>,
+	pub stmts: Rc<[Stmt<'src>]>,
 	pub _end: token::End<'src>
 }
 
@@ -33,6 +35,10 @@ impl<'src> Parse<'src> for DoBlock<'src> {
 
 		let _end = input.parse::<token::End>()?;
 
-		Ok(Self { _do, stmts, _end })
+		Ok(Self {
+			_do,
+			stmts: stmts.into(),
+			_end
+		})
 	}
 }

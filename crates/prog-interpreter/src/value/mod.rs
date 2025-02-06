@@ -31,7 +31,7 @@ pub(crate) trait Callable<'intref, 'int: 'intref>: Primitive {
 	fn arg_list(&self) -> &crate::arg_parser::ArgList;
 
 	fn call(
-		self: Box<Self>,
+		&mut self,
 		data: CallableData<'intref, 'int>
 	) -> crate::InterpretResult<'int, Value<'int>>;
 }

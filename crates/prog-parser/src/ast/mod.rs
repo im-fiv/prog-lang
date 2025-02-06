@@ -30,6 +30,8 @@ pub use stmts::*;
 pub use term::*;
 pub use unary_expr::*;
 
+use std::rc::Rc;
+
 use crate::{ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
 macro_rules! op_to_token {
@@ -62,7 +64,7 @@ pub(crate) use op_to_token;
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Program<'src> {
-	pub stmts: Vec<Stmt<'src>>
+	pub stmts: Rc<[Stmt<'src>]>
 }
 
 impl<'src> ASTNode<'src> for Program<'src> {
@@ -94,6 +96,8 @@ impl<'src> Parse<'src> for Program<'src> {
 			stmts.push(stmt);
 		}
 
-		Ok(Self { stmts })
+		Ok(Self {
+			stmts: stmts.into()
+		})
 	}
 }

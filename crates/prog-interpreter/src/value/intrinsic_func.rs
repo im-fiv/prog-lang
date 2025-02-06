@@ -1,4 +1,5 @@
 use std::fmt::{self, Display};
+use std::rc::Rc;
 
 use crate::arg_parser::ArgList;
 use crate::{Callable, CallableData, InterpretResult, Primitive, Value};
@@ -9,11 +10,16 @@ pub type IntrinsicFnPtr<'int> =
 #[derive(Debug, Clone)]
 pub struct IntrinsicFn<'int> {
 	pub(crate) ptr: IntrinsicFnPtr<'int>,
-	pub(crate) args: ArgList
+	pub(crate) args: Rc<ArgList>
 }
 
 impl<'int> IntrinsicFn<'int> {
-	pub(crate) const fn new(ptr: IntrinsicFnPtr<'int>, args: ArgList) -> Self { Self { ptr, args } }
+	pub(crate) fn new(ptr: IntrinsicFnPtr<'int>, args: ArgList) -> Self {
+		Self {
+			ptr,
+			args: Rc::new(args)
+		}
+	}
 
 	pub fn address(&self) -> usize { self.ptr as usize }
 }
@@ -26,7 +32,7 @@ impl<'intref, 'int: 'intref> Callable<'intref, 'int> for IntrinsicFn<'int> {
 	fn arg_list(&self) -> &ArgList { &self.args }
 
 	fn call(
-		self: Box<Self>,
+		&mut self,
 		data: CallableData<'intref, 'int>
 	) -> crate::InterpretResult<'int, Value<'int>> {
 		(self.ptr)(data)

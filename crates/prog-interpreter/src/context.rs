@@ -62,6 +62,8 @@ impl<'ast> Context<'ast> {
 
 	pub fn swap(&mut self, other: Self) -> Self { std::mem::replace(self, other) }
 
+	pub fn swap_in_place(this: &mut Self, other: &mut Self) { std::mem::swap(this, other) }
+
 	pub fn exists<N>(&self, name: N) -> bool
 	where
 		N: AsRef<str>

@@ -32,7 +32,7 @@ pub type InterpretResult<'s, T> = Result<T, InterpretError<'s>>;
 pub trait Evaluatable<'ast> {
 	type Output: Into<Value<'ast>>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output>;
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output>;
 }
 
 #[derive(Debug)]
@@ -106,19 +106,19 @@ impl Default for Interpreter<'_> {
 
 //* `Program` and `Stmt` *//
 
-// The `Evaluatable` implementations for `ast::Program` and `Vec<ast::Stmt>` differ in how they handle return values.
+// The `Evaluatable` implementations for `ast::Program` and `&[ast::Stmt]` differ in how they handle return values.
 //
 // A `Program` represents a complete unit of execution intended to yield a final value.
 // Its `evaluate` method explicitly checks for and extracts a returned value from a return statement.
 //
-// A `Vec<ast::Stmt>`, on the other hand, executes statements sequentially for their side effects (e.g., variable assignments, printing)
+// A `&[ast::Stmt]`, on the other hand, executes statements sequentially for their side effects (e.g., variable assignments, printing)
 // and potential control flow changes (e.g., early exits with `return`).
 // It doesn't itself produce a final result beyond the execution of those side effects.
 impl<'ast> Evaluatable<'ast> for ast::Program<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
-		let value = self.stmts.evaluate(i)?;
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let value = self.stmts.as_ref().evaluate(i)?;
 
 		if let Some(ctrl) = value {
 			return match ctrl {
@@ -140,11 +140,11 @@ impl<'ast> Evaluatable<'ast> for ast::Program<'ast> {
 	}
 }
 
-impl<'ast> Evaluatable<'ast> for Vec<ast::Stmt<'ast>> {
+impl<'ast> Evaluatable<'ast> for &[ast::Stmt<'ast>] {
 	type Output = Option<value::CtrlFlow<'ast>>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
-		for stmt in self {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		for stmt in self.iter() {
 			if let Value::CtrlFlow(ctrl) = stmt.evaluate(i)? {
 				return Ok(Some(ctrl));
 			}
@@ -157,7 +157,7 @@ impl<'ast> Evaluatable<'ast> for Vec<ast::Stmt<'ast>> {
 impl<'ast> Evaluatable<'ast> for ast::Stmt<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		match self {
 			Self::VarDefine(stmt) => stmt.evaluate(i).map(Value::from),
 			Self::VarAssign(stmt) => stmt.evaluate(i).map(Value::from),
@@ -186,7 +186,7 @@ impl<'ast> Evaluatable<'ast> for ast::Stmt<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Expr<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		match self {
 			Self::Binary(expr) => expr.evaluate(i),
 			Self::Unary(expr) => expr.evaluate(i),
@@ -198,7 +198,7 @@ impl<'ast> Evaluatable<'ast> for ast::Expr<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::BinaryExpr<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		use ast::BinaryOpKind as Op;
 		use Value as V;
 
@@ -237,7 +237,7 @@ impl<'ast> Evaluatable<'ast> for ast::BinaryExpr<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::UnaryExpr<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		use ast::UnaryOpKind as Op;
 		use Value as V;
 
@@ -264,7 +264,7 @@ impl<'ast> Evaluatable<'ast> for ast::UnaryExpr<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Term<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		match self {
 			Self::Expr(expr) => expr.evaluate(i),
 			Self::ParenExpr(expr) => expr.expr.evaluate(i),
@@ -286,13 +286,13 @@ impl<'ast> Evaluatable<'ast> for ast::Term<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Lit<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		use ast::LitKind;
 
 		Ok(match self.kind {
 			LitKind::Num(lit) => Value::Num(value::Num::from(lit)),
 			LitKind::Bool(lit) => Value::Bool(value::Bool::from(lit)),
-			LitKind::Str(lit) => Value::Str(value::Str::from(lit)),
+			LitKind::Str(ref lit) => Value::Str(value::Str::from(lit.as_str())),
 			LitKind::None => Value::None
 		})
 	}
@@ -301,7 +301,7 @@ impl<'ast> Evaluatable<'ast> for ast::Lit<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Ident<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let name = self.value();
 		let value = i.context.get(name);
 
@@ -315,7 +315,7 @@ impl<'ast> Evaluatable<'ast> for ast::Ident<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Func<'ast> {
 	type Output = value::Func<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		use arg_parser::{Arg, ArgList};
 
 		let ctx = i.context.child();
@@ -334,7 +334,7 @@ impl<'ast> Evaluatable<'ast> for ast::Func<'ast> {
 		};
 
 		Ok(value::Func {
-			ast: std::rc::Rc::new(self),
+			ast: std::rc::Rc::new(self.clone()),
 			args,
 			ctx
 		})
@@ -344,10 +344,10 @@ impl<'ast> Evaluatable<'ast> for ast::Func<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::List<'ast> {
 	type Output = value::List<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let items = self
 			.items
-			.unwrap_items()
+			.items()
 			.into_iter()
 			.map(|item| item.evaluate(i))
 			.collect::<InterpretResult<Vec<_>>>()?;
@@ -359,12 +359,12 @@ impl<'ast> Evaluatable<'ast> for ast::List<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Obj<'ast> {
 	type Output = value::Obj<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		use std::collections::hash_map::{Entry, HashMap};
 
 		let mut entry_map = HashMap::new();
 
-		for entry in self.fields.unwrap_items().into_iter() {
+		for entry in self.fields.items().into_iter() {
 			let name = entry.name.value_owned();
 			let value = entry.value.evaluate(i)?;
 
@@ -399,7 +399,7 @@ impl<'ast> Evaluatable<'ast> for ast::Obj<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Extern<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let span_value = self.value.span();
 		let value = match self.value.evaluate(i)? {
 			Value::Str(s) => <value::Str as Into<String>>::into(s),
@@ -426,11 +426,10 @@ impl<'ast> Evaluatable<'ast> for ast::Extern<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Call<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		use arg_parser::ArgumentParseError;
 		use prog_parser::{Position, Span};
 
-		let span_callee = self.callee.span();
 		let span_args = {
 			// Parentheses are included in the span in case the argument list is empty
 			let source = self.source();
@@ -441,19 +440,19 @@ impl<'ast> Evaluatable<'ast> for ast::Call<'ast> {
 		};
 
 		let call_site = value::CallSite {
-			callee: span_callee,
+			callee: self.callee.span(),
 			_lp: self._lp.span(),
 			args: self.args.map_ref(ASTNode::span, ASTNode::span),
 			_rp: self._rp.span()
 		};
 
-		let func = match self.callee.evaluate(i)? {
+		let mut func = match self.callee.evaluate(i)? {
 			Value::Func(f) => Box::new(f) as Box<dyn Callable>,
 			Value::IntrinsicFn(f) => Box::new(f) as Box<dyn Callable>,
 
 			v => {
 				return Err(InterpretError::new(
-					span_callee,
+					call_site.callee,
 					InterpretErrorKind::ExprNotCallable(error::ExprNotCallable(v.kind()))
 				));
 			}
@@ -462,7 +461,7 @@ impl<'ast> Evaluatable<'ast> for ast::Call<'ast> {
 		// Is there really no way to write this better?
 		let (arg_spans, arg_values) = self
 			.args
-			.unwrap_items()
+			.items()
 			.into_iter()
 			.map(|e| (e.span(), e.evaluate(i)))
 			.unzip::<_, _, Vec<_>, Vec<_>>();
@@ -516,15 +515,12 @@ impl<'ast> Evaluatable<'ast> for ast::Call<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::IndexAcc<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
-		let span_list = self.list.span();
-		let span_index = self.index.span();
-
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let list = match self.list.evaluate(i)? {
 			Value::List(l) => l,
 			v => {
 				return Err(InterpretError::new(
-					span_list,
+					self.list.span(),
 					InterpretErrorKind::CannotIndexExpr(error::CannotIndexExpr {
 						expected: vec![ValueKind::List, ValueKind::Obj],
 						found: v.kind()
@@ -536,14 +532,14 @@ impl<'ast> Evaluatable<'ast> for ast::IndexAcc<'ast> {
 		let index = match self.index.evaluate(i)? {
 			Value::Num(n) => {
 				f64_to_usize(Into::<f64>::into(n)).ok_or(InterpretError::new(
-					span_index,
+					self.index.span(),
 					InterpretErrorKind::InvalidIndex(error::InvalidIndex(Value::Num(n)))
 				))?
 			}
 
 			v => {
 				return Err(InterpretError::new(
-					span_index,
+					self.index.span(),
 					InterpretErrorKind::InvalidIndex(error::InvalidIndex(v))
 				));
 			}
@@ -556,14 +552,12 @@ impl<'ast> Evaluatable<'ast> for ast::IndexAcc<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::FieldAcc<'ast> {
 	type Output = Value<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
-		let span_obj = self.object.span();
-
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let obj = match self.object.evaluate(i)? {
 			Value::Obj(o) => o,
 			v => {
 				return Err(InterpretError::new(
-					span_obj,
+					self.object.span(),
 					InterpretErrorKind::CannotIndexExpr(error::CannotIndexExpr {
 						expected: vec![ValueKind::List, ValueKind::Obj],
 						found: v.kind()
@@ -581,7 +575,7 @@ impl<'ast> Evaluatable<'ast> for ast::FieldAcc<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::VarDefine<'ast> {
 	type Output = ();
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let name = self.name().value();
 		let value = match self.value() {
 			Some(val) => val.evaluate(i)?,
@@ -596,15 +590,13 @@ impl<'ast> Evaluatable<'ast> for ast::VarDefine<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::VarAssign<'ast> {
 	type Output = ();
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
-		let span_name = self.name.span();
-
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let name = self.name.value_owned();
 		let value = self.value.evaluate(i)?;
 
 		if i.context.update(&name, value).is_none() {
 			return Err(InterpretError::new(
-				span_name,
+				self.name.span(),
 				InterpretErrorKind::VarDoesntExist(error::VarDoesntExist(name))
 			));
 		}
@@ -616,9 +608,9 @@ impl<'ast> Evaluatable<'ast> for ast::VarAssign<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::DoBlock<'ast> {
 	type Output = Option<value::CtrlFlow<'ast>>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let original_ctx = i.context.swap(i.context.child());
-		let result = self.stmts.evaluate(i);
+		let result = self.stmts.as_ref().evaluate(i);
 		i.context.swap(original_ctx);
 
 		result
@@ -628,7 +620,7 @@ impl<'ast> Evaluatable<'ast> for ast::DoBlock<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Return<'ast> {
 	type Output = value::CtrlFlow<'ast>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let span = self.span();
 		let value = self.value.evaluate(i).map(Box::new)?;
 
@@ -639,11 +631,11 @@ impl<'ast> Evaluatable<'ast> for ast::Return<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::WhileLoop<'ast> {
 	type Output = Option<value::CtrlFlow<'ast>>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
-		let mut cond_result = self.cond.clone().evaluate(i)?;
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let mut cond_result = self.cond.evaluate(i)?;
 
 		while cond_result.is_truthy() {
-			if let Some(ctrl) = self.block.clone().evaluate(i)? {
+			if let Some(ctrl) = self.block.evaluate(i)? {
 				match ctrl {
 					value::CtrlFlow::Return(..) => return Ok(Some(ctrl)),
 					value::CtrlFlow::Break(..) => break,
@@ -651,7 +643,7 @@ impl<'ast> Evaluatable<'ast> for ast::WhileLoop<'ast> {
 				}
 			}
 
-			cond_result = self.cond.clone().evaluate(i)?;
+			cond_result = self.cond.evaluate(i)?;
 		}
 
 		Ok(None)
@@ -661,7 +653,7 @@ impl<'ast> Evaluatable<'ast> for ast::WhileLoop<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Break<'ast> {
 	type Output = value::CtrlFlow<'ast>;
 
-	fn evaluate(self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		Ok(value::CtrlFlow::Break(self.span()))
 	}
 }
@@ -669,7 +661,7 @@ impl<'ast> Evaluatable<'ast> for ast::Break<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Continue<'ast> {
 	type Output = value::CtrlFlow<'ast>;
 
-	fn evaluate(self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		Ok(value::CtrlFlow::Continue(self.span()))
 	}
 }
@@ -677,18 +669,18 @@ impl<'ast> Evaluatable<'ast> for ast::Continue<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::If<'ast> {
 	type Output = Option<value::CtrlFlow<'ast>>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		if self.cond.evaluate(i)?.is_truthy() {
-			return self.stmts.evaluate(i);
+			return self.stmts.as_ref().evaluate(i);
 		}
 
-		for branch in self.b_elifs {
+		for branch in self.b_elifs.as_ref() {
 			if let Some(result) = branch.evaluate(i)? {
 				return Ok(result);
 			}
 		}
 
-		if let Some(branch) = self.b_else {
+		if let Some(ref branch) = self.b_else {
 			return branch.evaluate(i);
 		}
 
@@ -701,9 +693,9 @@ impl<'ast> Evaluatable<'ast> for ast::ElseIf<'ast> {
 	// while the inner option contains the return value of the branch, if any
 	type Output = Option<Option<value::CtrlFlow<'ast>>>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		if self.cond.evaluate(i)?.is_truthy() {
-			return Ok(Some(self.stmts.evaluate(i)?));
+			return Ok(Some(self.stmts.as_ref().evaluate(i)?));
 		}
 
 		Ok(None)
@@ -713,15 +705,15 @@ impl<'ast> Evaluatable<'ast> for ast::ElseIf<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::Else<'ast> {
 	type Output = Option<value::CtrlFlow<'ast>>;
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
-		self.stmts.evaluate(i)
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		self.stmts.as_ref().evaluate(i)
 	}
 }
 
 impl<'ast> Evaluatable<'ast> for ast::ExprAssign<'ast> {
 	type Output = ();
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		match self {
 			Self::IndexAssign(stmt) => stmt.evaluate(i),
 			Self::FieldAssign(stmt) => stmt.evaluate(i)
@@ -732,7 +724,7 @@ impl<'ast> Evaluatable<'ast> for ast::ExprAssign<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::IndexAssign<'ast> {
 	type Output = ();
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let span_list = self.acc.list.span();
 		let span_index = self.acc.index.span();
 
@@ -773,7 +765,7 @@ impl<'ast> Evaluatable<'ast> for ast::IndexAssign<'ast> {
 impl<'ast> Evaluatable<'ast> for ast::FieldAssign<'ast> {
 	type Output = ();
 
-	fn evaluate(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let span_obj = self.acc.object.span();
 
 		let obj = match self.acc.object.evaluate(i)? {

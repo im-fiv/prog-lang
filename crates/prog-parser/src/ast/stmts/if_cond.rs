@@ -1,14 +1,16 @@
 use crate::ast::*;
 use crate::{token, ASTNode, Parse, ParseResult, ParseStream, Position, Span};
 
+use std::rc::Rc;
+
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct If<'src> {
 	pub _if: token::If<'src>,
 	pub cond: Expr<'src>,
 	pub _then: token::Then<'src>,
-	pub stmts: Vec<Stmt<'src>>,
-	pub b_elifs: Vec<ElseIf<'src>>,
+	pub stmts: Rc<[Stmt<'src>]>,
+	pub b_elifs: Rc<[ElseIf<'src>]>,
 	pub b_else: Option<Else<'src>>,
 	pub _end: token::End<'src>
 }
@@ -19,14 +21,14 @@ pub struct ElseIf<'src> {
 	pub _elseif: token::ElseIf<'src>,
 	pub cond: Expr<'src>,
 	pub _then: token::Then<'src>,
-	pub stmts: Vec<Stmt<'src>>
+	pub stmts: Rc<[Stmt<'src>]>
 }
 
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Else<'src> {
 	pub _else: token::Else<'src>,
-	pub stmts: Vec<Stmt<'src>>
+	pub stmts: Rc<[Stmt<'src>]>
 }
 
 impl<'src> ASTNode<'src> for If<'src> {
@@ -90,8 +92,8 @@ impl<'src> Parse<'src> for If<'src> {
 				_if,
 				cond,
 				_then,
-				stmts,
-				b_elifs: vec![],
+				stmts: stmts.into(),
+				b_elifs: vec![].into(),
 				b_else: None,
 				_end
 			});
@@ -114,8 +116,8 @@ impl<'src> Parse<'src> for If<'src> {
 			_if,
 			cond,
 			_then,
-			stmts,
-			b_elifs,
+			stmts: stmts.into(),
+			b_elifs: b_elifs.into(),
 			b_else,
 			_end
 		})
@@ -137,7 +139,7 @@ impl<'src> Parse<'src> for ElseIf<'src> {
 			_elseif,
 			cond,
 			_then,
-			stmts
+			stmts: stmts.into()
 		})
 	}
 }
@@ -151,6 +153,9 @@ impl<'src> Parse<'src> for Else<'src> {
 			stmts.push(stmt);
 		}
 
-		Ok(Self { _else, stmts })
+		Ok(Self {
+			_else,
+			stmts: stmts.into()
+		})
 	}
 }
