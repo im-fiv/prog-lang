@@ -169,8 +169,8 @@ impl serde::Serialize for If<'_> {
 		s.serialize_field("_if", &self._if)?;
 		s.serialize_field("cond", &self.cond)?;
 		s.serialize_field("_then", &self._then)?;
-		s.serialize_field("stmts", self.stmts.as_ref())?;
-		s.serialize_field("b_elifs", self.b_elifs.as_ref())?;
+		s.serialize_field("stmts", &*self.stmts)?;
+		s.serialize_field("b_elifs", &*self.b_elifs)?;
 		s.serialize_field("b_else", &self.b_else)?;
 		s.serialize_field("_end", &self._end)?;
 		s.end()
@@ -189,7 +189,7 @@ impl serde::Serialize for ElseIf<'_> {
 		s.serialize_field("_elseif", &self._elseif)?;
 		s.serialize_field("cond", &self.cond)?;
 		s.serialize_field("_then", &self._then)?;
-		s.serialize_field("stmts", self.stmts.as_ref())?;
+		s.serialize_field("stmts", &*self.stmts)?;
 		s.end()
 	}
 }
@@ -204,7 +204,7 @@ impl serde::Serialize for Else<'_> {
 
 		let mut s = serializer.serialize_struct("Else", 2)?;
 		s.serialize_field("_else", &self._else)?;
-		s.serialize_field("stmts", self.stmts.as_ref())?;
+		s.serialize_field("stmts", &*self.stmts)?;
 		s.end()
 	}
 }

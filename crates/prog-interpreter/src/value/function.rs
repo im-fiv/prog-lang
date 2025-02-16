@@ -80,7 +80,7 @@ impl serde::Serialize for Func<'_> {
 		use serde::ser::SerializeStruct;
 
 		let mut s = serializer.serialize_struct("Func", 1)?;
-		s.serialize_field("ast", self.ast.as_ref())?;
+		s.serialize_field("ast", &*self.ast)?;
 		s.end()
 	}
 }

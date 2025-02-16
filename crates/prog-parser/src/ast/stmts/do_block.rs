@@ -52,7 +52,7 @@ impl serde::Serialize for DoBlock<'_> {
 
 		let mut s = serializer.serialize_struct("DoBlock", 3)?;
 		s.serialize_field("_do", &self._do)?;
-		s.serialize_field("ast", self.stmts.as_ref())?;
+		s.serialize_field("ast", &*self.stmts)?;
 		s.serialize_field("_end", &self._end)?;
 		s.end()
 	}

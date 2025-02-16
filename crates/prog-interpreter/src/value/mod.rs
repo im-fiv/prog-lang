@@ -22,7 +22,7 @@ use prog_parser::{ast, Span};
 
 /// Represents valid runtime values.
 pub trait Primitive {
-	/// When required, the value will be coerced to a boolean based on the return value of this function.
+	/// When necessary, the value will be coerced to a boolean based on the return value of this function.
 	fn is_truthy(&self) -> bool;
 }
 

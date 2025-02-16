@@ -674,7 +674,7 @@ impl<'ast> Evaluatable<'ast> for ast::If<'ast> {
 			return self.stmts.as_ref().evaluate(i);
 		}
 
-		for branch in self.b_elifs.as_ref() {
+		for branch in &*self.b_elifs {
 			if let Some(result) = branch.evaluate(i)? {
 				return Ok(result);
 			}
