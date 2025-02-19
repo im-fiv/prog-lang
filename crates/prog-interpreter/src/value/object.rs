@@ -43,6 +43,10 @@ impl<'ast> From<Shared<HashMap<String, Value<'ast>>>> for Obj<'ast> {
 	fn from(container: Shared<HashMap<String, Value<'ast>>>) -> Self { Self(container) }
 }
 
+impl Default for Obj<'_> {
+	fn default() -> Self { Self(Shared::new(Default::default())) }
+}
+
 // TODO: support for `f.alternate()`
 impl Display for Obj<'_> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

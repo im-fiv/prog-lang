@@ -94,6 +94,10 @@ impl<'i> ClassInstance<'i> {
 
 impl<'intref, 'int: 'intref> Callable<'intref, 'int> for Class<'int> {
 	fn arg_list(&self) -> Cow<crate::arg_parser::ArgList> {
+		if self.uninits().is_empty() {
+			return Cow::Owned(ArgList::new_empty());
+		}
+
 		Cow::Owned(ArgList::new(vec![Arg::Required(
 			"fields".into(),
 			ValueKind::Obj
@@ -108,7 +112,7 @@ impl<'intref, 'int: 'intref> Callable<'intref, 'int> for Class<'int> {
 			..
 		}: CallableData<'intref, 'int>
 	) -> InterpretResult<'int, Value<'int>> {
-		let args = get_argument!(args => fields: Obj);
+		let args = get_argument!(args => fields: Obj?).unwrap_or_default();
 
 		let mut fields = HashMap::new();
 		let mut uninits = self.uninits();

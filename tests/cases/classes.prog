@@ -53,7 +53,7 @@ should_panic(func() do
 	end
 end)
 
-def instance = TestClass.constructor()
+def instance = TestClass.constructor() /* or you can call `TestClass({...})` directly */
 
 should_panic(func() do
 	// This is also accounted for!
