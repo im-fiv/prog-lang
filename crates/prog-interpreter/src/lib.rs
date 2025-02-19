@@ -10,10 +10,30 @@ pub mod value;
 pub use context::{Context, ContextFlags};
 pub use error::{InterpretError, InterpretErrorKind};
 pub use shared::Shared;
+pub use value::{AsRaw, Primitive, Value, ValueKind};
 pub(crate) use value::{Callable, CallableData};
-pub use value::{Primitive, Value, ValueKind};
 
 use prog_parser::{ast, ASTNode};
+
+mod extension {
+	#[derive(Debug)]
+	pub(crate) struct ClassAcc<'a, 'i: 'a> {
+		pub(crate) eval_cache: crate::value::Class<'i>,
+		pub(crate) field_acc: &'a prog_parser::ast::FieldAcc<'i>
+	}
+
+	#[derive(Debug)]
+	pub(crate) struct ClassInstanceAcc<'a, 'i: 'a> {
+		pub(crate) eval_cache: crate::value::ClassInstance<'i>,
+		pub(crate) field_acc: &'a prog_parser::ast::FieldAcc<'i>
+	}
+
+	#[derive(Debug)]
+	pub(crate) struct ClassInstanceAssign<'a, 'i: 'a> {
+		pub(crate) eval_cache: crate::value::ClassInstance<'i>,
+		pub(crate) field_assign: &'a prog_parser::ast::FieldAssign<'i>
+	}
+}
 
 fn f64_to_usize(num: f64) -> Option<usize> {
 	let is_normal = num.is_normal() || num == 0.0;
@@ -33,6 +53,12 @@ pub trait Evaluatable<'ast> {
 	type Output: Into<Value<'ast>>;
 
 	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output>;
+}
+
+pub trait EvaluatableOnce<'ast> {
+	type Output: Into<Value<'ast>>;
+
+	fn evaluate_once(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output>;
 }
 
 #[derive(Debug)]
@@ -169,14 +195,7 @@ impl<'ast> Evaluatable<'ast> for ast::Stmt<'ast> {
 			Self::Continue(stmt) => stmt.evaluate(i).map(Value::from),
 			Self::If(stmt) => stmt.evaluate(i).map(Value::from),
 			Self::ExprAssign(stmt) => stmt.evaluate(i).map(Value::from),
-
-			// TODO: ClassDef
-			stmt => {
-				Err(InterpretError::new(
-					stmt.span(),
-					InterpretErrorKind::Unimplemented(error::Unimplemented)
-				))
-			}
+			Self::ClassDef(stmt) => stmt.evaluate(i).map(Value::from)
 		}
 	}
 }
@@ -378,9 +397,7 @@ impl<'ast> Evaluatable<'ast> for ast::Obj<'ast> {
 
 					return Err(InterpretError::new(
 						entry.name.span(),
-						InterpretErrorKind::DuplicateObjEntry(error::DuplicateObjEntry {
-							def_name
-						})
+						InterpretErrorKind::ObjEntryRedef(error::ObjEntryRedef { def_name })
 					));
 				}
 			}
@@ -449,16 +466,20 @@ impl<'ast> Evaluatable<'ast> for ast::Call<'ast> {
 		let mut func = match self.callee.evaluate(i)? {
 			Value::Func(f) => Box::new(f) as Box<dyn Callable>,
 			Value::IntrinsicFn(f) => Box::new(f) as Box<dyn Callable>,
+			Value::Class(c) => Box::new(c) as Box<dyn Callable>,
 
 			v => {
 				return Err(InterpretError::new(
 					call_site.callee,
-					InterpretErrorKind::ExprNotCallable(error::ExprNotCallable(v.kind()))
+					InterpretErrorKind::ExprNotCallable(error::ExprNotCallable {
+						expected: vec![ValueKind::Func, ValueKind::Class],
+						found: v.kind()
+					})
 				));
 			}
 		};
 
-		// Is there really no way to write this better?
+		// TODO: is there really no way to write this better?
 		let (arg_spans, arg_values) = self
 			.args
 			.items()
@@ -522,7 +543,7 @@ impl<'ast> Evaluatable<'ast> for ast::IndexAcc<'ast> {
 				return Err(InterpretError::new(
 					self.list.span(),
 					InterpretErrorKind::CannotIndexExpr(error::CannotIndexExpr {
-						expected: vec![ValueKind::List, ValueKind::Obj],
+						expected: vec![ValueKind::List],
 						found: v.kind()
 					})
 				))
@@ -555,11 +576,32 @@ impl<'ast> Evaluatable<'ast> for ast::FieldAcc<'ast> {
 	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
 		let obj = match self.object.evaluate(i)? {
 			Value::Obj(o) => o,
+
+			Value::Class(class) => {
+				let eval_cache = class;
+				let field_acc = self;
+				return extension::ClassAcc {
+					eval_cache,
+					field_acc
+				}
+				.evaluate_once(i);
+			}
+
+			Value::ClassInstance(class_inst) => {
+				let eval_cache = class_inst;
+				let field_acc = self;
+				return extension::ClassInstanceAcc {
+					eval_cache,
+					field_acc
+				}
+				.evaluate_once(i);
+			}
+
 			v => {
 				return Err(InterpretError::new(
 					self.object.span(),
 					InterpretErrorKind::CannotIndexExpr(error::CannotIndexExpr {
-						expected: vec![ValueKind::List, ValueKind::Obj],
+						expected: vec![ValueKind::Obj, ValueKind::Class, ValueKind::ClassInstance],
 						found: v.kind()
 					})
 				));
@@ -567,6 +609,61 @@ impl<'ast> Evaluatable<'ast> for ast::FieldAcc<'ast> {
 		};
 
 		Ok(obj.get(self.field.value()).unwrap_or(Value::None))
+	}
+}
+
+impl<'ast> EvaluatableOnce<'ast> for extension::ClassAcc<'_, 'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate_once(self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let field = self.field_acc.field;
+		let Some(value) = self.eval_cache.get(field.value()) else {
+			return Err(InterpretError::new(
+				field.span(),
+				InterpretErrorKind::FieldDoesntExist(error::FieldDoesntExist {
+					class_name: self.eval_cache.name().to_owned(),
+					field_name: field.value_owned()
+				})
+			));
+		};
+
+		Ok(value)
+	}
+}
+
+impl<'ast> EvaluatableOnce<'ast> for extension::ClassInstanceAcc<'_, 'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate_once(self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		use prog_parser::ast::SelfKw;
+
+		let field = self.field_acc.field;
+		let Some(mut value) = self.eval_cache.get(field.value()) else {
+			return Err(InterpretError::new(
+				field.span(),
+				InterpretErrorKind::FieldDoesntExist(error::FieldDoesntExist {
+					class_name: self.eval_cache.name().to_owned(),
+					field_name: field.value_owned()
+				})
+			));
+		};
+
+		// If the value is a function and has a `self` argument,
+		// remove it from the argument list to prevent explicit `self` argument requirement:
+		// `some_instance.foo(some_instance)`
+		if let Value::Func(func) = &mut value {
+			if matches!(func.ast.args, ast::FuncArgs::WithSelf { .. }) {
+				func.ctx
+					.insert(SelfKw::KEYWORD, Value::ClassInstance(self.eval_cache));
+
+				assert_eq!(
+					func.args.remove(0),
+					Some(arg_parser::Arg::RequiredUntyped(SelfKw::KEYWORD.into()))
+				);
+			}
+		}
+
+		Ok(value)
 	}
 }
 
@@ -674,7 +771,7 @@ impl<'ast> Evaluatable<'ast> for ast::If<'ast> {
 			return self.stmts.as_ref().evaluate(i);
 		}
 
-		for branch in &*self.b_elifs {
+		for branch in self.b_elifs.iter() {
 			if let Some(result) = branch.evaluate(i)? {
 				return Ok(result);
 			}
@@ -770,6 +867,16 @@ impl<'ast> Evaluatable<'ast> for ast::FieldAssign<'ast> {
 
 		let obj = match self.acc.object.evaluate(i)? {
 			Value::Obj(o) => o,
+			Value::ClassInstance(c) => {
+				let eval_cache = c;
+				let field_assign = self;
+				return extension::ClassInstanceAssign {
+					eval_cache,
+					field_assign
+				}
+				.evaluate_once(i);
+			}
+
 			v => {
 				return Err(InterpretError::new(
 					span_obj,
@@ -782,6 +889,103 @@ impl<'ast> Evaluatable<'ast> for ast::FieldAssign<'ast> {
 		};
 
 		obj.insert(self.acc.field.value(), self.value.evaluate(i)?);
+		Ok(())
+	}
+}
+
+impl<'ast> EvaluatableOnce<'ast> for extension::ClassInstanceAssign<'_, 'ast> {
+	type Output = ();
+
+	fn evaluate_once(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let class_name = self.eval_cache.name().to_owned();
+		let field = self.field_assign.acc.field;
+		let field_name = field.value_owned();
+
+		let Some(field_value) = self.eval_cache.get(&field_name) else {
+			return Err(InterpretError::new(
+				field.span(),
+				InterpretErrorKind::FieldDoesntExist(error::FieldDoesntExist {
+					class_name,
+					field_name
+				})
+			));
+		};
+
+		// NOTE: Reassigning a function should only be invalid if the *actual* class
+		// is the one that has that function defined, *not its instance*
+		if matches!(field_value.kind(), ValueKind::Func | ValueKind::IntrinsicFn)
+			&& !self.eval_cache.contains(&field_name)
+		{
+			return Err(InterpretError::new(
+				field.span(),
+				InterpretErrorKind::ClassFnReassign(error::ClassFnReassign {
+					class_name,
+					field_name
+				})
+			));
+		}
+
+		let new_field_value = self.field_assign.value.evaluate(i)?;
+		self.eval_cache.insert(field_name, new_field_value);
+
+		Ok(())
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::ClassDef<'ast> {
+	type Output = ();
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		use std::collections::hash_map::{Entry, HashMap};
+
+		let name = self.name.value_owned();
+		let fields = Shared::new(HashMap::new());
+
+		i.context.insert(
+			name.clone(),
+			Value::Class(value::Class::new(name.clone(), Shared::clone(&fields)))
+		);
+
+		let parent_ctx = i.context.swap(i.context.child());
+		i.context.insert(
+			prog_parser::ast::SelfKw::KEYWORD,
+			Value::Class(value::Class::new(name, Shared::clone(&fields)))
+		);
+
+		let mut field_positions = HashMap::new();
+		for field in self.fields.iter() {
+			let field_name = field.name();
+
+			match fields.borrow_mut().entry(field_name.value_owned()) {
+				Entry::Vacant(e) => {
+					let value = field
+						.value()
+						.map(|v| v.evaluate(i))
+						.unwrap_or(Ok(Value::None))?;
+
+					e.insert(value);
+					field_positions
+						.entry(field_name.value_owned())
+						.insert_entry(field_name.span());
+				}
+
+				Entry::Occupied(_) => {
+					let Some(def_name) = field_positions.get(ASTNode::value(&field_name)).copied()
+					else {
+						panic!(
+							"Mismatch between field maps: position of `{field_name}` is missing"
+						);
+					};
+
+					return Err(InterpretError::new(
+						field_name.span(),
+						InterpretErrorKind::ClassFieldRedef(error::ClassFieldRedef { def_name })
+					));
+				}
+			}
+		}
+
+		i.context.swap(parent_ctx);
 		Ok(())
 	}
 }

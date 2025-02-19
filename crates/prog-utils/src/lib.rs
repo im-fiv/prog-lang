@@ -1,8 +1,8 @@
 pub mod fmt;
-mod join_with_or;
+mod join_with;
 pub mod pretty_errors;
 
-pub use join_with_or::JoinWithOr;
+pub use join_with::JoinWith;
 
 use std::fs::File;
 use std::io::prelude::*;

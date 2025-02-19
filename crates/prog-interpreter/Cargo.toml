@@ -5,6 +5,7 @@ edition = "2021"
 
 [features]
 default = []
+full = ["serde"]
 serde = ["dep:serde", "prog-parser/serde"]
 
 [dependencies]

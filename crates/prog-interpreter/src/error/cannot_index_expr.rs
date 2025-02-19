@@ -1,7 +1,7 @@
 use ariadne::{Fmt, Label};
 
 use prog_utils::pretty_errors::{color_generator, AriadneCompatible, Span};
-use prog_utils::JoinWithOr;
+use prog_utils::JoinWith;
 
 use crate::ValueKind;
 
@@ -25,7 +25,7 @@ impl<'s> AriadneCompatible<'s> for CannotIndexExpr {
 			.with_message(format!(
 				"expected an expression of type {}, found `{}`",
 				self.expected
-					.fmt_join_with(|ty| format!("`{}`", ty.fg(color_expected))),
+					.fmt_join_with(|ty| format!("`{}`", ty.fg(color_expected)), "or"),
 				self.found.fg(color_found)
 			))
 			.with_color(color_found)]

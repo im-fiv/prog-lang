@@ -1,4 +1,5 @@
-use std::fmt::{self, Display};
+use std::borrow::Cow;
+use std::fmt::{self, Debug, Display};
 use std::rc::Rc;
 
 use prog_parser::{ast, ASTNode};
@@ -6,7 +7,7 @@ use prog_parser::{ast, ASTNode};
 use crate::arg_parser::{ArgList, ParsedArg};
 use crate::{Callable, CallableData, Context, Evaluatable, InterpretResult, Primitive, Value};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Func<'ast> {
 	pub(crate) ast: Rc<ast::Func<'ast>>,
 	pub(crate) args: ArgList,
@@ -15,12 +16,23 @@ pub struct Func<'ast> {
 
 impl Func<'_> {
 	pub(crate) fn args_str(&self) -> Vec<&str> {
-		self.ast
-			.args
-			.items()
-			.into_iter()
-			.map(|arg| arg.value())
-			.collect::<Vec<_>>()
+		match &self.ast.args {
+			ast::FuncArgs::WithSelf { _self, args } => {
+				let args = args
+					.as_ref()
+					.map(|(_, args)| args.map_ref_items(|arg| arg.value()).unwrap_items())
+					.unwrap_or_default();
+
+				let mut result = vec![];
+				result.push(_self.value());
+				result.extend(args);
+				result
+			}
+
+			ast::FuncArgs::WithoutSelf { args } => {
+				args.map_ref_items(|arg| arg.value()).unwrap_items()
+			}
+		}
 	}
 }
 
@@ -29,7 +41,7 @@ impl Primitive for Func<'_> {
 }
 
 impl<'intref, 'int: 'intref> Callable<'intref, 'int> for Func<'int> {
-	fn arg_list(&self) -> &ArgList { &self.args }
+	fn arg_list(&self) -> Cow<ArgList> { Cow::Borrowed(&self.args) }
 
 	fn call(
 		&mut self,
@@ -68,6 +80,15 @@ impl Display for Func<'_> {
 		let rp = &self.ast._rp;
 
 		write!(f, "{func}{lp}{args}{rp}")
+	}
+}
+
+impl Debug for Func<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let mut s = f.debug_struct("Func");
+		s.field("ast", &self.ast);
+		s.field("args", &self.args);
+		s.finish()
 	}
 }
 

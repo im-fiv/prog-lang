@@ -3,15 +3,15 @@ use prog_utils::pretty_errors::{color_generator, AriadneCompatible, Span};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct DuplicateObjEntry<'s> {
-	/// Span of the originally defined entry's name.
+pub struct ClassFieldRedef<'s> {
+	/// Span of the original field's name
 	pub(crate) def_name: Span<'s>
 }
 
-impl<'s> AriadneCompatible<'s> for DuplicateObjEntry<'s> {
-	fn message(&self) -> &'static str { "duplicate object entry" }
+impl<'s> AriadneCompatible<'s> for ClassFieldRedef<'s> {
+	fn message(&self) -> &'static str { "cannot redefine class fields" }
 
-	fn labels(&self, span: Span<'s>) -> Vec<ariadne::Label<Span<'s>>> {
+	fn labels(&self, span: Span<'s>) -> Vec<Label<Span<'s>>> {
 		let mut colors = color_generator();
 
 		let color_def = colors.next();

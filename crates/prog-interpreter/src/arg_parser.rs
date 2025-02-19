@@ -6,6 +6,9 @@ use crate::{Value, ValueKind};
 
 pub type ParsedArgList<'i> = HashMap<String, ParsedArg<'i>>;
 
+// TODO: get rid of `Option` and rely on `Vec::is_empty`
+// TODO: make `new` construct an empty argument list
+// TODO: rename `new_empty` to `with` and make it construct an argument list from the provided `Vec`
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArgList {
 	args: Option<Vec<Arg>>
@@ -47,6 +50,17 @@ impl<'i> ArgList {
 
 	/// Creates an argument list that accepts 0 arguments
 	pub fn new_empty() -> Self { Self { args: None } }
+
+	/// Removes an argument at a specified index. Returns `None` if no argument was removed.
+	pub fn remove(&mut self, index: usize) -> Option<Arg> {
+		let args = self.args.as_mut()?;
+
+		if index >= args.len() {
+			return None;
+		}
+
+		Some(args.remove(index))
+	}
 
 	/// Verifies the provided arguments according to the inner argument types list
 	pub fn verify(&self, arguments: &[Value<'i>]) -> Result<ParsedArgList<'i>, ArgumentParseError> {

@@ -1,4 +1,5 @@
-use std::fmt::{self, Display};
+use std::borrow::Cow;
+use std::fmt::{self, Debug, Display};
 use std::rc::Rc;
 
 use crate::arg_parser::ArgList;
@@ -29,7 +30,7 @@ impl Primitive for IntrinsicFn<'_> {
 }
 
 impl<'intref, 'int: 'intref> Callable<'intref, 'int> for IntrinsicFn<'int> {
-	fn arg_list(&self) -> &ArgList { &self.args }
+	fn arg_list(&self) -> Cow<ArgList> { Cow::Borrowed(&self.args) }
 
 	fn call(
 		&mut self,

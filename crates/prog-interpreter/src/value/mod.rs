@@ -1,4 +1,5 @@
 pub(crate) mod boolean;
+pub(crate) mod class;
 pub(crate) mod control_flow;
 pub(crate) mod function;
 pub(crate) mod intrinsic_func;
@@ -8,6 +9,7 @@ pub(crate) mod object;
 pub(crate) mod string;
 
 pub use boolean::Bool;
+pub use class::{Class, ClassInstance};
 pub use control_flow::CtrlFlow;
 pub use function::Func;
 pub use intrinsic_func::IntrinsicFn;
@@ -16,9 +18,16 @@ pub use number::Num;
 pub use object::Obj;
 pub use string::Str;
 
+use std::borrow::Cow;
 use std::fmt::{self, Display};
 
 use prog_parser::{ast, Span};
+
+pub trait AsRaw {
+	type Inner;
+
+	fn as_raw(&self) -> &Self::Inner;
+}
 
 /// Represents valid runtime values.
 pub trait Primitive {
@@ -28,7 +37,7 @@ pub trait Primitive {
 
 /// Represents runtime values which can be invoked.
 pub(crate) trait Callable<'intref, 'int: 'intref>: Primitive {
-	fn arg_list(&self) -> &crate::arg_parser::ArgList;
+	fn arg_list(&self) -> Cow<crate::arg_parser::ArgList>;
 
 	fn call(
 		&mut self,
@@ -73,6 +82,8 @@ pub enum Value<'i> {
 	IntrinsicFn(IntrinsicFn<'i>),
 	List(List<'i>),
 	Obj(Obj<'i>),
+	Class(Class<'i>),
+	ClassInstance(ClassInstance<'i>),
 
 	CtrlFlow(CtrlFlow<'i>),
 	None
@@ -88,6 +99,8 @@ impl Value<'_> {
 			Self::IntrinsicFn(_) => return true,
 			Self::List(list) => list as &dyn Primitive,
 			Self::Obj(obj) => obj as &dyn Primitive,
+			Self::Class(class) => class as &dyn Primitive,
+			Self::ClassInstance(class_inst) => class_inst as &dyn Primitive,
 
 			Self::CtrlFlow(_) => return false,
 			Self::None => return false
@@ -106,6 +119,8 @@ impl Display for Value<'_> {
 			Self::IntrinsicFn(func) => func as &dyn Display,
 			Self::List(list) => list as &dyn Display,
 			Self::Obj(obj) => obj as &dyn Display,
+			Self::Class(class) => class as &dyn Display,
+			Self::ClassInstance(class_inst) => class_inst as &dyn Display,
 
 			Self::CtrlFlow(ctrl) => ctrl as &dyn Display,
 			Self::None => {
@@ -150,6 +165,14 @@ impl<'i> From<List<'i>> for Value<'i> {
 
 impl<'i> From<Obj<'i>> for Value<'i> {
 	fn from(obj: Obj<'i>) -> Self { Self::Obj(obj) }
+}
+
+impl<'i> From<Class<'i>> for Value<'i> {
+	fn from(class: Class<'i>) -> Self { Self::Class(class) }
+}
+
+impl<'i> From<ClassInstance<'i>> for Value<'i> {
+	fn from(class_inst: ClassInstance<'i>) -> Self { Self::ClassInstance(class_inst) }
 }
 
 impl<'i> From<CtrlFlow<'i>> for Value<'i> {

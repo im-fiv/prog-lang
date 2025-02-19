@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use crate::Primitive;
+use crate::{AsRaw, Primitive};
 
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -8,6 +8,12 @@ pub struct Str(String);
 
 impl Primitive for Str {
 	fn is_truthy(&self) -> bool { !self.0.is_empty() }
+}
+
+impl AsRaw for Str {
+	type Inner = String;
+
+	fn as_raw(&self) -> &Self::Inner { &self.0 }
 }
 
 impl From<String> for Str {

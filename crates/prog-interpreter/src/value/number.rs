@@ -1,14 +1,21 @@
 use std::fmt::{self, Display};
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
-use crate::Primitive;
+use crate::{AsRaw, Primitive};
 
+// TODO: change to an enum with `Integer` and `Float` as variants
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Num(f64);
 
 impl Primitive for Num {
 	fn is_truthy(&self) -> bool { self.0 != 0.0 }
+}
+
+impl AsRaw for Num {
+	type Inner = f64;
+
+	fn as_raw(&self) -> &Self::Inner { &self.0 }
 }
 
 impl PartialEq<f64> for Num {

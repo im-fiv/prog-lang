@@ -24,6 +24,8 @@ impl<'ast> Obj<'ast> {
 	{
 		self.0.borrow_mut().insert(name.into(), value)
 	}
+
+	pub fn unwrap_or_clone(self) -> HashMap<String, Value<'ast>> { Shared::unwrap_or_clone(self.0) }
 }
 
 impl Primitive for Obj<'_> {

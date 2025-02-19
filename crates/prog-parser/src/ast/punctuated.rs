@@ -7,18 +7,22 @@ use crate::{
 
 #[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct Punctuated<'src, T, P> {
-	pairs: Vec<(T, P)>,
-	tail: Option<T>,
-	_marker: PhantomData<(&'src T, &'src P)>
+pub struct Punctuated<'src, Item, Punct> {
+	pairs: Vec<(Item, Punct)>,
+	tail: Option<Item>,
+
+	_lt_item: PhantomData<&'src ()>,
+	_lt_punct: PhantomData<&'src ()>
 }
 
-impl<'src, T, P> Punctuated<'src, T, P> {
+impl<'src, Item, Punct> Punctuated<'src, Item, Punct> {
 	pub fn new() -> Self {
 		Self {
 			pairs: vec![],
 			tail: None,
-			_marker: PhantomData
+
+			_lt_item: PhantomData,
+			_lt_punct: PhantomData
 		}
 	}
 
@@ -26,9 +30,9 @@ impl<'src, T, P> Punctuated<'src, T, P> {
 
 	pub fn len(&self) -> usize { self.pairs.len() + if self.tail.is_some() { 1 } else { 0 } }
 
-	pub fn push_pair(&mut self, pair: (T, P)) { self.pairs.push(pair); }
+	pub fn push_pair(&mut self, pair: (Item, Punct)) { self.pairs.push(pair); }
 
-	pub fn push_item(&mut self, item: T) {
+	pub fn push_item(&mut self, item: Item) {
 		assert!(
 			self.tail.is_none(),
 			"Unable to push item into a punctuated list as there is no punctuation behind it"
@@ -37,7 +41,7 @@ impl<'src, T, P> Punctuated<'src, T, P> {
 		self.tail = Some(item);
 	}
 
-	pub fn push_punct(&mut self, punct: P) {
+	pub fn push_punct(&mut self, punct: Punct) {
 		let item = self.tail.take().expect(
 			"Unable to push punctuation into a punctuated list as there is no item behind it"
 		);
@@ -45,9 +49,9 @@ impl<'src, T, P> Punctuated<'src, T, P> {
 		self.push_pair((item, punct));
 	}
 
-	pub fn get_pair(&self, index: usize) -> Option<&(T, P)> { self.pairs.get(index) }
+	pub fn get_pair(&self, index: usize) -> Option<&(Item, Punct)> { self.pairs.get(index) }
 
-	pub fn remove_pair(&mut self, index: usize) -> Option<(T, P)> {
+	pub fn remove_pair(&mut self, index: usize) -> Option<(Item, Punct)> {
 		if index >= self.pairs.len() {
 			return None;
 		}
@@ -55,71 +59,109 @@ impl<'src, T, P> Punctuated<'src, T, P> {
 		Some(self.pairs.remove(index))
 	}
 
-	pub fn remove_tail(&mut self) -> Option<T> { self.tail.take() }
+	pub fn remove_tail(&mut self) -> Option<Item> { self.tail.take() }
 
-	pub fn map<F, G, H, I>(self, f: F, g: G) -> Punctuated<'src, H, I>
+	//* `map` variants *//
+	pub fn map<ItemPred, PunctPred, NewItem, NewPunct>(
+		self,
+		item_pred: ItemPred,
+		punct_pred: PunctPred
+	) -> Punctuated<'src, NewItem, NewPunct>
 	where
-		F: Fn(T) -> H,
-		G: Fn(P) -> I
+		ItemPred: Fn(Item) -> NewItem,
+		PunctPred: Fn(Punct) -> NewPunct
 	{
 		let pairs = self
 			.pairs
 			.into_iter()
-			.map(|(t, p)| (f(t), g(p)))
+			.map(|(i, p)| (item_pred(i), punct_pred(p)))
 			.collect::<Vec<_>>();
 
-		let tail = self.tail.map(f);
+		let tail = self.tail.map(item_pred);
 
 		Punctuated {
 			pairs,
 			tail,
-			_marker: PhantomData
+
+			_lt_item: PhantomData,
+			_lt_punct: PhantomData
 		}
 	}
 
-	pub fn map_ref<F, G, H, I>(&self, f: F, g: G) -> Punctuated<'src, H, I>
+	pub fn map_items<ItemPred, NewItem>(
+		self,
+		item_pred: ItemPred
+	) -> Punctuated<'src, NewItem, Punct>
 	where
-		F: Fn(&T) -> H,
-		G: Fn(&P) -> I
+		ItemPred: Fn(Item) -> NewItem
+	{
+		self.map(item_pred, |p| p)
+	}
+
+	pub fn map_puncts<PunctPred, NewPunct>(
+		self,
+		punct_pred: PunctPred
+	) -> Punctuated<'src, Item, NewPunct>
+	where
+		PunctPred: Fn(Punct) -> NewPunct
+	{
+		self.map(|i| i, punct_pred)
+	}
+
+	//* `map_ref` variants *//
+	pub fn map_ref<ItemPred, PunctPred, NewItem, NewPunct>(
+		&self,
+		item_pred: ItemPred,
+		punct_pred: PunctPred
+	) -> Punctuated<'src, NewItem, NewPunct>
+	where
+		ItemPred: Fn(&Item) -> NewItem,
+		PunctPred: Fn(&Punct) -> NewPunct
 	{
 		let pairs = self
 			.pairs
 			.iter()
-			.map(|(t, p)| (f(t), g(p)))
+			.map(|(i, p)| (item_pred(i), punct_pred(p)))
 			.collect::<Vec<_>>();
 
-		let tail = self.tail.as_ref().map(f);
+		let tail = self.tail.as_ref().map(item_pred);
 
 		Punctuated {
 			pairs,
 			tail,
-			_marker: PhantomData
+
+			_lt_item: PhantomData,
+			_lt_punct: PhantomData
 		}
 	}
 
-	pub fn map_mut<F, G, H, I>(&mut self, f: F, g: G) -> Punctuated<'src, H, I>
+	pub fn map_ref_items<ItemPred, NewItem>(
+		&self,
+		item_pred: ItemPred
+	) -> Punctuated<'src, NewItem, Punct>
 	where
-		F: Fn(&mut T) -> H,
-		G: Fn(&mut P) -> I
+		ItemPred: Fn(&Item) -> NewItem,
+		Punct: Clone
 	{
-		let pairs = self
-			.pairs
-			.iter_mut()
-			.map(|(t, p)| (f(t), g(p)))
-			.collect::<Vec<_>>();
-
-		let tail = self.tail.as_mut().map(f);
-
-		Punctuated {
-			pairs,
-			tail,
-			_marker: PhantomData
-		}
+		self.map_ref(item_pred, |p| p.clone())
 	}
 
-	pub fn unwrap(self) -> (Vec<(T, P)>, Option<T>) { (self.pairs, self.tail) }
+	pub fn map_ref_puncts<PunctPred, NewPunct>(
+		&self,
+		punct_pred: PunctPred
+	) -> Punctuated<'src, Item, NewPunct>
+	where
+		Item: Clone,
+		PunctPred: Fn(&Punct) -> NewPunct
+	{
+		self.map_ref(|i| i.clone(), punct_pred)
+	}
 
-	pub fn unwrap_items(self) -> Vec<T> {
+	// NOTE: `map_mut` implementation is convoluted, add when needed
+
+	pub fn unwrap(self) -> (Vec<(Item, Punct)>, Option<Item>) { (self.pairs, self.tail) }
+
+	pub fn unwrap_items(self) -> Vec<Item> {
 		let mut items = self
 			.pairs
 			.into_iter()
@@ -133,14 +175,14 @@ impl<'src, T, P> Punctuated<'src, T, P> {
 		items
 	}
 
-	pub fn unwrap_puncts(self) -> Vec<P> {
+	pub fn unwrap_puncts(self) -> Vec<Punct> {
 		self.pairs
 			.into_iter()
 			.map(|(_, punct)| punct)
 			.collect::<Vec<_>>()
 	}
 
-	pub fn items(&self) -> Vec<&T> {
+	pub fn items(&self) -> Vec<&Item> {
 		let mut items = self.pairs.iter().map(|(item, _)| item).collect::<Vec<_>>();
 
 		if let Some(ref tail) = self.tail {
@@ -150,14 +192,14 @@ impl<'src, T, P> Punctuated<'src, T, P> {
 		items
 	}
 
-	pub fn puncts(&self) -> Vec<&P> {
+	pub fn puncts(&self) -> Vec<&Punct> {
 		self.pairs
 			.iter()
 			.map(|(_, punct)| punct)
 			.collect::<Vec<_>>()
 	}
 
-	pub fn nth_item(&self, index: usize) -> Option<&T> {
+	pub fn nth_item(&self, index: usize) -> Option<&Item> {
 		if index >= self.len() {
 			return None;
 		}
@@ -217,10 +259,10 @@ impl<'src> ASTNode<'src> for Punctuated<'src, Span<'src>, Span<'src>> {
 	}
 }
 
-impl<'src, T, P> ASTNode<'src> for Punctuated<'src, T, P>
+impl<'src, Item, Punct> ASTNode<'src> for Punctuated<'src, Item, Punct>
 where
-	T: ASTNode<'src>,
-	P: ASTNode<'src>
+	Item: ASTNode<'src>,
+	Punct: ASTNode<'src>
 {
 	fn span<'a>(&'a self) -> Span<'src> {
 		self.assert_non_empty();
@@ -228,20 +270,20 @@ where
 	}
 }
 
-impl<'src, T, P> Parse<'src> for Punctuated<'src, T, P>
+impl<'src, Item, Punct> Parse<'src> for Punctuated<'src, Item, Punct>
 where
-	T: Parse<'src>,
-	P: Parse<'src>
+	Item: Parse<'src>,
+	Punct: Parse<'src>
 {
 	fn parse(input: &ParseStream<'src, '_>) -> ParseResult<'src, Self> {
 		let mut list = Self::new();
 
 		loop {
-			let Ok(item) = input.try_parse::<T>() else {
+			let Ok(item) = input.try_parse::<Item>() else {
 				break;
 			};
 
-			let Ok(punct) = input.try_parse::<P>() else {
+			let Ok(punct) = input.try_parse::<Punct>() else {
 				list.tail = Some(item);
 				break;
 			};
@@ -259,10 +301,10 @@ where
 	}
 }
 
-impl<T, P> Debug for Punctuated<'_, T, P>
+impl<Item, Punct> Debug for Punctuated<'_, Item, Punct>
 where
-	T: Debug,
-	P: Debug
+	Item: Debug,
+	Punct: Debug
 {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let mut s = f.debug_tuple("Punctuated");
@@ -280,6 +322,6 @@ where
 	}
 }
 
-impl<T, P> Default for Punctuated<'_, T, P> {
+impl<Item, Punct> Default for Punctuated<'_, Item, Punct> {
 	fn default() -> Self { Self::new() }
 }

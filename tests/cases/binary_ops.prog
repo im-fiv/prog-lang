@@ -51,3 +51,5 @@ do
 	assert_eq(dummy_obj, { hello = "world!" })
 	assert_eq({ hello = "world!" }, dummy_obj)
 end
+
+// TODO: tests for classes

@@ -12,12 +12,23 @@ def invalid_index = func(value) do
 	end)
 end
 
+class Dummy
+	def new = func() do
+		return self({})
+	end
+end
+
+def dummy = Dummy.new()
+
 invalid_index(5)
 invalid_index(true)
 invalid_index("hello, world!")
 invalid_index(func() do end)
 invalid_index(print)
 invalid_index(none)
+invalid_index(Dummy)
+invalid_index(dummy)
 
 assert_eq([1, 2, 3][0], 1)
 assert_eq({ hello = "world!" }.hello, "world!")
+assert_eq(Dummy.new, dummy.new)
