@@ -14,10 +14,10 @@ def sum_recursive = func(num) do
 		return 0
 	end
 
-	return num + ((num - 1) -> self)
+	return num + self(num - 1)
 end
 
 def arg_number = 25
 
-("(", arg_number, ") -> sum_regular = ", (arg_number) -> sum_regular) -> print
-("(", arg_number, ") -> sum_recursive = ", (arg_number) -> sum_recursive) -> print
+print("sum_regular(", arg_number, ") = ", sum_regular(arg_number))
+print("sum_recursive(", arg_number, ") = ", sum_recursive(arg_number))

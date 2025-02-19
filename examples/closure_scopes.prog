@@ -4,20 +4,20 @@ def factory = func() do
 	def some_local = 0
 
 	return func(some_global_expected) do
-		(some_global == some_global_expected) -> assert
+		assert(some_global == some_global_expected)
 		some_local = some_local + 1
 
 		return some_local
 	end
 end
 
-def instance = () -> factory
+def instance = factory()
 
 some_global = some_global + 1
-(((some_global) -> instance) == 1) -> assert
+assert(instance(some_global) == 1)
 
 some_global = some_global + 1
-(((some_global) -> instance) == 2) -> assert
+assert(instance(some_global) == 2)
 
 some_global = some_global + 1
-(((some_global) -> instance) == 3) -> assert
+assert(instance(some_global) == 3)

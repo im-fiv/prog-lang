@@ -1,1249 +1,991 @@
-pub mod arg_parser;
-pub mod context;
-pub mod errors;
-pub mod intrinsics;
-pub mod values;
+// TODO: replace `Display` implementations with `Printable` when it's mature enough
 
-use std::collections::HashMap;
+mod arg_parser;
+mod context;
+pub mod error;
+mod intrinsics;
+mod shared;
+pub mod value;
 
-use anyhow::Result;
-use context::Context;
-pub use errors::{InterpretError, InterpretErrorKind};
-use halloc::Memory;
-use prog_parser::ast;
-use values::{CallSite, RFunction};
-pub use values::{RPrimitive, Value, ValueKind};
+pub use context::{Context, ContextFlags};
+pub use error::{InterpretError, InterpretErrorKind};
+pub use shared::Shared;
+pub use value::{AsRaw, Primitive, Value, ValueKind};
+pub(crate) use value::{Callable, CallableData};
 
-const META_NO_SELF_OVERRIDE: &str = "$NO_SELF_OVERRIDE";
-const META_SELF: &str = "self";
+use prog_parser::{ast, ASTNode};
 
-/// Only to be used inside the interpreter impl
-macro_rules! create_error {
-	($self:expr, $position:expr, $kind:expr) => {
-		anyhow::bail!(errors::InterpretError::new(
-			$self.source.clone(),
-			$self.file.clone(),
-			$position,
-			$kind
-		))
-	};
+mod extension {
+	#[derive(Debug)]
+	pub(crate) struct ClassAcc<'a, 'i: 'a> {
+		pub(crate) eval_cache: crate::value::Class<'i>,
+		pub(crate) field_acc: &'a prog_parser::ast::FieldAcc<'i>
+	}
 
-	($self:expr, $position:expr, $kind:expr; no_bail) => {
-		anyhow::anyhow!(errors::InterpretError::new(
-			$self.source.clone(),
-			$self.file.clone(),
-			$position,
-			$kind
-		))
-	};
+	#[derive(Debug)]
+	pub(crate) struct ClassInstanceAcc<'a, 'i: 'a> {
+		pub(crate) eval_cache: crate::value::ClassInstance<'i>,
+		pub(crate) field_acc: &'a prog_parser::ast::FieldAcc<'i>
+	}
+
+	#[derive(Debug)]
+	pub(crate) struct ClassInstanceAssign<'a, 'i: 'a> {
+		pub(crate) eval_cache: crate::value::ClassInstance<'i>,
+		pub(crate) field_assign: &'a prog_parser::ast::FieldAssign<'i>
+	}
 }
 
-fn identifier_from_term(term: &ast::expressions::Term) -> Option<String> {
-	match term {
-		ast::expressions::Term::Identifier(value, _) => Some(value.to_owned()),
-		ast::expressions::Term::Expression(value) => {
-			if let ast::expressions::Expression::Term(ref value) = value.as_ref() {
-				identifier_from_term(value)
-			} else {
-				None
-			}
-		}
+fn f64_to_usize(num: f64) -> Option<usize> {
+	let is_normal = num.is_normal() || num == 0.0;
+	let is_whole = num.fract() == 0.0;
+	let is_in_range = num <= (usize::MAX as f64);
 
-		_ => None
+	if !is_normal || !is_whole || !is_in_range {
+		return None;
 	}
+
+	Some(num as usize)
+}
+
+pub type InterpretResult<'s, T> = Result<T, InterpretError<'s>>;
+
+pub trait Evaluatable<'ast> {
+	type Output: Into<Value<'ast>>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output>;
+}
+
+pub trait EvaluatableOnce<'ast> {
+	type Output: Into<Value<'ast>>;
+
+	fn evaluate_once(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output>;
 }
 
 #[derive(Debug)]
-pub struct Interpreter {
-	pub memory: Memory,
-	pub externs: HashMap<String, Value>,
-	pub context: Context,
+pub struct Interpreter<'ast> {
+	stdin: Vec<u8>,
+	stdout: Vec<u8>,
 
-	source: String,
-	file: String
+	pub context: Context<'ast>
 }
 
-impl Interpreter {
+impl<'ast> Interpreter<'ast> {
 	pub fn new() -> Self {
-		let mut this = Self::new_clean();
-
-		for (name, (item, bring_into_scope)) in intrinsics::create_variable_table() {
-			if bring_into_scope {
-				this.context.insert(name.clone(), item.clone());
-			}
-
-			this.externs.insert(name, item);
-		}
-
-		this
+		let table = intrinsics::IntrinsicTable::new();
+		Self::new_empty().populate(table)
 	}
 
-	pub fn new_clean() -> Self {
+	pub fn new_empty() -> Self {
 		Self {
-			memory: Memory::new(),
-			externs: HashMap::new(),
-			context: Context::new(),
+			stdin: vec![],
+			stdout: vec![],
 
-			source: String::new(),
-			file: String::new()
+			context: Context::new()
 		}
 	}
 
-	pub fn interpret<S, F>(
-		&mut self,
-		source: S,
-		file: F,
-		ast: ast::Program,
-		keep_marker: bool
-	) -> Result<Value>
+	pub fn evaluate<N>(&mut self, node: N) -> InterpretResult<'ast, N::Output>
 	where
-		S: Into<String>,
-		F: Into<String>
+		N: Evaluatable<'ast>
 	{
-		self.source = source.into();
-		self.file = file.into();
-
-		let result = self.execute(ast, keep_marker);
-
-		self.source = String::new();
-		self.file = String::new();
-
-		result
+		node.evaluate(self)
 	}
 
-	pub fn execute(&mut self, ast: ast::Program, keep_marker: bool) -> Result<Value> {
-		for statement in ast.statements {
-			let result = self.execute_statement(statement)?;
-
-			// In case of `return`, `break`, and `continue` statements
-			if let Value::ControlFlow(ref ctrl) = result {
-				if keep_marker {
-					return Ok(result);
-				}
-
-				if let values::ControlFlow::Return(value) = ctrl {
-					return Ok(*value.to_owned());
-				}
-
-				return Ok(Value::Empty);
-			}
-		}
-
-		Ok(Value::Empty)
-	}
-
-	pub fn execute_statement(&mut self, statement: ast::Statement) -> Result<Value> {
-		match statement {
-			ast::Statement::VariableDefine(stmt) => self.execute_variable_define(stmt),
-			ast::Statement::VariableAssign(stmt) => self.execute_variable_assign(stmt),
-			ast::Statement::DoBlock(stmt) => self.execute_do_block(stmt),
-			ast::Statement::Return(stmt) => self.execute_return(stmt),
-			ast::Statement::Call(stmt) => self.evaluate_call(stmt),
-			ast::Statement::WhileLoop(stmt) => self.execute_while_loop(stmt),
-			ast::Statement::Break(stmt) => self.execute_break(stmt),
-			ast::Statement::Continue(stmt) => self.execute_continue(stmt),
-			ast::Statement::If(stmt) => self.execute_if(stmt),
-			ast::Statement::ExpressionAssign(stmt) => self.execute_expression_assign(stmt),
-			ast::Statement::ClassDefine(stmt) => self.execute_class_define(stmt)
-		}
-	}
-
-	fn execute_variable_define(&mut self, statement: ast::VariableDefine) -> Result<Value> {
-		let evaluated_value = match statement.value {
-			None => Value::Empty,
-			Some(expression) => self.evaluate_expression(expression, false)?
-		};
-
-		self.context.insert(statement.name.0, evaluated_value);
-		Ok(Value::Empty)
-	}
-
-	fn execute_variable_assign(&mut self, statement: ast::VariableAssign) -> Result<Value> {
-		let variable_name = statement.name.0;
-
-		let evaluated_value = self.evaluate_expression(statement.value, false)?;
-		let update_result = self.context.update(variable_name.clone(), evaluated_value);
-
-		if update_result.is_err() {
-			create_error!(
-				self,
-				statement.name.1,
-				InterpretErrorKind::VariableDoesntExist(errors::VariableDoesntExist(variable_name))
-			);
-		}
-
-		Ok(Value::Empty)
-	}
-
-	fn execute_do_block(&mut self, statement: ast::DoBlock) -> Result<Value> {
-		self.context.deeper();
-		let result = self.execute(
-			ast::Program {
-				statements: statement.statements
-			},
-			false
-		);
-		self.context.shallower();
-
-		result
-	}
-
-	fn execute_return(&mut self, statement: ast::Return) -> Result<Value> {
-		let value = match statement.expression {
-			Some(expression) => self.evaluate_expression(expression, false)?,
-			None => Value::Empty
-		};
-
-		Ok(Value::ControlFlow(values::ControlFlow::Return(Box::new(
-			value
-		))))
-	}
-
-	fn execute_while_loop(&mut self, statement: ast::WhileLoop) -> Result<Value> {
-		let mut evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
-
-		while evaluated.is_truthy() {
-			self.context.deeper();
-			let result = self.execute(
-				ast::Program {
-					statements: statement.statements.clone()
-				},
-				true
-			)?;
-			self.context.shallower();
-
-			if let Value::ControlFlow(ref ctrl) = result {
-				match ctrl {
-					values::ControlFlow::Return(_) => return Ok(result),
-					values::ControlFlow::Break => break,
-					values::ControlFlow::Continue => {
-						evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
-						continue;
-					}
-				};
-			}
-
-			evaluated = self.evaluate_expression(statement.condition.clone(), false)?;
-		}
-
-		Ok(Value::Empty)
-	}
-
-	fn execute_break(&mut self, _statement: ast::Break) -> Result<Value> {
-		Ok(Value::ControlFlow(values::ControlFlow::Break))
-	}
-
-	fn execute_continue(&mut self, _statement: ast::Continue) -> Result<Value> {
-		Ok(Value::ControlFlow(values::ControlFlow::Continue))
-	}
-
-	fn execute_if(&mut self, statement: ast::If) -> Result<Value> {
-		let evaluated = self.evaluate_expression(statement.condition, false)?;
-
-		if evaluated.is_truthy() {
-			self.context.deeper();
-			let result = self.execute(
-				ast::Program {
-					statements: statement.statements
-				},
-				true
-			)?;
-			self.context.shallower();
-
-			if result.kind() == ValueKind::ControlFlow {
-				return Ok(result);
-			}
-
-			return Ok(Value::Empty);
-		}
-
-		for branch in statement.elseif_branches {
-			let evaluated = self.evaluate_expression(branch.condition, false)?;
-
-			if evaluated.is_truthy() {
-				self.context.deeper();
-				let result = self.execute(
-					ast::Program {
-						statements: branch.statements
-					},
-					true
-				)?;
-				self.context.shallower();
-
-				if result.kind() == ValueKind::ControlFlow {
-					return Ok(result);
-				}
-
-				return Ok(Value::Empty);
-			}
-		}
-
-		if let Some(branch) = statement.else_branch {
-			self.context.deeper();
-			let result = self.execute(
-				ast::Program {
-					statements: branch.statements
-				},
-				true
-			)?;
-			self.context.shallower();
-
-			if result.kind() == ValueKind::ControlFlow {
-				return Ok(result);
-			}
-
-			return Ok(Value::Empty);
-		}
-
-		Ok(Value::Empty)
-	}
-
-	fn execute_expression_assign(&mut self, statement: ast::ExpressionAssign) -> Result<Value> {
-		use ast::expressions::operators::BinaryOperator as Op;
-
-		let expression = match statement.expression {
-			ast::Expression::Binary(expression) => expression,
-			_ => {
-				create_error!(
-					self,
-					statement.expression.position(),
-					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
-						None
-					))
-				)
-			}
-		};
-
-		if !matches!(expression.operator.0, Op::ListAccess | Op::ObjectAccess) {
-			create_error!(
-				self,
-				expression.position,
-				InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(None))
-			);
-		}
-
-		let value = self.evaluate_expression(statement.value, false)?;
-
-		if expression.operator.0 == Op::ListAccess {
-			self.execute_expression_assign_list(expression, value)
-		} else {
-			self.execute_expression_assign_object(expression, value)
-		}
-	}
-
-	fn execute_expression_assign_list(
-		&mut self,
-		expression: ast::expressions::Binary,
-		value: Value
-	) -> Result<Value> {
-		let ast::expressions::Binary {
-			lhs,
-			rhs,
-			operator: _,
-			position
-		} = expression;
-
-		let list_name = match self.evaluate_term(rhs.clone(), true)? {
-			Value::Identifier(identifier) => identifier,
-			_ => {
-				create_error!(
-					self,
-					position,
-					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
-						None
-					))
-				)
-			}
-		};
-
-		let index = match self.evaluate_term(lhs.clone(), false)? {
-			Value::Number(index) => index.get_owned() as i64,
-			value => {
-				create_error!(
-					self,
-					position,
-					InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
-						kind: (ValueKind::List, rhs.position()),
-						expected_index_kind: ValueKind::Number,
-						index_kind: (value.kind(), lhs.position()),
-						because_negative: false
-					})
-				)
-			}
-		};
-
-		if index.is_negative() {
-			create_error!(
-				self,
-				position,
-				InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
-					kind: (ValueKind::List, rhs.position()),
-					expected_index_kind: ValueKind::Number,
-					index_kind: (value.kind(), lhs.position()),
-					because_negative: true
-				})
-			);
-		}
-
-		let index: usize = index.try_into()?;
-		let mut mutator = match self.context.get(&list_name)? {
-			Value::List(list) => list.get_owned(),
-			value => {
-				create_error!(
-					self,
-					position,
-					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
-						Some(value.kind())
-					))
-				)
-			}
-		};
-
-		let mut entries = mutator.take();
-
-		if index >= entries.len() {
-			entries.resize(index + 1, Value::Empty);
-		}
-		entries[index] = value;
-
-		mutator.write(entries);
-
-		Ok(Value::Empty)
-	}
-
-	// TODO: split class logic into `execute_expression_assign_class`
-	fn execute_expression_assign_object(
-		&mut self,
-		expression: ast::expressions::Binary,
-		value: Value
-	) -> Result<Value> {
-		let ast::expressions::Binary {
-			lhs,
-			rhs,
-			operator: _,
-			position
-		} = expression.clone();
-
-		let object_name = match self.evaluate_term(lhs.clone(), true)? {
-			Value::Identifier(identifier) => identifier,
-			_ => {
-				create_error!(
-					self,
-					position,
-					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
-						None
-					))
-				)
-			}
-		};
-
-		let entry_name = match self.evaluate_term(rhs.clone(), true)? {
-			Value::Identifier(value) => value,
-			Value::String(value) => value.get_owned(),
-
-			value => {
-				create_error!(
-					self,
-					position,
-					InterpretErrorKind::CannotIndexValue(errors::CannotIndexValue {
-						kind: (ValueKind::Object, lhs.position()),
-						expected_index_kind: ValueKind::String,
-						index_kind: (value.kind(), rhs.position()),
-						because_negative: false
-					})
-				)
-			}
-		};
-
-		// Here we're handling objects and classes at the same time
-		// because the difference between them is minimal
-		let (object_kind, mut fields, parent_fields) = match self.context.get(&object_name)? {
-			Value::Object(ref mut obj) => (ValueKind::Object, obj.get_owned(), None),
-			Value::ClassInstance(inst) => {
-				(
-					ValueKind::ClassInstance,
-					inst.fields.clone(),
-					Some(inst.class.fields.clone())
-				)
-			}
-
-			value => {
-				create_error!(
-					self,
-					position,
-					InterpretErrorKind::ExpressionNotAssignable(errors::ExpressionNotAssignable(
-						Some(value.kind())
-					))
-				)
-			}
-		};
-
-		// `HeapMutator::get_mut` fails, so this is a workaround
-		let mut map = fields.take();
-
-		// Checking if the field that is to be reassigned is a function inside a class instance
-		// (which is illegal)
-		if object_kind == ValueKind::ClassInstance {
-			let parent_fields = parent_fields.unwrap();
-
-			if !map.contains_key(&entry_name) && !parent_fields.contains_key(&entry_name) {
-				create_error!(
-					self,
-					lhs.position(),
-					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
-						entry_name,
-						rhs.position()
-					))
-				)
-			}
-
-			macro_rules! check_fields {
-				($fields:expr) => {
-					match ($fields).get(&entry_name) {
-						Some(val) if val.kind() == ValueKind::Function => {
-							create_error!(
-								self,
-								position,
-								InterpretErrorKind::CannotReassignClassFunctions(
-									errors::CannotReassignClassFunctions
-								)
-							)
-						}
-
-						_ => {}
-					}
-				};
-			}
-
-			check_fields!(map);
-			check_fields!(*parent_fields);
-		}
-
-		map.insert(entry_name, value);
-		fields.write(map);
-
-		Ok(Value::Empty)
-	}
-
-	fn execute_class_define(&mut self, statement: ast::ClassDefine) -> Result<Value> {
-		// This is a hack to keep fields of `self` and the actual class in sync
-		let mut fields = unsafe { self.memory.alloc(HashMap::new()).promote() };
-
-		self.context.deeper();
-		self.context.insert(
-			String::from(META_NO_SELF_OVERRIDE),
-			Value::Boolean(true.into())
-		);
-		self.context.insert(
-			String::from("self"),
-			values::RClass {
-				name: statement.name.clone(),
-				fields: fields.clone()
-			}
-			.into()
-		);
-
-		let mut temp_fields = HashMap::new();
-		for field in statement.fields {
-			let value = field
-				.value
-				.map_or(Ok(Value::Empty), |val| self.evaluate_expression(val, false))?;
-
-			temp_fields.insert(field.name.0, value);
-		}
-		fields.write(temp_fields);
-
-		let class = values::RClass {
-			name: statement.name.clone(),
-			fields
-		};
-
-		self.context.shallower();
-		self.context.insert(statement.name, class.clone().into());
-
-		Ok(class.into())
-	}
-
-	fn evaluate_expression(
-		&mut self,
-		expression: ast::Expression,
-		stop_on_ident: bool
-	) -> Result<Value> {
-		use ast::expressions::*;
-
-		match expression {
-			Expression::Unary(expression) => {
-				self.evaluate_unary_expression(
-					expression.operator,
-					expression.operand,
-					stop_on_ident
-				)
-			}
-			Expression::Binary(expression) => {
-				self.evaluate_binary_expression(
-					expression.lhs,
-					expression.operator,
-					expression.rhs,
-					stop_on_ident
-				)
-			}
-			Expression::Term(term) => self.evaluate_term(term, stop_on_ident),
-			Expression::Empty(_) => Ok(Value::Empty)
-		}
-	}
-
-	fn evaluate_unary_expression(
-		&mut self,
-		operator: (ast::expressions::operators::UnaryOperator, ast::Position),
-		operand: ast::expressions::Term,
-		stop_on_ident: bool
-	) -> Result<Value> {
-		use ast::expressions::operators::UnaryOperator as Op;
-		use Value as V;
-
-		let operator_pos = operator.1.clone();
-		let operand_pos = operand.position();
-		let whole_pos = operator_pos.start..operand_pos.end;
-
-		let evaluated_operand = self.evaluate_term(operand.clone(), stop_on_ident)?;
-
-		match (operator.0, evaluated_operand) {
-			(Op::Minus, V::Number(v)) => Ok(V::Number((-v.get_owned()).into())),
-
-			(Op::Not, V::Boolean(v)) => Ok(V::Boolean((!v.get()).into())),
-			(Op::Not, V::String(v)) => Ok(V::Boolean(v.get().is_empty().into())),
-			(Op::Not, V::Number(v)) => Ok(V::Boolean((v.get_owned() == 0.0).into())),
-			(Op::Not, V::List(v)) => Ok(V::Boolean(v.get().is_empty().into())),
-			(Op::Not, V::Function(_)) => Ok(V::Boolean(false.into())),
-			(Op::Not, V::IntrinsicFunction(..)) => Ok(V::Boolean(false.into())),
-			(Op::Not, V::Empty) => Ok(V::Boolean(true.into())),
-
-			(_, evaluated_operand) => {
-				create_error!(
-					self,
-					whole_pos,
-					InterpretErrorKind::UnsupportedUnary(errors::UnsupportedUnary {
-						operator,
-						operand: (evaluated_operand.kind(), operand.position())
-					})
-				)
-			}
-		}
-	}
-
-	fn evaluate_binary_expression(
-		&mut self,
-		lhs: ast::expressions::Term,
-		operator: (ast::expressions::operators::BinaryOperator, ast::Position),
-		rhs: ast::expressions::Term,
-		stop_on_ident: bool
-	) -> Result<Value> {
-		use ast::expressions::operators::BinaryOperator as Op;
-		use Value as V;
-
-		let lhs_position = lhs.position();
-		let rhs_position = rhs.position();
-
-		let whole_position = lhs_position.start..rhs_position.end;
-
-		let evaluated_lhs = self.evaluate_term(lhs.clone(), stop_on_ident)?;
-		// if performing an object access and rhs is a valid identifier,
-		// essentially force the `stop_on_ident` to `true`
-		let evaluated_rhs = match (operator.0 == Op::ObjectAccess, identifier_from_term(&rhs)) {
-			(true, Some(ident)) => Value::Identifier(ident),
-			_ => self.evaluate_term(rhs, stop_on_ident)?
-		};
-
-		macro_rules! primitive_object_access {
-			($lhs:expr, $key:expr) => {{
-				let map = $lhs.dispatch_map();
-				let function = map.get(&$key);
-
-				if function.is_none() {
-					create_error!(
-						self,
-						lhs_position,
-						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
-							$key,
-							rhs_position
-						))
-					);
-				}
-
-				let mut function = function.unwrap().to_owned();
-
-				function.this = Some(Box::new($lhs.into()));
-
-				Value::IntrinsicFunction(function.into())
-			}};
-		}
-
-		let evaluated_expr = match (operator.0, evaluated_lhs, evaluated_rhs) {
-			(Op::Add, V::Number(lhs), V::Number(rhs)) => V::Number(lhs + rhs),
-			(Op::Subtract, V::Number(lhs), V::Number(rhs)) => V::Number(lhs - rhs),
-			(Op::Divide, V::Number(lhs), V::Number(rhs)) => V::Number(lhs / rhs),
-			(Op::Multiply, V::Number(lhs), V::Number(rhs)) => V::Number(lhs * rhs),
-			(Op::Modulo, V::Number(lhs), V::Number(rhs)) => V::Number(lhs % rhs),
-			(Op::Gt, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs > rhs).into()),
-			(Op::Lt, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs < rhs).into()),
-			(Op::Gte, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs >= rhs).into()),
-			(Op::Lte, V::Number(lhs), V::Number(rhs)) => V::Boolean((lhs <= rhs).into()),
-
-			(Op::Add, V::String(lhs), rhs) => V::String(format!("{}{}", lhs.get(), rhs).into()),
-
-			(Op::And, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean(lhs & rhs),
-			(Op::Or, V::Boolean(lhs), V::Boolean(rhs)) => V::Boolean(lhs | rhs),
-
-			(Op::EqEq, lhs, rhs) => V::Boolean((lhs == rhs).into()),
-			(Op::NotEq, lhs, rhs) => V::Boolean((lhs != rhs).into()),
-
-			(Op::ListAccess, V::Number(lhs), V::List(rhs)) => rhs[lhs].clone(),
-
-			(Op::ObjectAccess, V::Object(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier();
-				let entries = &**(lhs.get());
-
-				entries.get(rhs).cloned().unwrap_or(Value::Empty)
-			}
-
-			(Op::ObjectAccess, V::Boolean(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
-				primitive_object_access!(lhs, rhs)
-			}
-			(Op::ObjectAccess, V::String(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
-				primitive_object_access!(lhs, rhs)
-			}
-			(Op::ObjectAccess, V::Number(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
-				primitive_object_access!(lhs, rhs)
-			}
-			(Op::ObjectAccess, V::List(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
-				primitive_object_access!(lhs, rhs)
-			}
-
-			(Op::ObjectAccess, V::Class(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
-				let field = (*lhs.fields).get(&rhs).cloned();
-
-				field.ok_or(create_error!(
-					self,
-					whole_position,
-					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
-						rhs,
-						rhs_position
-					));
-					no_bail
-				))?
-			}
-			(Op::ObjectAccess, V::ClassInstance(lhs), rhs @ (V::Identifier(_) | V::String(_))) => {
-				let rhs = rhs.extract_identifier().to_owned();
-
-				let instance_fields = &*lhs.fields;
-				let class_fields = &*lhs.class.fields;
-
-				if let Some(val) = instance_fields.get(&rhs).cloned() {
-					return Ok(val);
-				}
-
-				let mut field = class_fields.get(&rhs).cloned().ok_or(create_error!(
-					self,
-					whole_position,
-					InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
-						rhs,
-						rhs_position
-					));
-					no_bail
-				))?;
-
-				if let Value::Function(func) = &mut field {
-					let has_arguments = !func.ast.arguments.is_empty();
-
-					if has_arguments {
-						let first_argument_name = &func.ast.arguments.first().unwrap().0;
-
-						if first_argument_name == META_SELF {
-							// Insert `self` into scope
-							func.context.insert(String::from("self"), lhs.into());
-
-							// Remove `self` argument from the function
-							func.ast.arguments.remove(0);
-						}
-					}
-				}
-
-				field
-			}
-
-			(_, evaluated_lhs, evaluated_rhs) => {
-				create_error!(
-					self,
-					whole_position,
-					InterpretErrorKind::UnsupportedBinary(errors::UnsupportedBinary {
-						lhs: (evaluated_lhs.kind(), lhs_position),
-						operator,
-						rhs: (evaluated_rhs.kind(), rhs_position)
-					})
-				)
-			}
-		};
-
-		Ok(evaluated_expr)
-	}
-
-	fn evaluate_term(
-		&mut self,
-		term: ast::expressions::Term,
-		stop_on_ident: bool
-	) -> Result<Value> {
-		use ast::expressions::*;
-
-		let position = term.position();
-
-		match term {
-			Term::Extern(ext) => self.evaluate_extern(ext),
-			Term::Object(obj) => self.evaluate_object(obj),
-			Term::List(list) => self.evaluate_list(list),
-			Term::Call(call) => self.evaluate_call(call),
-			Term::Function(func) => self.evaluate_function(func),
-			Term::Literal(lit) => Ok(lit.into()),
-			Term::Identifier(ident, _) => {
-				match stop_on_ident {
-					true => Ok(Value::Identifier(ident)),
-					false => {
-						let error = create_error!(self, position, InterpretErrorKind::VariableDoesntExist(
-							errors::VariableDoesntExist(ident.clone())
-						); no_bail);
-
-						self.context.get(&ident).map_err(|_| error)
-					}
-				}
-			}
-			Term::Expression(value) => self.evaluate_expression(*value, stop_on_ident)
-		}
-	}
-
-	fn evaluate_function(&mut self, function: ast::expressions::Function) -> Result<Value> {
-		let context = {
-			let mut context = Context::new();
-
-			context.deref_mut().flags = self.context.deref().flags.clone();
-			context.deref_mut().parent = Some(self.context.clone()); //* NOTE: This only clones the reference
-
-			if self.no_self_override() {
-				context.insert(
-					String::from(META_NO_SELF_OVERRIDE),
-					Value::Boolean(true.into())
+	fn populate(self, table: intrinsics::IntrinsicTable<'ast>) -> Self {
+		for intrinsic in table {
+			if intrinsic.auto_import {
+				let name = intrinsic.name.to_owned();
+				let value = intrinsic.value.clone();
+
+				assert!(
+					self.context.insert(name, value).is_none(),
+					"Attempted to override item `{}` with an intrinsic",
+					intrinsic.name
 				);
-
-				context.insert(String::from(META_SELF), self.context.get(META_SELF)?);
 			}
 
-			context
-		};
+			let name = intrinsic.name.to_owned();
+			let value = intrinsic.value.clone();
 
-		let converted = RFunction {
-			ast: Box::new(function),
-
-			source: self.source.to_owned(),
-			file: self.file.to_owned(),
-
-			context
-		};
-
-		Ok(Value::Function(converted))
-	}
-
-	fn evaluate_extern(&mut self, ext: ast::expressions::Extern) -> Result<Value> {
-		if !self.context.deref().flags.externs_allowed {
-			create_error!(
-				self,
-				ext.1,
-				InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
-					thing: String::from("externs"),
-					plural: true
-				})
+			assert!(
+				self.context.insert_extern(name, value).is_none(),
+				"Attempted to override extern item `{}`",
+				intrinsic.name
 			)
 		}
 
-		let value_pos = ext.0.position();
-		let value = match self.evaluate_expression(*ext.0, false)? {
-			Value::String(v) => v.get_owned(),
-			v => {
-				create_error!(
-					self,
-					value_pos,
-					InterpretErrorKind::InvalidExternArgument(errors::InvalidExternArgument(
-						v.kind()
+		self
+	}
+
+	pub fn stdin(&self) -> &[u8] { &self.stdin }
+
+	pub fn stdin_mut(&mut self) -> &mut [u8] { &mut self.stdin }
+
+	pub fn stdout(&self) -> &[u8] { &self.stdout }
+
+	pub fn stdout_mut(&mut self) -> &mut [u8] { &mut self.stdout }
+}
+
+impl Default for Interpreter<'_> {
+	fn default() -> Self { Self::new() }
+}
+
+//* `Program` and `Stmt` *//
+
+// The `Evaluatable` implementations for `ast::Program` and `&[ast::Stmt]` differ in how they handle return values.
+//
+// A `Program` represents a complete unit of execution intended to yield a final value.
+// Its `evaluate` method explicitly checks for and extracts a returned value from a return statement.
+//
+// A `&[ast::Stmt]`, on the other hand, executes statements sequentially for their side effects (e.g., variable assignments, printing)
+// and potential control flow changes (e.g., early exits with `return`).
+// It doesn't itself produce a final result beyond the execution of those side effects.
+impl<'ast> Evaluatable<'ast> for ast::Program<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let value = self.stmts.as_ref().evaluate(i)?;
+
+		if let Some(ctrl) = value {
+			return match ctrl {
+				value::CtrlFlow::Return(_, ret) => Ok(*ret),
+
+				_ => {
+					Err(InterpretError::new(
+						ctrl.span(),
+						InterpretErrorKind::CtxDisallowed(error::CtxDisallowed {
+							thing: ctrl.to_string(),
+							plural: false
+						})
 					))
-				)
-			}
-		};
-
-		self.externs.get(&value).cloned().ok_or(create_error!(
-			self,
-			value_pos,
-			InterpretErrorKind::NonExistentExternItem(errors::NonExistentExternItem(
-				value
-			));
-			no_bail
-		))
-	}
-
-	fn evaluate_object(&mut self, object: ast::expressions::Object) -> Result<Value> {
-		use std::collections::HashMap;
-
-		let mut value_map = HashMap::new();
-		let mut position_map: HashMap<String, std::ops::Range<usize>> = HashMap::new();
-
-		for entry in object.0 {
-			let name = entry.name;
-			let value = self.evaluate_expression(entry.value, false)?;
-
-			if value_map.insert(name.clone(), value).is_some() {
-				let definition_pos = position_map
-					.get(&name)
-					.unwrap_or_else(|| {
-						unreachable!(
-							"Position for entry `{}` does not exist in the position map",
-							name
-						)
-					})
-					.to_owned();
-
-				create_error!(
-					self,
-					entry.position,
-					InterpretErrorKind::DuplicateObjectEntry(errors::DuplicateObjectEntry {
-						entry_name: name,
-						definition_pos
-					})
-				);
-			}
-
-			position_map.insert(name, entry.position);
-		}
-
-		let allocated = unsafe { self.memory.alloc(value_map).promote() };
-		Ok(Value::Object(allocated.into()))
-	}
-
-	fn evaluate_list(&mut self, list: ast::expressions::List) -> Result<Value> {
-		let mut values = vec![];
-
-		for expression in list.0 {
-			let value = self.evaluate_expression(expression, false)?;
-			values.push(value);
-		}
-
-		let allocated = unsafe { self.memory.alloc(values).promote() };
-		Ok(Value::List(allocated.into()))
-	}
-
-	fn evaluate_call(&mut self, call: ast::expressions::Call) -> Result<Value> {
-		let call_site = CallSite {
-			source: self.source.clone(),
-			file: self.file.clone(),
-
-			args_pos: call.arguments.1,
-			func_pos: call.function.position(),
-			whole_pos: call.position
-		};
-
-		let call_args_pos = call_site.args_pos.clone();
-		let call_args = call
-			.arguments
-			.0
-			.clone()
-			.into_iter()
-			.map(|arg| self.evaluate_expression(arg, false))
-			.collect::<Result<Vec<_>>>()?;
-
-		let original_expr = *call.function.clone();
-		let function_pos = original_expr.position();
-
-		let function_expr = self.evaluate_expression(*call.function, false)?;
-
-		let convert_error = |e: arg_parser::ArgumentParseError| {
-			match e {
-				arg_parser::ArgumentParseError::CountMismatch {
-					expected,
-					end_boundary,
-					got
-				} => {
-					create_error!(
-						self,
-						call_args_pos.clone(),
-						InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
-							expected,
-							end_boundary,
-							got,
-							fn_call_pos: function_pos.clone(),
-							fn_def_args_pos: None
-						});
-						no_bail
-					)
-				}
-
-				arg_parser::ArgumentParseError::IncorrectType {
-					index,
-					expected,
-					got
-				} => {
-					let argument = call.arguments.0.get(index).unwrap_or_else(|| {
-						panic!("Argument at index `{index}` does not exist when it should")
-					});
-
-					create_error!(
-						self,
-						argument.position(),
-						InterpretErrorKind::ArgumentTypeMismatch(errors::ArgumentTypeMismatch {
-							expected,
-							got,
-							function_pos: function_pos.clone()
-						});
-						no_bail
-					)
-				}
-			}
-		};
-
-		if let Value::IntrinsicFunction(function) = function_expr {
-			let call_args = function
-				.arguments
-				.verify(&call_args)
-				.map_err(convert_error)?;
-
-			self.context.deeper();
-			let result = function.call(self, call_args, call_site);
-			self.context.shallower();
-
-			return result;
-		}
-
-		if let Value::Function(mut function) = function_expr {
-			let got_len = call_args.len();
-			let expected_len = function.ast.arguments.len();
-
-			if got_len != expected_len && expected_len == 0 {
-				create_error!(
-					self,
-					call_args_pos,
-					InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
-						expected: 0..0,
-						end_boundary: true,
-						got: got_len,
-						fn_call_pos: function_pos,
-						fn_def_args_pos: None
-					})
-				)
-			}
-
-			if got_len != expected_len {
-				let first_arg = function.ast.arguments.first().unwrap();
-				let last_arg = function.ast.arguments.last().unwrap();
-
-				let fn_call_pos = function_pos;
-				let fn_def_args_pos = Some((first_arg.1.start)..(last_arg.1.end));
-
-				create_error!(
-					self,
-					call_args_pos,
-					InterpretErrorKind::ArgumentCountMismatch(errors::ArgumentCountMismatch {
-						expected: expected_len..expected_len,
-						end_boundary: true,
-						got: got_len,
-						fn_call_pos,
-						fn_def_args_pos
-					})
-				);
-			}
-
-			let source = self.source.clone();
-			let file = self.file.clone();
-
-			// Function execution
-			{
-				use std::mem;
-
-				self.context.deeper();
-				self.source = function.source.clone();
-				self.file = function.file.clone();
-
-				mem::swap(&mut self.context, &mut function.context);
-
-				// `self` variable insertion
-				{
-					// `no_override` indicates whether `self` has already been inferred
-					// and does not need reassignment
-					let no_override = self
-						.context
-						.get(META_NO_SELF_OVERRIDE)
-						.unwrap_or(Value::Boolean(false.into()));
-
-					match no_override {
-						Value::Boolean(bool) if bool.get_owned() => {}
-
-						_ => {
-							self.context
-								.insert(String::from("self"), Value::Function(function.clone()));
-						}
-					}
-				}
-
-				let argument_iter = function.ast.arguments.into_iter().zip(call_args);
-				for ((arg_name, _), arg_value) in argument_iter {
-					self.context.insert(arg_name, arg_value);
-				}
-
-				let exec_result = self.execute(
-					ast::Program {
-						statements: function.ast.statements
-					},
-					false
-				);
-
-				let result = exec_result.map_err(|err| {
-					// downcast `anyhow` error into `InterpretError`
-					let downcasted = err.downcast::<InterpretError>().unwrap_or_else(|_| {
-						panic!("Function execution returned a non-`InterpretError` error")
-					});
-
-					// TODO: nest the error inside of `FunctionPanicked` error instead of printing it directly
-					// TODO: fold the call stack of recursive functions
-					// print it
-					downcasted.eprint();
-
-					// replace the original error with a new one
-					anyhow::anyhow!(errors::InterpretError::new(
-						source.clone(),
-						file.clone(),
-						call_site.whole_pos,
-						InterpretErrorKind::FunctionPanicked(errors::FunctionPanicked)
-					))
-				});
-
-				mem::swap(&mut self.context, &mut function.context);
-
-				self.context.shallower();
-				self.source = source;
-				self.file = file;
-
-				return result;
-			}
-		}
-
-		// If calling a `Class`, treat it as constructing a class instance
-		if let Value::Class(class) = function_expr {
-			let props = {
-				use arg_parser::{Arg, ArgList, ParsedArg};
-
-				let parser = ArgList::new(vec![Arg::Required("props", ValueKind::Object)]);
-
-				let arg = parser
-					.verify(&call_args)
-					.map_err(convert_error)?
-					.remove("props")
-					.unwrap();
-
-				if let ParsedArg::Regular(arg) = arg {
-					if let Value::Object(arg) = arg {
-						arg.get().get_owned()
-					} else {
-						panic!("`props is not an object");
-					}
-				} else {
-					panic!("`props` is a variadic argument");
 				}
 			};
-
-			let filtered_class_fields = class
-				.fields
-				.iter()
-				.filter(|&(_, value)| value.kind() == ValueKind::Empty)
-				.map(|(name, value)| (name.to_owned(), value.to_owned()))
-				.collect::<HashMap<_, _>>();
-			let mut instance_fields = HashMap::new();
-
-			for (prop_name, prop_value) in props {
-				if !filtered_class_fields.contains_key(&prop_name) {
-					create_error!(
-						self,
-						function_pos,
-						InterpretErrorKind::FieldDoesntExist(errors::FieldDoesntExist(
-							prop_name,
-							call_args_pos
-						))
-					)
-				}
-
-				instance_fields.insert(prop_name, prop_value);
-			}
-
-			if instance_fields.keys().len() < filtered_class_fields.len() {
-				let missing_fields = class
-					.fields
-					.keys()
-					.filter(|name| !instance_fields.contains_key(*name))
-					.map(|name| name.to_owned())
-					.collect::<Vec<_>>();
-
-				create_error!(
-					self,
-					call_args_pos,
-					InterpretErrorKind::NonExhaustiveClassConstruction(
-						errors::NonExhaustiveClassConstruction(missing_fields)
-					)
-				)
-			}
-
-			let allocated = unsafe { self.memory.alloc(instance_fields).promote() };
-
-			return Ok(values::RClassInstance {
-				class,
-				fields: allocated
-			}
-			.into());
 		}
 
-		create_error!(
-			self,
-			original_expr.position(),
-			InterpretErrorKind::ExpressionNotCallable(errors::ExpressionNotCallable(
-				function_expr.kind()
-			))
-		)
+		Ok(Value::None)
 	}
+}
 
-	/// Indicates whether the `self` variable should be overriden
-	/// with the lowermost function in the context hierarchy
-	fn no_self_override(&self) -> bool {
-		let value = self.context.get(META_NO_SELF_OVERRIDE);
+impl<'ast> Evaluatable<'ast> for &[ast::Stmt<'ast>] {
+	type Output = Option<value::CtrlFlow<'ast>>;
 
-		if value.is_err() {
-			return false;
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		for stmt in self.iter() {
+			if let Value::CtrlFlow(ctrl) = stmt.evaluate(i)? {
+				return Ok(Some(ctrl));
+			}
 		}
 
-		let value = value.unwrap();
+		Ok(None)
+	}
+}
 
-		match value {
-			Value::Boolean(value) => value.get_owned(),
+impl<'ast> Evaluatable<'ast> for ast::Stmt<'ast> {
+	type Output = Value<'ast>;
 
-			value => {
-				eprintln!(
-					"INTERPRETER WARNING: `{}` was expected to be of type `{}`, but it is `{}`",
-					META_NO_SELF_OVERRIDE,
-					ValueKind::Boolean,
-					value.kind()
-				);
-
-				false
-			}
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		match self {
+			Self::VarDefine(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::VarAssign(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::DoBlock(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::Return(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::Call(stmt) => stmt.evaluate(i),
+			Self::WhileLoop(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::Break(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::Continue(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::If(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::ExprAssign(stmt) => stmt.evaluate(i).map(Value::from),
+			Self::ClassDef(stmt) => stmt.evaluate(i).map(Value::from)
 		}
 	}
 }
 
-impl Default for Interpreter {
-	fn default() -> Self { Self::new() }
+//* Expressions *//
+
+impl<'ast> Evaluatable<'ast> for ast::Expr<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		match self {
+			Self::Binary(expr) => expr.evaluate(i),
+			Self::Unary(expr) => expr.evaluate(i),
+			Self::Term(expr) => expr.evaluate(i)
+		}
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::BinaryExpr<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		use ast::BinaryOpKind as Op;
+		use Value as V;
+
+		let span_expr = self.span();
+
+		let lhs = self.lhs.evaluate(i)?;
+		let rhs = self.rhs.evaluate(i)?;
+
+		Ok(match (self.op.kind, lhs, rhs) {
+			(Op::Plus, V::Num(lhs), V::Num(rhs)) => V::Num(lhs + rhs),
+			(Op::Minus, V::Num(lhs), V::Num(rhs)) => V::Num(lhs - rhs),
+			(Op::Asterisk, V::Num(lhs), V::Num(rhs)) => V::Num(lhs * rhs),
+			(Op::Slash, V::Num(lhs), V::Num(rhs)) => V::Num(lhs / rhs),
+			(Op::Sign, V::Num(lhs), V::Num(rhs)) => V::Num(lhs % rhs),
+			(Op::Gt, V::Num(lhs), V::Num(rhs)) => V::Bool(value::Bool::from(lhs > rhs)),
+			(Op::Lt, V::Num(lhs), V::Num(rhs)) => V::Bool(value::Bool::from(lhs < rhs)),
+			(Op::Gte, V::Num(lhs), V::Num(rhs)) => V::Bool(value::Bool::from(lhs >= rhs)),
+			(Op::Lte, V::Num(lhs), V::Num(rhs)) => V::Bool(value::Bool::from(lhs <= rhs)),
+
+			(Op::Plus, V::Str(lhs), rhs) => V::Str(value::Str::from(format!("{lhs}{rhs}"))),
+
+			(Op::EqEq, lhs, rhs) => V::Bool(value::Bool::from(lhs == rhs)),
+			(Op::Neq, lhs, rhs) => V::Bool(value::Bool::from(lhs != rhs)),
+
+			// TODO
+			_ => {
+				return Err(InterpretError::new(
+					span_expr,
+					InterpretErrorKind::Unimplemented(error::Unimplemented)
+				))
+			}
+		})
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::UnaryExpr<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		use ast::UnaryOpKind as Op;
+		use Value as V;
+
+		let span_expr = self.span();
+
+		let operand = self.operand.evaluate(i)?;
+
+		Ok(match (self.op.kind, operand) {
+			(Op::Minus, V::Num(operand)) => V::Num(-operand),
+
+			(Op::Not, V::Bool(operand)) => V::Bool(!operand),
+			(Op::Not, operand) => V::Bool(value::Bool::from(operand.is_truthy())),
+
+			_ => {
+				return Err(InterpretError::new(
+					span_expr,
+					InterpretErrorKind::Unimplemented(error::Unimplemented)
+				))
+			}
+		})
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Term<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		match self {
+			Self::Expr(expr) => expr.evaluate(i),
+			Self::ParenExpr(expr) => expr.expr.evaluate(i),
+
+			Self::Lit(lit) => lit.evaluate(i),
+			Self::Ident(ident) => ident.evaluate(i),
+			Self::Func(func) => func.evaluate(i).map(Value::Func),
+			Self::List(list) => list.evaluate(i).map(Value::List),
+			Self::Obj(obj) => obj.evaluate(i).map(Value::Obj),
+			Self::Extern(ext) => ext.evaluate(i),
+
+			Self::Call(call) => call.evaluate(i),
+			Self::IndexAcc(acc) => acc.evaluate(i),
+			Self::FieldAcc(acc) => acc.evaluate(i)
+		}
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Lit<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		use ast::LitKind;
+
+		Ok(match self.kind {
+			LitKind::Num(lit) => Value::Num(value::Num::from(lit)),
+			LitKind::Bool(lit) => Value::Bool(value::Bool::from(lit)),
+			LitKind::Str(ref lit) => Value::Str(value::Str::from(lit.as_str())),
+			LitKind::None => Value::None
+		})
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Ident<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let name = self.value();
+		let value = i.context.get(name);
+
+		value.ok_or(InterpretError::new(
+			self.span(),
+			InterpretErrorKind::VarDoesntExist(error::VarDoesntExist(self.value_owned()))
+		))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Func<'ast> {
+	type Output = value::Func<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		use arg_parser::{Arg, ArgList};
+
+		let ctx = i.context.child();
+
+		let args = if !self.args.is_empty() {
+			let args = self
+				.args
+				.items()
+				.into_iter()
+				.map(|a| Arg::RequiredUntyped(Box::from(a.value())))
+				.collect::<Vec<_>>();
+
+			ArgList::new(args)
+		} else {
+			ArgList::new_empty()
+		};
+
+		Ok(value::Func {
+			ast: std::rc::Rc::new(self.clone()),
+			args,
+			ctx
+		})
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::List<'ast> {
+	type Output = value::List<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let items = self
+			.items
+			.items()
+			.into_iter()
+			.map(|item| item.evaluate(i))
+			.collect::<InterpretResult<Vec<_>>>()?;
+
+		Ok(value::List::from(items))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Obj<'ast> {
+	type Output = value::Obj<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		use std::collections::hash_map::{Entry, HashMap};
+
+		let mut entry_map = HashMap::new();
+
+		for entry in self.fields.items().into_iter() {
+			let name = entry.name.value_owned();
+			let value = entry.value.evaluate(i)?;
+
+			match entry_map.entry(name) {
+				Entry::Vacant(e) => {
+					e.insert((value, entry.name.span()));
+				}
+
+				Entry::Occupied(e) => {
+					let def_name = e.get().1;
+
+					return Err(InterpretError::new(
+						entry.name.span(),
+						InterpretErrorKind::ObjEntryRedef(error::ObjEntryRedef { def_name })
+					));
+				}
+			}
+		}
+
+		// Stripping position info as it is no longer needed
+		let entry_map = entry_map
+			.into_iter()
+			.map(|(key, (value, _))| (key, value))
+			.collect::<HashMap<_, _>>();
+
+		Ok(value::Obj::from(entry_map))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Extern<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let span_value = self.value.span();
+		let value = match self.value.evaluate(i)? {
+			Value::Str(s) => <value::Str as Into<String>>::into(s),
+
+			v => {
+				return Err(InterpretError::new(
+					span_value,
+					InterpretErrorKind::ArgTypeMismatch(error::ArgTypeMismatch {
+						expected: ValueKind::Str,
+						found: v.kind()
+					})
+				))
+			}
+		};
+
+		i.context.get_extern(&value).ok_or(InterpretError::new(
+			span_value,
+			InterpretErrorKind::InvalidExtern(error::InvalidExtern(value))
+		))
+	}
+}
+
+// `Call` is considered an expression term
+impl<'ast> Evaluatable<'ast> for ast::Call<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		use arg_parser::ArgumentParseError;
+		use prog_parser::{Position, Span};
+
+		let span_args = {
+			// Parentheses are included in the span in case the argument list is empty
+			let source = self.source();
+			let file = self.file();
+			let position = Position::new(self._lp.start(), self._rp.end());
+
+			Span::new(source, file, position)
+		};
+
+		let call_site = value::CallSite {
+			callee: self.callee.span(),
+			_lp: self._lp.span(),
+			args: self.args.map_ref(ASTNode::span, ASTNode::span),
+			_rp: self._rp.span()
+		};
+
+		let mut func = match self.callee.evaluate(i)? {
+			Value::Func(f) => Box::new(f) as Box<dyn Callable>,
+			Value::IntrinsicFn(f) => Box::new(f) as Box<dyn Callable>,
+			Value::Class(c) => Box::new(c) as Box<dyn Callable>,
+
+			v => {
+				return Err(InterpretError::new(
+					call_site.callee,
+					InterpretErrorKind::ExprNotCallable(error::ExprNotCallable {
+						expected: vec![ValueKind::Func, ValueKind::Class],
+						found: v.kind()
+					})
+				));
+			}
+		};
+
+		// TODO: is there really no way to write this better?
+		let (arg_spans, arg_values) = self
+			.args
+			.items()
+			.into_iter()
+			.map(|e| (e.span(), e.evaluate(i)))
+			.unzip::<_, _, Vec<_>, Vec<_>>();
+		let arg_values = arg_values
+			.into_iter()
+			.collect::<InterpretResult<Vec<_>>>()?;
+
+		let parsed_args = func.arg_list().verify(&arg_values).map_err(|e| {
+			match e {
+				ArgumentParseError::CountMismatch {
+					expected,
+					end_boundary,
+					found
+				} => {
+					InterpretError::new(
+						span_args,
+						InterpretErrorKind::ArgCountMismatch(error::ArgCountMismatch {
+							expected,
+							end_boundary,
+							found
+						})
+					)
+				}
+
+				ArgumentParseError::IncorrectType {
+					index,
+					expected,
+					found
+				} => {
+					let arg_span = arg_spans.get(index).copied().unwrap();
+
+					InterpretError::new(
+						arg_span,
+						InterpretErrorKind::ArgTypeMismatch(error::ArgTypeMismatch {
+							expected,
+							found
+						})
+					)
+				}
+			}
+		})?;
+
+		func.call(CallableData {
+			i,
+			args: parsed_args,
+			call_site
+		})
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::IndexAcc<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let list = match self.list.evaluate(i)? {
+			Value::List(l) => l,
+			v => {
+				return Err(InterpretError::new(
+					self.list.span(),
+					InterpretErrorKind::CannotIndexExpr(error::CannotIndexExpr {
+						expected: vec![ValueKind::List],
+						found: v.kind()
+					})
+				))
+			}
+		};
+
+		let index = match self.index.evaluate(i)? {
+			Value::Num(n) => {
+				f64_to_usize(Into::<f64>::into(n)).ok_or(InterpretError::new(
+					self.index.span(),
+					InterpretErrorKind::InvalidIndex(error::InvalidIndex(Value::Num(n)))
+				))?
+			}
+
+			v => {
+				return Err(InterpretError::new(
+					self.index.span(),
+					InterpretErrorKind::InvalidIndex(error::InvalidIndex(v))
+				));
+			}
+		};
+
+		Ok(list.get(index).unwrap_or(Value::None))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::FieldAcc<'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let obj = match self.object.evaluate(i)? {
+			Value::Obj(o) => o,
+
+			Value::Class(class) => {
+				let eval_cache = class;
+				let field_acc = self;
+				return extension::ClassAcc {
+					eval_cache,
+					field_acc
+				}
+				.evaluate_once(i);
+			}
+
+			Value::ClassInstance(class_inst) => {
+				let eval_cache = class_inst;
+				let field_acc = self;
+				return extension::ClassInstanceAcc {
+					eval_cache,
+					field_acc
+				}
+				.evaluate_once(i);
+			}
+
+			v => {
+				return Err(InterpretError::new(
+					self.object.span(),
+					InterpretErrorKind::CannotIndexExpr(error::CannotIndexExpr {
+						expected: vec![ValueKind::Obj, ValueKind::Class, ValueKind::ClassInstance],
+						found: v.kind()
+					})
+				));
+			}
+		};
+
+		Ok(obj.get(self.field.value()).unwrap_or(Value::None))
+	}
+}
+
+impl<'ast> EvaluatableOnce<'ast> for extension::ClassAcc<'_, 'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate_once(self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let field = self.field_acc.field;
+		let Some(value) = self.eval_cache.get(field.value()) else {
+			return Err(InterpretError::new(
+				field.span(),
+				InterpretErrorKind::FieldDoesntExist(error::FieldDoesntExist {
+					class_name: self.eval_cache.name().to_owned(),
+					field_name: field.value_owned()
+				})
+			));
+		};
+
+		Ok(value)
+	}
+}
+
+impl<'ast> EvaluatableOnce<'ast> for extension::ClassInstanceAcc<'_, 'ast> {
+	type Output = Value<'ast>;
+
+	fn evaluate_once(self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		use prog_parser::ast::SelfKw;
+
+		let field = self.field_acc.field;
+		let Some(mut value) = self.eval_cache.get(field.value()) else {
+			return Err(InterpretError::new(
+				field.span(),
+				InterpretErrorKind::FieldDoesntExist(error::FieldDoesntExist {
+					class_name: self.eval_cache.name().to_owned(),
+					field_name: field.value_owned()
+				})
+			));
+		};
+
+		// If the value is a function and has a `self` argument,
+		// remove it from the argument list to prevent explicit `self` argument requirement:
+		// `some_instance.foo(some_instance)`
+		if let Value::Func(func) = &mut value {
+			if matches!(func.ast.args, ast::FuncArgs::WithSelf { .. }) {
+				func.ctx
+					.insert(SelfKw::KEYWORD, Value::ClassInstance(self.eval_cache));
+
+				assert_eq!(
+					func.args.remove(0),
+					Some(arg_parser::Arg::RequiredUntyped(SelfKw::KEYWORD.into()))
+				);
+			}
+		}
+
+		Ok(value)
+	}
+}
+
+//* Statements *//
+
+impl<'ast> Evaluatable<'ast> for ast::VarDefine<'ast> {
+	type Output = ();
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let name = self.name().value();
+		let value = match self.value() {
+			Some(val) => val.evaluate(i)?,
+			None => Value::None
+		};
+
+		i.context.insert(name, value);
+		Ok(())
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::VarAssign<'ast> {
+	type Output = ();
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let name = self.name.value_owned();
+		let value = self.value.evaluate(i)?;
+
+		if i.context.update(&name, value).is_none() {
+			return Err(InterpretError::new(
+				self.name.span(),
+				InterpretErrorKind::VarDoesntExist(error::VarDoesntExist(name))
+			));
+		}
+
+		Ok(())
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::DoBlock<'ast> {
+	type Output = Option<value::CtrlFlow<'ast>>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let original_ctx = i.context.swap(i.context.child());
+		let result = self.stmts.as_ref().evaluate(i);
+		i.context.swap(original_ctx);
+
+		result
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Return<'ast> {
+	type Output = value::CtrlFlow<'ast>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let span = self.span();
+		let value = self.value.evaluate(i).map(Box::new)?;
+
+		Ok(value::CtrlFlow::Return(span, value))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::WhileLoop<'ast> {
+	type Output = Option<value::CtrlFlow<'ast>>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let mut cond_result = self.cond.evaluate(i)?;
+
+		while cond_result.is_truthy() {
+			if let Some(ctrl) = self.block.evaluate(i)? {
+				match ctrl {
+					value::CtrlFlow::Return(..) => return Ok(Some(ctrl)),
+					value::CtrlFlow::Break(..) => break,
+					value::CtrlFlow::Continue(..) => continue
+				}
+			}
+
+			cond_result = self.cond.evaluate(i)?;
+		}
+
+		Ok(None)
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Break<'ast> {
+	type Output = value::CtrlFlow<'ast>;
+
+	fn evaluate(&self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		Ok(value::CtrlFlow::Break(self.span()))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Continue<'ast> {
+	type Output = value::CtrlFlow<'ast>;
+
+	fn evaluate(&self, _: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		Ok(value::CtrlFlow::Continue(self.span()))
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::If<'ast> {
+	type Output = Option<value::CtrlFlow<'ast>>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		if self.cond.evaluate(i)?.is_truthy() {
+			return self.stmts.as_ref().evaluate(i);
+		}
+
+		for branch in self.b_elifs.iter() {
+			if let Some(result) = branch.evaluate(i)? {
+				return Ok(result);
+			}
+		}
+
+		if let Some(ref branch) = self.b_else {
+			return branch.evaluate(i);
+		}
+
+		Ok(None)
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::ElseIf<'ast> {
+	// Outer option indicates whether the branch was executed or not,
+	// while the inner option contains the return value of the branch, if any
+	type Output = Option<Option<value::CtrlFlow<'ast>>>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		if self.cond.evaluate(i)?.is_truthy() {
+			return Ok(Some(self.stmts.as_ref().evaluate(i)?));
+		}
+
+		Ok(None)
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::Else<'ast> {
+	type Output = Option<value::CtrlFlow<'ast>>;
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		self.stmts.as_ref().evaluate(i)
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::ExprAssign<'ast> {
+	type Output = ();
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		match self {
+			Self::IndexAssign(stmt) => stmt.evaluate(i),
+			Self::FieldAssign(stmt) => stmt.evaluate(i)
+		}
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::IndexAssign<'ast> {
+	type Output = ();
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let span_list = self.acc.list.span();
+		let span_index = self.acc.index.span();
+
+		let list = match self.acc.list.evaluate(i)? {
+			Value::List(l) => l,
+			v => {
+				return Err(InterpretError::new(
+					span_list,
+					InterpretErrorKind::ExprNotAssignable(error::ExprNotAssignable {
+						expected: vec![ValueKind::List, ValueKind::Obj],
+						found: v.kind()
+					})
+				));
+			}
+		};
+
+		let index = match self.acc.index.evaluate(i)? {
+			Value::Num(n) => {
+				f64_to_usize(Into::<f64>::into(n)).ok_or(InterpretError::new(
+					span_index,
+					InterpretErrorKind::InvalidIndex(error::InvalidIndex(Value::Num(n)))
+				))?
+			}
+
+			v => {
+				return Err(InterpretError::new(
+					span_index,
+					InterpretErrorKind::InvalidIndex(error::InvalidIndex(v))
+				));
+			}
+		};
+
+		list.insert(index, self.value.evaluate(i)?);
+		Ok(())
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::FieldAssign<'ast> {
+	type Output = ();
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let span_obj = self.acc.object.span();
+
+		let obj = match self.acc.object.evaluate(i)? {
+			Value::Obj(o) => o,
+			Value::ClassInstance(c) => {
+				let eval_cache = c;
+				let field_assign = self;
+				return extension::ClassInstanceAssign {
+					eval_cache,
+					field_assign
+				}
+				.evaluate_once(i);
+			}
+
+			v => {
+				return Err(InterpretError::new(
+					span_obj,
+					InterpretErrorKind::ExprNotAssignable(error::ExprNotAssignable {
+						expected: vec![ValueKind::List, ValueKind::Obj],
+						found: v.kind()
+					})
+				));
+			}
+		};
+
+		obj.insert(self.acc.field.value(), self.value.evaluate(i)?);
+		Ok(())
+	}
+}
+
+impl<'ast> EvaluatableOnce<'ast> for extension::ClassInstanceAssign<'_, 'ast> {
+	type Output = ();
+
+	fn evaluate_once(self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		let class_name = self.eval_cache.name().to_owned();
+		let field = self.field_assign.acc.field;
+		let field_name = field.value_owned();
+
+		let Some(field_value) = self.eval_cache.get(&field_name) else {
+			return Err(InterpretError::new(
+				field.span(),
+				InterpretErrorKind::FieldDoesntExist(error::FieldDoesntExist {
+					class_name,
+					field_name
+				})
+			));
+		};
+
+		// NOTE: Reassigning a function should only be invalid if the *actual* class
+		// is the one that has that function defined, *not its instance*
+		if matches!(field_value.kind(), ValueKind::Func | ValueKind::IntrinsicFn)
+			&& !self.eval_cache.contains(&field_name)
+		{
+			return Err(InterpretError::new(
+				field.span(),
+				InterpretErrorKind::ClassFnReassign(error::ClassFnReassign {
+					class_name,
+					field_name
+				})
+			));
+		}
+
+		let new_field_value = self.field_assign.value.evaluate(i)?;
+		self.eval_cache.insert(field_name, new_field_value);
+
+		Ok(())
+	}
+}
+
+impl<'ast> Evaluatable<'ast> for ast::ClassDef<'ast> {
+	type Output = ();
+
+	fn evaluate(&self, i: &mut Interpreter<'ast>) -> InterpretResult<'ast, Self::Output> {
+		use std::collections::hash_map::{Entry, HashMap};
+
+		let name = self.name.value_owned();
+		let fields = Shared::new(HashMap::new());
+
+		i.context.insert(
+			name.clone(),
+			Value::Class(value::Class::new(name.clone(), Shared::clone(&fields)))
+		);
+
+		let parent_ctx = i.context.swap(i.context.child());
+		i.context.insert(
+			prog_parser::ast::SelfKw::KEYWORD,
+			Value::Class(value::Class::new(name, Shared::clone(&fields)))
+		);
+
+		let mut field_positions = HashMap::new();
+		for field in self.fields.iter() {
+			let field_name = field.name();
+
+			match fields.borrow_mut().entry(field_name.value_owned()) {
+				Entry::Vacant(e) => {
+					let value = field
+						.value()
+						.map(|v| v.evaluate(i))
+						.unwrap_or(Ok(Value::None))?;
+
+					e.insert(value);
+					field_positions
+						.entry(field_name.value_owned())
+						.insert_entry(field_name.span());
+				}
+
+				Entry::Occupied(_) => {
+					let Some(def_name) = field_positions.get(ASTNode::value(&field_name)).copied()
+					else {
+						panic!(
+							"Mismatch between field maps: position of `{field_name}` is missing"
+						);
+					};
+
+					return Err(InterpretError::new(
+						field_name.span(),
+						InterpretErrorKind::ClassFieldRedef(error::ClassFieldRedef { def_name })
+					));
+				}
+			}
+		}
+
+		i.context.swap(parent_ctx);
+		Ok(())
+	}
 }

@@ -2,7 +2,7 @@ class Wallet
 	def stored
 
 	def new = func(initial) do
-		def wallet = ({ stored = initial }) -> self
+		def wallet = self({ stored = initial })
 		return wallet
 	end
 
@@ -26,9 +26,9 @@ class Wallet
 	end
 end
 
-def wallet = (0) -> Wallet.new
-(10) -> wallet.deposit
+def wallet = Wallet.new(0)
+wallet.deposit(10)
 
-((() -> wallet.balance) == 10) -> assert
-(((25) -> wallet.withdraw) == 10) -> assert
-((() -> wallet.balance) == 0) -> assert
+assert(wallet.balance() == 10)
+assert(wallet.withdraw(25) == 10)
+assert(wallet.balance() == 0)

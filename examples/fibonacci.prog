@@ -21,10 +21,10 @@ def fibonacci = func(num) do
 end
 
 def main = func(num) do
-	def number = (num) -> fibonacci
-	(num, " fibonacci number is ", number) -> print
+	def number = fibonacci(num)
+	print(num, " fibonacci number is ", number)
 
 	return number
 end
 
-return (25) -> main
+return main(25)

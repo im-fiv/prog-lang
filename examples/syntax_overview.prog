@@ -6,20 +6,21 @@ def some_calculation = func(a, b, c) do
 end
 
 def do_nothing = func() do
-	return void
+	return none
 end
 
 def main = func() do
-	def calculated_stuff = (2, 2, 2) -> some_calculation
+	def calculated_stuff = some_calculation(2, 2, 2)
 	def counter = 0
 
 	while calculated_stuff + counter < 15 do
 		counter = counter + 1
-		(counter) -> print
+		print(counter)
 	end
 
-	(text_to_print) -> print
-	(calculated_stuff, " + ", counter, " = ", calculated_stuff + counter) -> print
+	print(text_to_print)
+	print(calculated_stuff, " + ", counter, " = ", calculated_stuff + counter)
 end
 
-() -> main
+do_nothing()
+main()

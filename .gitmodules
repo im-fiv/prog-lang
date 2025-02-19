@@ -1,3 +1,0 @@
-[submodule "crates/halloc"]
-	path = crates/halloc
-	url = https://github.com/im-fiv/halloc

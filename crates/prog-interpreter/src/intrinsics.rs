@@ -1,267 +1,281 @@
-use std::collections::HashMap;
-
-use anyhow::{bail, Result};
 use prog_macros::get_argument;
+use prog_parser::ASTNode;
 
-use crate::arg_parser::{Arg, ArgList, ParsedArg};
-use crate::errors;
-use crate::values::*;
+use crate::arg_parser::{Arg, ArgList};
+use crate::value::{CallableData, IntrinsicFn};
+use crate::{error, InterpretError, InterpretResult, Primitive, Value, ValueKind};
 
-//* Note: this is an extension for convenient value insertion
-trait QuickInsert {
-	fn quick_insert(
-		&mut self,
-		key: impl Into<String>,
-		value: impl Into<Value>,
-		bring_into_scope: bool
-	);
+#[derive(Debug)]
+pub(crate) struct Intrinsic<'i> {
+	pub(crate) name: &'static str,
+	pub(crate) value: Value<'i>,
+	pub(crate) auto_import: bool
 }
 
-impl QuickInsert for HashMap<String, (Value, bool)> {
-	fn quick_insert(
-		&mut self,
-		key: impl Into<String>,
-		value: impl Into<Value>,
-		bring_into_scope: bool
-	) {
-		self.insert(key.into(), (value.into(), bring_into_scope));
+#[derive(Debug)]
+pub(crate) struct IntrinsicTable<'i> {
+	entries: Vec<Intrinsic<'i>>
+}
+
+impl<'i> IntrinsicTable<'i> {
+	pub fn new() -> Self {
+		let mut this = Self::new_empty();
+		this.entries.extend(Self::fetch());
+
+		this
+	}
+
+	pub fn new_empty() -> Self { Self { entries: vec![] } }
+
+	fn fetch() -> Box<[Intrinsic<'i>]> {
+		Box::new([
+			Intrinsic {
+				name: "should_panic",
+				value: Value::IntrinsicFn(IntrinsicFn::new(
+					i_should_panic,
+					ArgList::new(vec![Arg::Required("func".into(), ValueKind::Func)])
+				)),
+				auto_import: false
+			},
+			Intrinsic {
+				name: "print",
+				value: Value::IntrinsicFn(IntrinsicFn::new(
+					i_print,
+					ArgList::new(vec![Arg::Variadic("args".into())])
+				)),
+				auto_import: true
+			},
+			Intrinsic {
+				name: "raw_print",
+				value: Value::IntrinsicFn(IntrinsicFn::new(
+					i_raw_print,
+					ArgList::new(vec![Arg::Required("str".into(), ValueKind::Str)])
+				)),
+				auto_import: false
+			},
+			Intrinsic {
+				name: "debug",
+				value: Value::IntrinsicFn(IntrinsicFn::new(
+					i_debug,
+					ArgList::new(vec![Arg::RequiredUntyped("value".into())])
+				)),
+				auto_import: true
+			},
+			Intrinsic {
+				name: "assert",
+				value: Value::IntrinsicFn(IntrinsicFn::new(
+					i_assert,
+					ArgList::new(vec![
+						Arg::Required("expr".into(), ValueKind::Bool),
+						Arg::Optional("msg".into(), ValueKind::Str),
+					])
+				)),
+				auto_import: true
+			},
+			Intrinsic {
+				name: "assert_eq",
+				value: Value::IntrinsicFn(IntrinsicFn::new(
+					i_assert_eq,
+					ArgList::new(vec![
+						Arg::RequiredUntyped("left".into()),
+						Arg::RequiredUntyped("right".into()),
+					])
+				)),
+				auto_import: true
+			},
+			Intrinsic {
+				name: "assert_neq",
+				value: Value::IntrinsicFn(IntrinsicFn::new(
+					i_assert_neq,
+					ArgList::new(vec![
+						Arg::RequiredUntyped("left".into()),
+						Arg::RequiredUntyped("right".into()),
+					])
+				)),
+				auto_import: true
+			}
+		])
 	}
 }
 
-fn print_function(
-	RIntrinsicFunctionData {
-		interpreter,
-		arguments,
-		..
-	}: RIntrinsicFunctionData
-) -> Result<Value> {
-	let to_print = get_argument!(arguments => varargs: ...)
+impl<'i> IntoIterator for IntrinsicTable<'i> {
+	type IntoIter = std::vec::IntoIter<Self::Item>;
+	type Item = Intrinsic<'i>;
+
+	fn into_iter(self) -> Self::IntoIter { self.entries.into_iter() }
+}
+
+impl Default for IntrinsicTable<'_> {
+	fn default() -> Self { Self::new_empty() }
+}
+
+fn i_should_panic<'i>(
+	CallableData {
+		i,
+		mut args,
+		call_site
+	}: CallableData<'_, 'i>
+) -> InterpretResult<'i, Value<'i>> {
+	use crate::Callable;
+
+	let span_callee = call_site.callee;
+
+	let mut func = get_argument!(args => func: Func);
+	let result = func.call(CallableData {
+		i,
+		args: std::collections::HashMap::new(),
+		call_site
+	});
+
+	if result.is_ok() {
+		return Err(InterpretError::new(
+			span_callee,
+			crate::InterpretErrorKind::AssertionFailed(error::AssertionFailed(Some(String::from(
+				"function did not panic"
+			))))
+		));
+	}
+
+	Ok(Value::None)
+}
+
+fn i_print<'i>(
+	CallableData { i, mut args, .. }: CallableData<'_, 'i>
+) -> InterpretResult<'i, Value<'i>> {
+	let mut formatted = get_argument!(args => args: ...)
 		.into_iter()
-		.map(|arg| format!("{}", arg))
-		.collect::<Vec<String>>()
-		.join("");
+		.map(|v| format!("{v}"))
+		.collect::<Vec<_>>()
+		.join(" ");
+	formatted.push('\n');
 
-	interpreter
-		.context
-		.deref_mut()
-		.stdout
-		.push_str(&format!("{}\n", to_print)[..]);
-
-	if interpreter.context.deref().flags.con_stdout_allowed {
-		println!("{to_print}");
+	i.stdout.extend(formatted.bytes());
+	if i.context.inner().flags.con_stdout_allowed {
+		print!("{formatted}");
 	}
 
-	Ok(Value::Empty)
+	Ok(Value::None)
 }
 
-// TODO: shift the path during import
-fn import_function(
-	RIntrinsicFunctionData {
-		interpreter,
-		arguments,
+fn i_raw_print<'i>(
+	CallableData { i, mut args, .. }: CallableData<'_, 'i>
+) -> InterpretResult<'i, Value<'i>> {
+	let str = String::from(get_argument!(args => str: Str));
+
+	i.stdout.extend(str.bytes());
+	if i.context.inner().flags.con_stdout_allowed {
+		print!("{str}");
+	}
+
+	Ok(Value::None)
+}
+
+fn i_debug<'i>(
+	CallableData {
+		i,
+		mut args,
+		call_site
+	}: CallableData<'_, 'i>
+) -> InterpretResult<'i, Value<'i>> {
+	if !i.context.inner().flags.con_stdout_allowed {
+		return Ok(Value::None);
+	}
+
+	let expr = call_site.args.nth_item(0).copied().unwrap().value();
+
+	let value = get_argument!(args => value: _);
+
+	let file = call_site.file();
+	let position = call_site.args.start();
+
+	let mut column = 1;
+	let mut row = 1;
+
+	for (idx, char) in call_site.source().char_indices() {
+		if idx >= position {
+			break;
+		}
+
+		if char == '\n' {
+			column += 1;
+			row = 1;
+		}
+
+		row += 1;
+	}
+
+	println!("[{file}:{column}:{row}] {expr} = {value}");
+
+	Ok(Value::None)
+}
+
+fn i_assert<'i>(
+	CallableData {
+		mut args,
 		call_site,
 		..
-	}: RIntrinsicFunctionData
-) -> Result<Value> {
-	use std::mem::swap;
+	}: CallableData<'_, 'i>
+) -> InterpretResult<'i, Value<'i>> {
+	let expr = get_argument!(args => expr: Bool);
+	let msg = get_argument!(args => msg: Str?);
 
-	if !interpreter.context.deref().flags.imports_allowed {
-		bail!(errors::InterpretError::new(
-			call_site.source,
-			call_site.file,
-			call_site.func_pos,
-			errors::InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
-				thing: String::from("imports"),
-				plural: true
+	if !expr.is_truthy() {
+		let expr_span = *call_site.args.nth_item(0).unwrap();
+
+		return Err(InterpretError::new(
+			expr_span,
+			crate::InterpretErrorKind::AssertionFailed(error::AssertionFailed(msg.map(Into::into)))
+		));
+	}
+
+	Ok(Value::None)
+}
+
+fn i_assert_eq<'i>(data: CallableData<'_, 'i>) -> InterpretResult<'i, Value<'i>> {
+	generic_lr_assert(|l, r| l == r, data)
+}
+
+fn i_assert_neq<'i>(data: CallableData<'_, 'i>) -> InterpretResult<'i, Value<'i>> {
+	generic_lr_assert(|l, r| l != r, data)
+}
+
+fn generic_lr_assert<'int, F>(
+	pred: F,
+	CallableData {
+		mut args,
+		call_site,
+		..
+	}: CallableData<'_, 'int>
+) -> InterpretResult<'int, Value<'int>>
+where
+	F: FnOnce(&Value<'int>, &Value<'int>) -> bool
+{
+	use prog_parser::{Position, Span};
+
+	let left = get_argument!(args => left: _);
+	let right = get_argument!(args => right: _);
+
+	if !pred(&left, &right) {
+		let source = call_site.args.source();
+		let file = call_site.args.file();
+
+		let span_left = *call_site.args.items().first().copied().unwrap();
+		let span_right = *call_site.args.items().get(1).copied().unwrap();
+
+		let start = span_left.position().start();
+		let end = span_right.position().end();
+
+		let position = Position::new(start, end);
+		let expr_span = Span::new(source, file, position);
+
+		return Err(InterpretError::new(
+			expr_span,
+			crate::InterpretErrorKind::AssertionEqFailed(error::AssertionEqFailed {
+				left: (left, span_left),
+				right: (right, span_right)
 			})
 		));
 	}
 
-	let path_str = get_argument!(arguments => path: RString).get_owned();
-
-	let mut path = std::path::Path::new(&path_str).to_path_buf();
-
-	// If specified path is a directory, try to get the core file
-	if path.is_dir() {
-		path.push("mod.prog");
-	}
-
-	if path.extension().is_none() {
-		path.set_extension("prog");
-	}
-
-	if !path.is_file() {
-		bail!("'{path_str}' is not a valid file");
-	}
-
-	if !path.exists() {
-		bail!("Cannot find the specified file at path '{path_str}'");
-	}
-
-	let path_str = path.to_str().unwrap();
-	let contents = prog_utils::read_file(path_str);
-
-	let parser = prog_parser::Parser::new(&contents, path_str);
-	let ast = parser.parse()?;
-
-	// Swapping the active memory to a new interpreter for the time of execution,
-	// such that only 1 memory is getting allocations
-	let mut new_interpreter = crate::Interpreter::new();
-	swap(&mut new_interpreter.memory, &mut interpreter.memory);
-
-	let result = interpreter.interpret(contents, path_str.to_owned(), ast, false)?;
-	swap(&mut new_interpreter.memory, &mut interpreter.memory);
-
-	Ok(result)
-}
-
-fn input_function(
-	RIntrinsicFunctionData {
-		interpreter,
-		arguments,
-		call_site,
-		..
-	}: RIntrinsicFunctionData
-) -> Result<Value> {
-	use text_io::read;
-
-	if !interpreter.context.deref().flags.inputs_allowed {
-		bail!(errors::InterpretError::new(
-			call_site.source,
-			call_site.file,
-			call_site.func_pos,
-			errors::InterpretErrorKind::ContextDisallowed(errors::ContextDisallowed {
-				thing: String::from("user input"),
-				plural: false
-			})
-		));
-	}
-
-	let message = get_argument!(arguments => message: RString?);
-
-	if let Some(message) = message {
-		print!("{}", message.get());
-	}
-
-	let mut result: String = read!("{}\n");
-
-	// Sanitize the string (just in case)
-	result = result.replace('\r', "");
-	result = result.replace('\n', "");
-
-	interpreter
-		.context
-		.deref_mut()
-		.stdin
-		.push_str(&format!("{result}\n")[..]);
-
-	Ok(Value::String(result.into()))
-}
-
-fn raw_print_function(
-	RIntrinsicFunctionData {
-		interpreter,
-		arguments,
-		..
-	}: RIntrinsicFunctionData
-) -> Result<Value> {
-	use std::io;
-	use std::io::Write;
-
-	let text = get_argument!(arguments => string: RString).get_owned();
-	interpreter.context.deref_mut().stdout.push_str(&text);
-
-	if interpreter.context.deref().flags.con_stdout_allowed {
-		print!("{text}");
-		io::stdout().flush().unwrap();
-	}
-
-	Ok(Value::Empty)
-}
-
-fn assert_function(
-	RIntrinsicFunctionData {
-		arguments,
-		call_site,
-		..
-	}: RIntrinsicFunctionData
-) -> Result<Value> {
-	let value = get_argument!(arguments => value: Value);
-	let message = get_argument!(arguments => message: RString?).map(|str| str.get_owned());
-
-	// TODO: fix `source` and `file` fields being empty
-	if !value.is_truthy() {
-		bail!(crate::InterpretError::new(
-			call_site.source,
-			call_site.file,
-			call_site.args_pos,
-			errors::InterpretErrorKind::AssertionFailed(errors::AssertionFailed(message))
-		));
-	}
-
-	Ok(Value::Empty)
-}
-
-fn dump_ctx_function(
-	RIntrinsicFunctionData { interpreter, .. }: RIntrinsicFunctionData
-) -> Result<Value> {
-	println!("{:#?}", interpreter.context);
-	Ok(Value::Empty)
-}
-
-pub fn create_variable_table() -> HashMap<String, (Value, bool)> {
-	let mut map = HashMap::new();
-
-	map.quick_insert(
-		"print",
-		RIntrinsicFunction::new(print_function, ArgList::new(vec![Arg::Variadic("varargs")])),
-		true
-	);
-
-	map.quick_insert(
-		"import",
-		RIntrinsicFunction::new(
-			import_function,
-			ArgList::new(vec![Arg::Required("path", ValueKind::String)])
-		),
-		true
-	);
-
-	map.quick_insert(
-		"input",
-		RIntrinsicFunction::new(
-			input_function,
-			ArgList::new(vec![Arg::Optional("message", ValueKind::String)])
-		),
-		true
-	);
-
-	map.quick_insert(
-		"raw_print",
-		RIntrinsicFunction::new(
-			raw_print_function,
-			ArgList::new(vec![Arg::Optional("string", ValueKind::String)])
-		),
-		false
-	);
-
-	map.quick_insert(
-		"assert",
-		RIntrinsicFunction::new(
-			assert_function,
-			ArgList::new(vec![
-				Arg::Required("value", ValueKind::Boolean),
-				Arg::Optional("message", ValueKind::String),
-			])
-		),
-		true
-	);
-
-	map.quick_insert(
-		"dump_ctx",
-		RIntrinsicFunction::new(dump_ctx_function, ArgList::new_empty()),
-		false
-	);
-
-	map
+	Ok(Value::None)
 }

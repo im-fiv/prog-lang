@@ -1,0 +1,16 @@
+[package]
+name = "prog-lexer"
+version = "0.0.0"
+edition = "2021"
+
+[features]
+default = []
+serde = ["dep:serde", "prog-utils/serde"]
+
+[dependencies]
+ariadne = { workspace = true }
+
+prog-utils = { workspace = true }
+prog-macros = { workspace = true }
+
+serde = { workspace = true, optional = true }

@@ -1,4 +1,5 @@
 # Prog Lang
+
 ![Build Status](https://github.com/im-fiv/prog-lang/actions/workflows/build.yml/badge.svg)
 ![Language](https://img.shields.io/badge/Language-Rust-orange)
 ![Contributions](https://img.shields.io/badge/Contributions-Open-brightgreen)
@@ -24,7 +25,6 @@ Prog Lang is an interpreted programming language written in Rust, developed duri
 ## Getting Started
 
 You can follow these simple steps to get started with Prog Lang:
-
 
 1. **Clone the Repository**:
 
@@ -54,32 +54,32 @@ The specifications of Prog Lang are still being considered, but here's the curre
 /* and so is this */
 
 def variable_definition = "hello, world!"
-def module_import = ("path goes here") -> import
-def user_input = ("what is your favorite food?: ") -> input
+def module_import = import("path goes here")
+def user_input = input("what is your favorite food?: ")
 
 variable_definition = "variable reassign!"
 
 def function_definition = func(arg1, arg2) do
-	return arg1 + arg2
+    return arg1 + arg2
 end
 
-def returning_void = func() do
-	return void
+def returning_nothing = func() do
+    return none
 end
 
-def function_call = (2, 2) -> function_definition
+def function_call = function_definition(2, 2)
+returning_nothing()
 
 if function_call == 4 then
-	("math works!") -> print
+    print("math works!")
 end
 
 while function_call < 15 do
-	("while loop: ", function_call) -> print
-	function_call = function_call + 1
+    print("while loop: ", function_call)
+    function_call = function_call + 1
 end
 ```
 
-Alternatively, the grammar file can be found at [crates/prog-parser/src/grammar.pest](../main/crates/prog-parser/src/grammar.pest)
-
 ## License
+
 Prog Lang is [MIT licensed](https://en.wikipedia.org/wiki/MIT_License).

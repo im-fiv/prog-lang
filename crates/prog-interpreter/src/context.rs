@@ -1,18 +1,18 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefMut};
 use std::collections::HashMap;
-use std::fmt::{self, Debug};
-use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
 
-use anyhow::{bail, Result};
-
-use crate::Value;
+use crate::{Shared, Value};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ContextFlags {
+	/// Is writing to console stdout allowed?
+	/// If `false`, any calls to `print` will only write to [`Interpreter::stdout`].
 	pub con_stdout_allowed: bool,
+	/// Are `import` calls allowed?
 	pub imports_allowed: bool,
+	/// Are `input` calls allowed?
 	pub inputs_allowed: bool,
+	/// Are `extern` expressions allowed?
 	pub externs_allowed: bool
 }
 
@@ -27,170 +27,151 @@ impl Default for ContextFlags {
 	}
 }
 
-#[derive(Clone, PartialEq)]
-pub struct Context {
-	inner: Rc<RefCell<InnerContext>>
+#[derive(Debug, Clone)]
+pub struct Context<'ast> {
+	inner: Shared<ContextInner<'ast>>
 }
 
-impl Context {
+impl<'ast> Context<'ast> {
 	pub fn new() -> Self {
 		Self {
-			inner: Rc::new(RefCell::new(InnerContext::new()))
+			inner: Shared::new(ContextInner::new())
 		}
 	}
 
-	// Helper functions
-	pub fn wrap(inner: InnerContext) -> Self {
+	pub fn inner<'a>(&'a self) -> Ref<'a, ContextInner<'ast>> { self.inner.borrow() }
+
+	pub fn inner_mut<'a>(&'a self) -> RefMut<'a, ContextInner<'ast>> { self.inner.borrow_mut() }
+
+	pub fn unwrap_or_clone(self) -> ContextInner<'ast>
+	where
+		ContextInner<'ast>: Clone
+	{
+		Shared::unwrap_or_clone(self.inner)
+	}
+
+	pub fn child(&self) -> Self {
+		let mut ctx = ContextInner::new();
+		ctx.flags = self.inner().flags;
+		ctx.parent = Some(self.clone()); // Only the "reference" is cloned
+
 		Self {
-			inner: Rc::new(RefCell::new(inner))
+			inner: Shared::new(ctx)
 		}
 	}
 
-	pub fn unwrap_or_clone(self) -> InnerContext {
-		let cell = Rc::unwrap_or_clone(self.inner);
-		cell.take()
-	}
+	pub fn swap(&mut self, other: Self) -> Self { std::mem::replace(self, other) }
 
-	pub fn deref(&self) -> impl Deref<Target = InnerContext> + '_ { self.inner.borrow() }
+	pub fn swap_in_place(this: &mut Self, other: &mut Self) { std::mem::swap(this, other) }
 
-	pub fn deref_mut(&mut self) -> impl DerefMut<Target = InnerContext> + '_ {
-		self.inner.borrow_mut()
-	}
-
-	// InnerContext's functions
-	pub fn deeper(&mut self) { self.deref_mut().deeper(); }
-
-	pub fn shallower(&mut self) { self.deref_mut().shallower(); }
-
-	pub fn is_subcontext(&self) -> bool { self.deref().is_subcontext() }
-
-	pub fn exists(&self, name: &str) -> bool { self.deref().exists(name) }
-
-	pub fn get(&self, name: &str) -> Result<Value> { self.deref().get(name) }
-
-	pub fn insert(&mut self, name: String, value: Value) -> Option<Value> {
-		self.deref_mut().insert(name, value)
-	}
-
-	pub fn update(&mut self, name: String, value: Value) -> Result<Value> {
-		self.deref_mut().update(name, value)
-	}
-}
-
-impl Debug for Context {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { Debug::fmt(&self.inner, f) }
-}
-
-impl Default for Context {
-	fn default() -> Self { Self::new() }
-}
-
-#[derive(Clone, PartialEq)]
-pub struct InnerContext {
-	pub stdin: String,
-	pub stdout: String,
-
-	pub flags: ContextFlags,
-
-	pub variables: HashMap<String, Value>,
-	pub parent: Option<Context>
-}
-
-impl InnerContext {
-	pub fn new() -> Self {
-		Self {
-			stdin: String::new(),
-			stdout: String::new(),
-
-			flags: ContextFlags::default(),
-
-			variables: HashMap::new(),
-			parent: None
-		}
-	}
-
-	pub fn deeper(&mut self) {
-		let child_context = Self::new();
-		let original_context = std::mem::replace(self, child_context);
-
-		// `self` here is already the child context
-		self.flags = original_context.flags; // Infer the flags of the original context
-		self.parent = Some(Context::wrap(original_context));
-	}
-
-	pub fn shallower(&mut self) {
-		match self.parent.take() {
-			Some(parent) => *self = parent.unwrap_or_clone(),
-			None => eprintln!("INTERPRETER WARNING: `InnerContext::shallower()` was called while not having a parent")
-		}
-	}
-
-	pub fn is_subcontext(&self) -> bool { self.parent.is_some() }
-
-	pub fn exists(&self, name: &str) -> bool {
-		if self.variables.contains_key(name) {
+	pub fn exists<N>(&self, name: N) -> bool
+	where
+		N: AsRef<str>
+	{
+		if self.inner().vars.contains_key(name.as_ref()) {
 			return true;
 		}
 
-		match self.parent {
-			Some(ref p) => p.deref().exists(name),
+		match self.inner().parent {
+			Some(ref p) => p.exists(name),
 			None => false
 		}
 	}
 
-	pub fn get(&self, name: &str) -> Result<Value> {
-		if let Some(var) = self.variables.get(name) {
-			return Ok(var.to_owned());
+	pub fn get<N>(&self, name: N) -> Option<Value<'ast>>
+	where
+		Value<'ast>: Clone,
+		N: AsRef<str>
+	{
+		let name = name.as_ref();
+
+		if let Some(value) = self.inner().vars.get(name).cloned() {
+			return Some(value);
 		}
 
-		match self.parent {
-			Some(ref p) => p.deref().get(name),
-			None => bail!("Variable with name `{name}` does not exist")
+		match self.inner().parent {
+			Some(ref p) => p.get(name),
+			None => None
 		}
 	}
 
-	pub fn insert(&mut self, name: String, value: Value) -> Option<Value> {
-		self.variables.insert(name, value)
+	pub fn insert<N>(&self, name: N, value: Value<'ast>) -> Option<Value<'ast>>
+	where
+		N: Into<String>
+	{
+		self.inner_mut().vars.insert(name.into(), value)
 	}
 
-	pub fn update(&mut self, name: String, value: Value) -> Result<Value> {
+	pub fn update<N>(&self, name: &N, value: Value<'ast>) -> Option<Value<'ast>>
+	where
+		N: ToOwned<Owned = String>
+	{
 		use std::collections::hash_map::Entry;
 
-		if !self.exists(&name) {
-			bail!("Variable with name `{name}` does not exist");
-		}
+		let mut inner = self.inner_mut();
 
-		match self.variables.entry(name.clone()) {
-			Entry::Occupied(mut e) => Ok(e.insert(value)),
+		match inner.vars.entry(name.to_owned()) {
+			Entry::Occupied(mut e) => Some(e.insert(value)),
 			Entry::Vacant(_) => {
-				match self.parent {
-					Some(ref mut p) => p.deref_mut().update(name, value),
-					None => {
-						unreachable!(
-							"Match arm reached despite expecting `InnerContext::exists(\"{name}\")` to return `false`"
-						)
-					}
+				match inner.parent {
+					Some(ref p) => p.update(name, value),
+					None => None
 				}
 			}
 		}
 	}
-}
 
-impl Debug for InnerContext {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let mut debug_struct = f.debug_struct("InnerContext");
+	pub(crate) fn get_extern<N>(&self, name: N) -> Option<Value<'ast>>
+	where
+		N: AsRef<str>
+	{
+		let name = name.as_ref();
 
-		debug_struct.field("flags", &self.flags);
-		debug_struct.field("variables", &self.variables);
-
-		if let Some(ref p) = self.parent {
-			debug_struct.field("parent", p);
+		if let Some(value) = self.inner().externs.get(name).cloned() {
+			return Some(value);
 		}
 
-		debug_struct.finish()
+		match self.inner().parent {
+			Some(ref p) => p.get_extern(name),
+			None => None
+		}
+	}
+
+	pub(crate) fn insert_extern<N>(&self, name: N, value: Value<'ast>) -> Option<Value<'ast>>
+	where
+		N: Into<String>
+	{
+		self.inner_mut().externs.insert(name.into(), value)
 	}
 }
 
-impl Default for InnerContext {
+impl Default for Context<'_> {
+	fn default() -> Self { Self::new() }
+}
+
+#[derive(Debug, Clone)]
+pub struct ContextInner<'ast> {
+	pub flags: ContextFlags,
+
+	vars: HashMap<String, Value<'ast>>,
+	externs: HashMap<String, Value<'ast>>,
+
+	parent: Option<Context<'ast>>
+}
+
+impl ContextInner<'_> {
+	pub fn new() -> Self {
+		Self {
+			flags: ContextFlags::default(),
+
+			vars: HashMap::new(),
+			externs: HashMap::new(),
+
+			parent: None
+		}
+	}
+}
+
+impl Default for ContextInner<'_> {
 	fn default() -> Self { Self::new() }
 }

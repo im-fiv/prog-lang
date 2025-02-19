@@ -25,10 +25,10 @@ def fibonacci_recursive = func(num) do
 		return num
 	end
 
-	return ((num - 1) -> self) + ((num - 2) -> self) 
+	return self(num - 1) + self(num - 2)
 end
 
 def arg_number = 10
 
-("(", arg_number, ") -> fibonacci_regular = ", (arg_number) -> fibonacci_regular) -> print
-("(", arg_number, ") -> fibonacci_recursive = ", (arg_number) -> fibonacci_recursive) -> print
+print("fibonacci_regular(", arg_number, ") = ", fibonacci_regular(arg_number))
+print("fibonacci_recursive(", arg_number, ") = ", fibonacci_recursive(arg_number))

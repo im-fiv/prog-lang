@@ -5,11 +5,9 @@ edition = "2021"
 
 [features]
 default = []
-serde = ["dep:serde", "dep:serde_json"]
+serde = ["dep:serde"]
 
 [dependencies]
-anyhow = { workspace = true }
 ariadne = { workspace = true }
 
 serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }

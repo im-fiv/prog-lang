@@ -1,16 +1,20 @@
 use std::collections::HashMap;
-use std::fmt::{self, Debug};
+use std::fmt::{self, Display};
 use std::ops::Range;
 
 use crate::{Value, ValueKind};
 
-//* Note: `Debug` is implemented manually below
-#[derive(Clone, PartialEq)]
+pub type ParsedArgList<'i> = HashMap<String, ParsedArg<'i>>;
+
+// TODO: get rid of `Option` and rely on `Vec::is_empty`
+// TODO: make `new` construct an empty argument list
+// TODO: rename `new_empty` to `with` and make it construct an argument list from the provided `Vec`
+#[derive(Debug, Clone, PartialEq)]
 pub struct ArgList {
-	arguments: Option<Vec<Arg>>
+	args: Option<Vec<Arg>>
 }
 
-impl ArgList {
+impl<'i> ArgList {
 	/// Creates an argument list from the provided arguments
 	pub fn new(arguments: Vec<Arg>) -> Self {
 		let mut variadic_count = 0;
@@ -40,62 +44,73 @@ impl ArgList {
 		}
 
 		Self {
-			arguments: Some(arguments)
+			args: Some(arguments)
 		}
 	}
 
 	/// Creates an argument list that accepts 0 arguments
-	pub fn new_empty() -> Self { Self { arguments: None } }
+	pub fn new_empty() -> Self { Self { args: None } }
+
+	/// Removes an argument at a specified index. Returns `None` if no argument was removed.
+	pub fn remove(&mut self, index: usize) -> Option<Arg> {
+		let args = self.args.as_mut()?;
+
+		if index >= args.len() {
+			return None;
+		}
+
+		Some(args.remove(index))
+	}
 
 	/// Verifies the provided arguments according to the inner argument types list
-	pub fn verify(
-		&self,
-		arguments: &[Value]
-	) -> Result<HashMap<String, ParsedArg>, ArgumentParseError> {
+	pub fn verify(&self, arguments: &[Value<'i>]) -> Result<ParsedArgList<'i>, ArgumentParseError> {
 		use core::iter::zip;
 
 		if let Some(result) = self.check_args_length(arguments)? {
 			return Ok(result);
 		}
 
-		let own_arguments = self.arguments.as_ref().unwrap();
-		let mut arguments = arguments.to_owned();
+		let expected_args = self.args.as_ref().unwrap();
+		let mut found_args = arguments.to_owned();
 
 		// It is crucial to balance both of the vectors such that the `for` loop actually runs
-		if arguments.len() < own_arguments.len() {
-			arguments.resize(own_arguments.len(), Value::Empty)
+		if found_args.len() < expected_args.len() {
+			found_args.resize(expected_args.len(), Value::None)
 		}
 
 		let mut result = HashMap::new();
-		let zipped_args = zip(own_arguments, arguments.clone());
+		let zipped_args = zip(expected_args, found_args.clone());
 
-		for (index, (own_argument, got_argument)) in zipped_args.enumerate() {
+		for (index, (expected_arg, found_arg)) in zipped_args.enumerate() {
 			let mut check_args =
-				|expected: ValueKind, got: ValueKind, name: &str, optional: bool| {
-					if !optional && (expected != got) {
-						return Err(ArgumentParseError::incorrect_type(
+				|expected: ValueKind, found: ValueKind, name: &str, optional: bool| {
+					if !optional && (expected != found) {
+						return Err(ArgumentParseError::IncorrectType {
 							index,
-							expected.to_string(),
-							got.to_string()
-						));
+							expected,
+							found
+						});
 					}
 
-					if optional && (got == ValueKind::Empty) && (expected != ValueKind::Empty) {
+					if optional && (found == ValueKind::None) && (expected != ValueKind::None) {
 						return Ok(());
 					}
 
-					result.insert(String::from(name), ParsedArg::Regular(got_argument.clone()));
+					result.insert(String::from(name), ParsedArg::Regular(found_arg.clone()));
 
 					Ok(())
 				};
 
-			match own_argument {
-				Arg::Required(name, kind) => check_args(*kind, got_argument.kind(), name, false)?,
-				Arg::Optional(name, kind) => check_args(*kind, got_argument.kind(), name, true)?,
+			match expected_arg {
+				Arg::Required(name, kind) => check_args(*kind, found_arg.kind(), name, false)?,
+				Arg::RequiredUntyped(name) => {
+					check_args(found_arg.kind(), found_arg.kind(), name, false)?
+				}
+				Arg::Optional(name, kind) => check_args(*kind, found_arg.kind(), name, true)?,
 				Arg::Variadic(name) => {
 					result.insert(
 						String::from(name.to_owned()),
-						ParsedArg::Variadic(arguments[index..].to_vec())
+						ParsedArg::Variadic(found_args[index..].to_vec())
 					);
 				}
 			};
@@ -106,24 +121,28 @@ impl ArgList {
 
 	fn check_args_length(
 		&self,
-		got: &[Value]
-	) -> Result<Option<HashMap<String, ParsedArg>>, ArgumentParseError> {
-		if self.arguments.is_none() {
-			if !got.is_empty() {
-				return Err(ArgumentParseError::count_mismatch(0..0, true, got.len()));
+		found: &[Value<'i>]
+	) -> Result<Option<ParsedArgList<'i>>, ArgumentParseError> {
+		if self.args.is_none() {
+			if !found.is_empty() {
+				return Err(ArgumentParseError::CountMismatch {
+					expected: 0..0,
+					end_boundary: true,
+					found: found.len()
+				});
 			}
 
 			return Ok(Some(HashMap::new()));
 		}
 
-		let own_arguments = self.arguments.as_ref().unwrap();
+		let own_args = self.args.as_ref().unwrap();
 
 		let mut num_optional = 0;
 		let mut has_variadic = false;
 
-		for arg in own_arguments {
+		for arg in own_args {
 			match arg {
-				Arg::Required(..) => continue,
+				Arg::Required(..) | Arg::RequiredUntyped(..) => continue,
 				Arg::Optional(..) => num_optional += 1,
 				Arg::Variadic(_) => {
 					has_variadic = true;
@@ -132,62 +151,63 @@ impl ArgList {
 			};
 		}
 
-		let got_len = got.len();
-		let expected_len = own_arguments.len();
+		let found_len = found.len();
+		let expected_len = own_args.len();
 
-		if (got_len != expected_len) && (num_optional == 0) && !has_variadic {
-			return Err(ArgumentParseError::count_mismatch(
-				expected_len..expected_len,
-				true,
-				got_len
-			));
+		if (found_len != expected_len) && (num_optional == 0) && !has_variadic {
+			return Err(ArgumentParseError::CountMismatch {
+				expected: expected_len..expected_len,
+				end_boundary: true,
+				found: found_len
+			});
 		}
 
 		if !has_variadic
 			&& (num_optional > 0)
-			&& ((got_len < expected_len - num_optional) || (got_len > expected_len))
+			&& ((found_len < expected_len - num_optional) || (found_len > expected_len))
 		{
-			return Err(ArgumentParseError::count_mismatch(
-				(expected_len - num_optional)..expected_len,
-				true,
-				got_len
-			));
+			return Err(ArgumentParseError::CountMismatch {
+				expected: (expected_len - num_optional)..expected_len,
+				end_boundary: true,
+				found: found_len
+			});
 		}
 
 		// Argument list may contain only 1 variadic argument, hence the -1
-		if has_variadic && (num_optional == 0) && (got_len < expected_len - 1) {
+		if has_variadic && (num_optional == 0) && (found_len < expected_len - 1) {
 			let expected_len = expected_len - 1;
-			return Err(ArgumentParseError::count_mismatch(
-				expected_len..expected_len,
-				false,
-				got_len
-			));
+			return Err(ArgumentParseError::CountMismatch {
+				expected: expected_len..expected_len,
+				end_boundary: false,
+				found: found_len
+			});
 		}
 
-		if has_variadic && (num_optional > 0) && (got_len < expected_len - 1 - num_optional) {
+		if has_variadic && (num_optional > 0) && (found_len < expected_len - 1 - num_optional) {
 			let expected_len = expected_len - 1 - num_optional;
-			return Err(ArgumentParseError::count_mismatch(
-				expected_len..expected_len,
-				false,
-				got_len
-			));
+			return Err(ArgumentParseError::CountMismatch {
+				expected: expected_len..expected_len,
+				end_boundary: false,
+				found: found_len
+			});
 		}
 
 		Ok(None)
 	}
 }
 
-impl Debug for ArgList {
+impl Display for ArgList {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		if self.arguments.is_none() {
+		if self.args.is_none() {
 			return write!(f, "");
 		}
 
 		let mut arg_strings = vec![];
 
-		for arg in self.arguments.as_ref().unwrap() {
+		for arg in self.args.as_ref().unwrap() {
 			let formatted_arg = match arg {
 				Arg::Required(name, kind) => format!("{name}: {kind}"),
+				Arg::RequiredUntyped(name) => format!("{name}"),
 				Arg::Optional(name, kind) => format!("{name}: {kind}?"),
 				Arg::Variadic(name) => format!("{name}...")
 			};
@@ -201,15 +221,16 @@ impl Debug for ArgList {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Arg {
-	Required(&'static str, ValueKind),
-	Optional(&'static str, ValueKind),
-	Variadic(&'static str)
+	Required(Box<str>, ValueKind),
+	RequiredUntyped(Box<str>),
+	Optional(Box<str>, ValueKind),
+	Variadic(Box<str>)
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ParsedArg {
-	Regular(Value),
-	Variadic(Vec<Value>)
+pub enum ParsedArg<'i> {
+	Regular(Value<'i>),
+	Variadic(Vec<Value<'i>>)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -217,30 +238,12 @@ pub enum ArgumentParseError {
 	CountMismatch {
 		expected: Range<usize>,
 		end_boundary: bool,
-		got: usize
+		found: usize
 	},
 
 	IncorrectType {
 		index: usize,
-		expected: String,
-		got: String
-	}
-}
-
-impl ArgumentParseError {
-	pub fn count_mismatch(expected: Range<usize>, end_boundary: bool, got: usize) -> Self {
-		Self::CountMismatch {
-			expected,
-			end_boundary,
-			got
-		}
-	}
-
-	pub fn incorrect_type(index: usize, expected: String, got: String) -> Self {
-		Self::IncorrectType {
-			index,
-			expected,
-			got
-		}
+		expected: ValueKind,
+		found: ValueKind
 	}
 }

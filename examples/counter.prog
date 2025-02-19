@@ -7,12 +7,12 @@ def create_counter = func(initial) do
 	end
 end
 
-def counter_a = (0) -> create_counter
-(((1) -> counter_a) == 1) -> assert
-(((2) -> counter_a) == 3) -> assert
-(((10) -> counter_a) == 13) -> assert
+def counter_a = create_counter(0)
+assert(counter_a(1) == 1)
+assert(counter_a(2) == 3)
+assert(counter_a(10) == 13)
 
-def counter_b = (0) -> create_counter
-(((1) -> counter_b) == 1) -> assert
-(((2) -> counter_b) == 3) -> assert
-(((3) -> counter_b) == 6) -> assert
+def counter_b = create_counter(0)
+assert(counter_b(1) == 1)
+assert(counter_b(2) == 3)
+assert(counter_b(3) == 6)

@@ -5,13 +5,13 @@ edition = "2021"
 
 [features]
 default = []
+full = ["serde"]
 serde = ["dep:serde", "prog-parser/serde"]
 
 [dependencies]
-halloc = { path = "../halloc" }
-text_io = "0.1.12"
-anyhow = { workspace = true }
 ariadne = { workspace = true }
+
+prog-lexer = { workspace = true }
 prog-parser = { workspace = true }
 prog-utils = { workspace = true }
 prog-macros = { workspace = true }

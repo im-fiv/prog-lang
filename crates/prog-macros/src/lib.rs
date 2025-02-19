@@ -1,9 +1,9 @@
 extern crate proc_macro;
 
+mod ariadne_compatible_inner;
 mod conversion_inner;
 mod get_argument_inner;
 mod get_this_inner;
-mod impl_ariadne_compatible_inner;
 mod utils;
 
 use proc_macro as pm;
@@ -124,12 +124,12 @@ pub fn enum_kind(input: pm::TokenStream) -> pm::TokenStream {
 	expanded.into()
 }
 
-/// Expands to the implementation of [`prog_utils::pretty_errors::AriadneCompatible`]. **Only compatible with enums**
-#[proc_macro_derive(ImplAriadneCompatible)]
-pub fn impl_ariadne_compatible(input: pm::TokenStream) -> pm::TokenStream {
+/// Automatically implements [`prog_utils::pretty_errors::AriadneCompatible`] for the deriving enum.
+#[proc_macro_derive(AriadneCompatible)]
+pub fn ariadne_compatible(input: pm::TokenStream) -> pm::TokenStream {
 	let item = parse_macro_input!(input as syn::ItemEnum);
 
-	match impl_ariadne_compatible_inner::expand_impl(item) {
+	match ariadne_compatible_inner::expand_impl(item) {
 		Ok(ts) => ts.into(),
 		Err(e) => e.to_compile_error().into()
 	}

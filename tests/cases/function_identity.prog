@@ -1,0 +1,12 @@
+def fn_a = func() do end
+def fn_b = func() do return none end
+
+assert_eq(fn_b, fn_b)
+assert_neq(fn_b, func() do return none end)
+assert_neq(func() do return none end, fn_b)
+
+assert_eq(fn_b, fn_b)
+assert_neq(fn_b, func() do return none end)
+assert_neq(func() do return none end, fn_b)
+
+assert_neq(fn_a, fn_b)

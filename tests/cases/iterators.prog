@@ -1,0 +1,76 @@
+class Generator
+	def function
+	def counter
+
+	def new = func(f) do
+		return self({ function = f, counter = 0 })
+	end
+
+	def next = func(self) do
+		def result = self.function(self.counter)
+		self.counter = self.counter + 1
+		return result
+	end
+end
+
+class Iterator
+	def generator
+
+	def new = func(list) do
+		def iter = func(index) do
+			return list[index]
+		end
+
+		return self({
+			generator = Generator.new(iter)
+		})
+	end
+
+	def next = func(self) do
+		return self.generator.next()
+	end
+end
+
+class DoubleIterator
+	def generator
+
+	def new = func(list) do
+		def iter = func(index) do
+			return list[index] * 2
+		end
+
+		return self({
+			generator = Generator.new(iter)
+		})
+	end
+
+	def next = func(self) do
+		return self.generator.next()
+	end
+end
+
+def list = [1, 2, 3, 5]
+
+def gen = Generator.new(func(index) do
+	if index % 2 == 0 then
+		return "fizz"
+	else
+		return "buzz"
+	end
+end)
+assert_eq(gen.next(), "fizz")
+assert_eq(gen.next(), "buzz")
+assert_eq(gen.next(), "fizz")
+assert_eq(gen.next(), "buzz")
+
+def iter = Iterator.new(list)
+assert_eq(iter.next(), 1)
+assert_eq(iter.next(), 2)
+assert_eq(iter.next(), 3)
+assert_eq(iter.next(), 5)
+
+def iter = DoubleIterator.new(list)
+assert_eq(iter.next(), 2)
+assert_eq(iter.next(), 4)
+assert_eq(iter.next(), 6)
+assert_eq(iter.next(), 10)

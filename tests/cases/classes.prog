@@ -1,0 +1,83 @@
+def should_panic = extern "should_panic"
+
+// Class declaractions are a tad bit special, as they are *statements* rather than *expressions*.
+class TestClass
+	// Since variables and functions are defined the same way - no special syntax is needed!
+	def predefined = 1
+	def state
+
+	// A constructor function is a regular function which returns an instance of the class
+	def constructor = func() do
+		// In a class function that doesn't have `self` as its first argument,
+		// the `self` keyword resolves to the actual class, not its instance (`TestClass` in this case)
+		return self({
+			state = "hello, world!"
+		})
+	end
+
+	def utility = func(a, b) do
+		return a + b
+	end
+
+	def get_state = func(self) do
+		// In this context, `self` is shadowed by an instance of `TestClass`.
+		// Though it's still possible to access "static" class functions:
+		def calculation = self.utility(5, 42)
+
+		return self.state + " " + calculation
+	end
+
+	def set_state = func(self, new_state) do
+		self.state = new_state
+	end
+end
+
+// You can assign *classes* to variables:
+def variable = TestClass
+assert_eq(TestClass, variable)
+
+// ...and you can also redefine classes themselves (highly discouraged!):
+class TestClass
+	def state = "Redefined your TestClass!"
+end
+assert_neq(TestClass, variable)
+
+// Reverting the trickery done above
+TestClass = variable
+
+// Note that you *cannot* reassign class functions:
+should_panic(func() do
+	// This is accounted for!
+	TestClass.constructor = func() do
+		assert(false, "You shall not create more TestClasses!")
+	end
+end)
+
+def instance = TestClass.constructor() /* or you can call `TestClass({...})` directly */
+
+should_panic(func() do
+	// This is also accounted for!
+	instance.utility = func(a, b) do
+		return "No more utilities for you!"
+	end
+end)
+
+// However, this is acceptable:
+instance.state = func() do
+	print("Got your state!")
+end
+// ...though not recommended
+
+// Fun fact: a reassigned property can still have access to the class instance!:
+instance.state = func(self) do
+	print("Here's my predefined value:", self.predefined)
+	return self.predefined
+end
+assert_eq(instance.state(), instance.predefined)
+
+// Ridiculous stuff aside, this is the regular expected behavior:
+def instance = TestClass.constructor()
+assert_eq(TestClass.utility(1, 2), instance.utility(1, 2))
+
+def state = instance.get_state() /* or `TestClass.get_state(instance)`, whatever floats your boat! */
+assert_eq(state, "hello, world!" + " " + instance.utility(5, 42))

@@ -2,8 +2,8 @@ def sum = func(list) do
 	def result = 0
 	def counter = 0
 
-	while counter < () -> list.len do
-		def entry = counter => list
+	while counter < list.len() do
+		def entry = list[counter]
 
 		result = result + entry
 		counter = counter + 1
@@ -13,21 +13,21 @@ def sum = func(list) do
 end
 
 def list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-def len = () -> list.len
+def len = list.len()
 
-def resulting_sum = (list) -> sum
+def resulting_sum = sum(list)
 def old_list = list
 
-// doubling 9th element
-(len - 1)=>list = (len - 1)=>list * 2
-def new_resulting_sum = (list) -> sum
+// Doubling 9th element
+list[len - 1] = list[len - 1] * 2
+def new_resulting_sum = sum(list)
 
-("old sum: ", resulting_sum) -> print
-("new sum: ", new_resulting_sum) -> print
-() -> print
+print("old sum: ", resulting_sum)
+print("new sum: ", new_resulting_sum)
+print()
 
-("difference: ", new_resulting_sum - resulting_sum) -> print
-() -> print
+print("difference: ", new_resulting_sum - resulting_sum)
+print()
 
-("original list: ", old_list) -> print
-("modified list: ", list) -> print
+print("original list: ", old_list)
+print("modified list: ", list)
