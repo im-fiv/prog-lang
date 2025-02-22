@@ -9,7 +9,7 @@ class TestClass
 	// A constructor function is a regular function which returns an instance of the class
 	def constructor = func() do
 		// In a class function that doesn't have `self` as its first argument,
-		// the `self` keyword resolves to the actual class, not its instance (`TestClass` in this case)
+		// the `self` keyword resolves to the *actual class*, not *its instance* (`TestClass` in this case)
 		return self({
 			state = "hello, world!"
 		})
@@ -20,7 +20,7 @@ class TestClass
 	end
 
 	def get_state = func(self) do
-		// In this context, `self` is shadowed by an instance of `TestClass`.
+		// In this context, `self` is shadowed by an *instance* of `TestClass`.
 		// Though it's still possible to access "static" class functions:
 		def calculation = self.utility(5, 42)
 
@@ -68,7 +68,7 @@ instance.state = func() do
 end
 // ...though not recommended
 
-// Fun fact: a reassigned property can still have access to the class instance!:
+// Fun fact: a reassigned field can still have access to the class instance!:
 instance.state = func(self) do
 	print("Here's my predefined value:", self.predefined)
 	return self.predefined

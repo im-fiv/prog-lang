@@ -10,6 +10,13 @@ use crate::{Primitive, Shared, Value};
 pub struct Obj<'ast>(Shared<HashMap<String, Value<'ast>>>);
 
 impl<'ast> Obj<'ast> {
+	pub fn contains<N>(&self, name: N) -> bool
+	where
+		N: AsRef<str>
+	{
+		self.0.borrow().contains_key(name.as_ref())
+	}
+
 	pub fn get<N>(&self, name: N) -> Option<Value<'ast>>
 	where
 		Value<'ast>: Clone,

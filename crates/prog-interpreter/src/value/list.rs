@@ -27,7 +27,7 @@ impl<'ast> List<'ast> {
 
 			None => {
 				if index >= inner_list.len() {
-					inner_list.resize(index + 1, Value::None);
+					inner_list.resize(index, Value::None);
 				}
 
 				inner_list.insert(index, value);
